@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Pathfinder1eHelper.Test/Pathfinder1eHelper.Test.csproj" />
+  <Project Path="Pathfinder1eHelper/Pathfinder1eHelper.csproj" />
+</Solution>

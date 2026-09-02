@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Ship the read-only reference DB next to the binaries so AppContext.BaseDirectory\data\spells.duckdb resolves. -->
+        <None Include="..\data\spells.duckdb" Link="data\spells.duckdb">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.1"/>
+        <PackageReference Include="Avalonia.Desktop" Version="12.1.1"/>
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.1"/>
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
+            <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+            <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="FreeSql" Version="3.5.311" />
+        <PackageReference Include="FreeSql.Provider.Duckdb" Version="3.5.311" />
+        <PackageReference Include="Irihi.Ursa" Version="2.2.0" />
+        <PackageReference Include="Irihi.Ursa.ReactiveUIExtension" Version="2.0.0" />
+        <PackageReference Include="Irihi.Ursa.Themes.Semi" Version="2.2.0" />
+        <PackageReference Include="Material.Icons.Avalonia" Version="3.0.2" />
+        <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.1" />
+        <PackageReference Include="ReactiveUI.Avalonia.Autofac" Version="12.1.1" />
+        <PackageReference Include="Semi.Avalonia" Version="12.1.0.1" />
+        <PackageReference Include="Semi.Avalonia.DataGrid" Version="12.1.0.1" />
+    </ItemGroup>
+</Project>

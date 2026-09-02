@@ -1,0 +1,115 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Pathfinder1eHelper.ViewModels"
+        xmlns:u="https://irihi.tech/ursa"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
+        x:Class="Pathfinder1eHelper.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1000" Height="640"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="{Binding Title}">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <Grid x:Name="RootGrid" ColumnDefinitions="Auto,4,*">
+
+        <DockPanel Grid.Column="0" Margin="8" Classes.collapsed="{Binding !IsNavExpanded}">
+
+            <DockPanel.Styles>
+                <Style Selector="DockPanel.collapsed TextBlock.title-text">
+                    <Setter Property="IsVisible" Value="False" />
+                </Style>
+                <Style Selector="DockPanel.collapsed ToggleButton">
+                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                </Style>
+                <Style Selector="DockPanel.collapsed ToggleButton StackPanel">
+                    <Setter Property="Margin" Value="0" />
+                </Style>
+                <!-- 展开时导航菜单整体宽度与导航按钮同宽（绑定按钮实际宽度，避免固定 ExpandWidth 与标题内容宽度不一致）；
+                     收起态该样式不匹配，宽度由主题 CollapseWidth=48 接管，维持 48×48 正方形。 -->
+                <Style Selector="u|NavMenu:not(:horizontal-collapsed)">
+                    <Setter Property="Width"
+                            Value="{Binding Bounds.Width, ElementName=NavHeaderToggle}" />
+                </Style>
+            </DockPanel.Styles>
+
+            <!-- 主标题：与菜单项相同的 StackPanel 嵌套绑定；整块作为导航伸缩开关。
+                 固定 48 高；Padding=0 使收起时 48×48 正方形内 icon 精确居中（不受主题默认 padding 影响），
+                 展开时字号与菜单项一致（FontSize=18），icon 与菜单项同为 32。 -->
+            <ToggleButton x:Name="NavHeaderToggle"
+                          DockPanel.Dock="Top"
+                          Classes="nav-header"
+                          IsChecked="{Binding IsNavExpanded, Mode=TwoWay}"
+                          Height="48"
+                          Padding="0"
+                          HorizontalContentAlignment="Left"
+                          VerticalContentAlignment="Center"
+                          ToolTip.Tip="展开/收起导航">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,0">
+                    <materialIcons:MaterialIcon Kind="ShieldSword" Width="32" Height="32"
+                                                VerticalAlignment="Center" />
+                    <TextBlock Classes="title-text" Text="{Binding Title}" FontWeight="Bold" FontSize="18"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </ToggleButton>
+
+            <u:NavMenu x:Name="Nav"
+                       IsHorizontalCollapsed="{Binding !IsNavExpanded}"
+                       ExpandWidth="220"
+                       CollapseWidth="48"
+                       ItemsSource="{Binding NavItems}"
+                       SelectedItem="{Binding SelectedNavItem, Mode=TwoWay}">
+                <u:NavMenu.DataTemplates>
+                    <!-- 与 ToggleButton 相同的 StackPanel 嵌套绑定：图标/文字直接取自数据项，
+                         经隐式 DataType 匹配应用到 NavMenuItem.Header -->
+                    <DataTemplate DataType="{x:Type vm:NavItemViewModel}" x:DataType="vm:NavItemViewModel">
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,0">
+                            <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="32" Height="32"
+                                                        VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Header}" FontSize="18" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DataTemplate>
+                </u:NavMenu.DataTemplates>
+                <u:NavMenu.Styles>
+                    <Style Selector="u|NavMenuItem" x:DataType="vm:NavItemViewModel">
+                        <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                    </Style>
+                    <!-- 图标/文字统一在 Header 的 StackPanel 里，空的 IconPresenter 隐藏 -->
+                    <Style Selector="u|NavMenuItem /template/ ContentPresenter#PART_IconPresenter">
+                        <Setter Property="IsVisible" Value="False" />
+                    </Style>
+                    <!-- 每项（含标题按钮）展开/收起都固定 48 高：收起时 48 宽 × 48 高即正方形，与标题按钮一致 -->
+                    <Style Selector="u|NavMenuItem:first-level /template/ Border#PART_Border">
+                        <Setter Property="MinHeight" Value="48" />
+                    </Style>
+                    <Style
+                        Selector="u|NavMenuItem:horizontal-collapsed:first-level /template/ ContentPresenter#PART_HeaderPresenter">
+                        <Setter Property="IsVisible" Value="True" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Grid.ColumnSpan" Value="3" />
+                        <Setter Property="HorizontalAlignment" Value="Center" />
+                    </Style>
+                    <Style
+                        Selector="u|NavMenuItem:horizontal-collapsed:first-level /template/ ContentPresenter#PART_HeaderPresenter TextBlock">
+                        <Setter Property="IsVisible" Value="False" />
+                    </Style>
+                    <Style
+                        Selector="u|NavMenuItem:horizontal-collapsed:first-level /template/ ContentPresenter#PART_HeaderPresenter StackPanel">
+                        <Setter Property="HorizontalAlignment" Value="Center" />
+                        <Setter Property="Margin" Value="0" />
+                    </Style>
+                </u:NavMenu.Styles>
+            </u:NavMenu>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+        <TransitioningContentControl Grid.Column="2" Content="{Binding CurrentPage}" />
+    </Grid>
+
+</Window>
