@@ -17,6 +17,9 @@ public interface ISpellRepository
     /// <summary>Returns the distinct set of source-book codes present in the data, sorted.</summary>
     Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default);
 
+    /// <summary>Returns the distinct set of class/domain names (spell_levels.class_name), sorted.</summary>
+    Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default);
+
     /// <summary>Loads a single spell by primary key, or null if not found.</summary>
     Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default);
 }

@@ -7,7 +7,7 @@ Pathfinder 1e 中文助手 —— 一款基于 Avalonia 的桌面法术查询工
 
 ## 功能
 
-- **法术浏览**:只读参考库约 2965 条法术(来源含 Pathfinder 中文规则与社区 wiki 补充)
+- **法术浏览**:只读参考库约 3373 条法术,覆盖 101 个出处(由 pf_searcher_v1.0 数据重建,补充旧库独有法术,以英文名为准去重/补缺)
 - **实时搜索**:按中文名/英文名模糊搜索,300ms 防抖
 - **筛选**:按出处(`source`)、英文首字母 A–Z 过滤
 - **主从详情**:列表 + 详情双栏,展示学派/环位/施法时间/成分/距离/效果/范围/目标/持续时间/豁免/法术抗力/描述/出处等字段
@@ -19,7 +19,7 @@ Pathfinder 1e 中文助手 —— 一款基于 Avalonia 的桌面法术查询工
 | 类别 | 选型 |
 | --- | --- |
 | 运行时/UI | .NET 10 · Avalonia 12 |
-| 控件库/主题 | Ursa · Semi.Avalonia · Material.Icons |
+| 控件库/主题 | Avalonia Fluent(官方主题)· FluentIcons(FluentUI System Icons) |
 | MVVM | ReactiveUI 12(含 `ReactiveUI.Avalonia.Autofac`) |
 | DI | Autofac(兼作 Splat/ReactiveUI 定位器) |
 | 数据访问 | FreeSql + DuckDB(只读) |
@@ -50,9 +50,9 @@ Pathfinder1eHelper.slnx
 
 ## 数据说明
 
-`data/spells.duckdb` 为只读参考数据,**该文件(及数据构建管线 `scripts/`)不在 Git 仓库中**(见 `.gitignore`)。数据文本来源于 Pathfinder 中文规则资料与社区 wiki,版权归原著作权人所有;本仓库仅发布代码。
+`data/spells.duckdb` 为只读参考数据,**该文件(及数据构建管线 `scripts/`)不在 Git 仓库中**(见 `.gitignore`)。当前库由 **pf_searcher_v1.0** 按出处的法术 JSON(100 个来源文件、约 3104 条原始记录)重建:英文名缺失的记录从 `名称（English）` 中提取,与旧库对账后补齐旧库独有法术(以归一化英文名为准,共约 3373 条、101 个出处);`first_letter` 由英文名推导,首字母筛选完好保留。部分来源另提供 `spell_type`(法术类型)字段。数据文本版权归原著作权人所有;本仓库仅发布代码。
 
-克隆后如未放置数据文件,启动时 `DbPathProvider` 会提示 `Reference database not found`。自行准备数据:将构建好的 `spells.duckdb` 放到仓库根 `data/` 目录并重新构建即可(`csproj` 会以 `CopyToOutputDirectory=PreserveNewest` 复制到输出目录)。
+克隆后如未放置数据文件,启动时 `DbPathProvider` 会提示 `Reference database not found`。自行准备数据:将构建好的 `spells.duckdb` 放到仓库根 `data/` 目录并重新构建即可(`csproj` 会以 `CopyToOutputDirectory=PreserveNewest` 复制到输出目录)。重建脚本临时存放于本机(依赖 Node.js 与 duckdb CLI),未纳入版本控制。
 
 ## 构建与运行
 

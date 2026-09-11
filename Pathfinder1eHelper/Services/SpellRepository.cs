@@ -11,13 +11,32 @@ namespace Pathfinder1eHelper.Services;
 /// <summary>FreeSql-backed <see cref="ISpellRepository"/> over the read-only DuckDB reference data.</summary>
 public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
 {
-    private ISelect<Spell> Filtered(SpellQuery q) =>
-        fsql.Select<Spell>()
+    private ISelect<Spell> Filtered(SpellQuery q)
+    {
+        // 中文名按原样匹配；英文名两侧统一 lower()，使英文搜索不区分大小写。
+        var term = q.Term;
+        var lowerTerm = term?.ToLowerInvariant();
+        var sel = fsql.Select<Spell>()
             .WhereIf(
-                !string.IsNullOrWhiteSpace(q.Term),
-                s => s.NameZh.Contains(q.Term!) || s.NameEn.Contains(q.Term!))
+                !string.IsNullOrWhiteSpace(term),
+                s => s.NameZh.Contains(term!) || s.NameEn.ToLower().Contains(lowerTerm!))
             .WhereIf(!string.IsNullOrEmpty(q.Source), s => s.Source == q.Source)
             .WhereIf(!string.IsNullOrEmpty(q.FirstLetter), s => s.FirstLetter == q.FirstLetter);
+
+        // 环位/职业筛选走 spell_levels（EXISTS 子查询，命中 (class_name, level) 索引）。
+        // 指定职业/领域时按其 class_name 精确匹配（含 domain 行）；仅指定环位时限定 kind='class' 的主职业行。
+        var hasClass = !string.IsNullOrWhiteSpace(q.ClassName);
+        var hasLevel = q.ClassLevel is >= 0 and <= 9;
+        if (hasClass || hasLevel)
+        {
+            sel = sel.Where(s => fsql.Select<SpellLevel>().Any(sl =>
+                sl.SpellId == s.Id
+                && (!hasLevel || sl.Level == q.ClassLevel)
+                && (hasClass ? sl.ClassName == q.ClassName : sl.Kind == "class")));
+        }
+
+        return sel;
+    }
 
     public async Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default) =>
         await Filtered(query)
@@ -36,6 +55,16 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default)
+    {
+        var names = await fsql.Select<SpellLevel>().ToListAsync(sl => sl.ClassName, ct);
+        return names
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();
     }
 

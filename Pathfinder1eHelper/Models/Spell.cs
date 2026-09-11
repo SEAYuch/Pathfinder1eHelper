@@ -4,7 +4,8 @@ namespace Pathfinder1eHelper.Models;
 
 /// <summary>
 /// FreeSql entity mapped to the read-only <c>spells</c> table in <c>spells.duckdb</c>
-/// (~1902 rows, 17 sources). Columns are snake_case in the DB; each property maps explicitly.
+/// (~3373 rows, 101 source books; rebuilt from pf_searcher_v1.0 JSON, with legacy-only rows
+/// back-filled so nothing is lost). Columns are snake_case in the DB; each property maps explicitly.
 /// <para>
 /// <see cref="TableAttribute.DisableSyncStructure"/> is set so FreeSql never attempts DDL against
 /// the reference database. Many detail fields are frequently NULL in the source data, hence the
@@ -38,6 +39,7 @@ public sealed class Spell
     [Column(Name = "spell_resistance")] public string? SpellResistance { get; set; }
     [Column(Name = "description")] public string? Description { get; set; }
     [Column(Name = "extra")] public string? Extra { get; set; }
+    [Column(Name = "spell_type")] public string? SpellType { get; set; }
 
     /// <summary>Convenience display name combining Chinese and English names when both are present.</summary>
     public string DisplayName =>

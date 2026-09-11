@@ -23,6 +23,9 @@ public sealed class SpellService(ISpellRepository repository) : ISpellService
     public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
         repository.GetSourcesAsync(ct);
 
+    public Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
+        repository.GetClassesAsync(ct);
+
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         repository.GetByIdAsync(id, ct);
 
@@ -31,6 +34,8 @@ public sealed class SpellService(ISpellRepository repository) : ISpellService
         var term = string.IsNullOrWhiteSpace(query.Term) ? null : query.Term.Trim();
         var skip = query.Skip < 0 ? 0 : query.Skip;
         var take = query.Take <= 0 ? DefaultPageSize : query.Take;
-        return query with { Term = term, Skip = skip, Take = take };
+        var className = string.IsNullOrWhiteSpace(query.ClassName) ? null : query.ClassName.Trim();
+        var level = query.ClassLevel is >= 0 and <= 9 ? query.ClassLevel : null;
+        return query with { Term = term, Skip = skip, Take = take, ClassName = className, ClassLevel = level };
     }
 }

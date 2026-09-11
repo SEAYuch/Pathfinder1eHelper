@@ -14,5 +14,6 @@ public interface ISpellService
     Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default);
     Task<int> CountAsync(SpellQuery query, CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default);
     Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default);
 }

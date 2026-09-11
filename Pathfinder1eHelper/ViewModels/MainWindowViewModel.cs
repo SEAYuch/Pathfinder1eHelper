@@ -1,6 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
-using Material.Icons;
+using AvaloniaFluentUI.Controls;
 using Pathfinder1eHelper.ViewModels.Pages;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -8,7 +8,7 @@ using ReactiveUI.Primitives;
 namespace Pathfinder1eHelper.ViewModels;
 
 /// <summary>
-/// Shell view model: a data-driven <c>NavMenu</c> (<see cref="NavItems"/>) drives a ViewModel-first
+/// Shell view model: a data-driven navigation list (<see cref="NavItems"/>) drives a ViewModel-first
 /// content region (<see cref="CurrentPage"/>) rendered by the name-convention <c>ViewLocator</c>.
 /// </summary>
 public sealed class MainWindowViewModel : ViewModelBase
@@ -21,9 +21,9 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         NavItems =
         [
-            new NavItemViewModel("法术", MaterialIconKind.AutoFix, spellsFactory),
-            new NavItemViewModel("战斗", MaterialIconKind.Sword, pageFactory: null, isEnabled: false),
-            new NavItemViewModel("角色", MaterialIconKind.AccountGroup, pageFactory: null, isEnabled: false)
+            new NavItemViewModel("法术", Symbol.Star, spellsFactory),
+            new NavItemViewModel("战斗", Symbol.Target, pageFactory: null, isEnabled: false),
+            new NavItemViewModel("角色", Symbol.People, pageFactory: null, isEnabled: false)
         ];
 
         // The shell lives for the whole app, so a constructor subscription is fine (nothing to leak).
@@ -60,7 +60,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _currentPage, value);
     }
 
-    /// <summary>侧边导航是否展开；收缩时仅显示图标（由视图收窄列宽并隐藏文字）。</summary>
+    /// <summary>侧边导航是否展开（绑定 NavigationView.IsPaneOpen；收缩时仅显示图标）。</summary>
     public bool IsNavExpanded
     {
         get => _isNavExpanded;

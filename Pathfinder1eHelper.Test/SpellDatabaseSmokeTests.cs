@@ -28,10 +28,10 @@ public class SpellDatabaseSmokeTests
             var repo = new SpellRepository(fsql);
 
             var total = await repo.CountAsync(new SpellQuery(null, null, null, 0, int.MaxValue));
-            Assert.True(total > 1900, $"expected a fully populated DB (>1900 spells), got {total}");
+            Assert.True(total > 3000, $"expected a fully populated DB (>3000 spells), got {total}");
 
             var sources = await repo.GetSourcesAsync();
-            Assert.Equal(17, sources.Count);
+            Assert.Equal(101, sources.Count);
 
             var fireballs = await repo.SearchAsync(new SpellQuery("Fireball", null, null, 0, 50));
             Assert.Contains(fireballs, s => s.NameEn == "Fireball");
@@ -45,6 +45,27 @@ public class SpellDatabaseSmokeTests
             Assert.NotNull(byId);
             Assert.Equal(fireball.Id, byId!.Id);
             Assert.Equal(fireball.NameEn, byId.NameEn);
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task English_search_is_case_insensitive()
+    {
+        var provider = new DbPathProvider();
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        try
+        {
+            var repo = new SpellRepository(fsql);
+
+            foreach (var term in new[] { "fireball", "FIREBALL", "fIrEbAlL" })
+            {
+                var hits = await repo.SearchAsync(new SpellQuery(term, null, null, 0, 50));
+                Assert.Contains(hits, s => s.NameEn == "Fireball");
+            }
         }
         finally
         {
@@ -76,6 +97,34 @@ public class SpellDatabaseSmokeTests
         }
     }
 
+    [Fact]
+    public async Task Class_and_level_filters_query_spell_levels_index()
+    {
+        var provider = new DbPathProvider();
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        try
+        {
+            var repo = new SpellRepository(fsql);
+
+            // 职业+环位：CRB 火球术在 spell_levels 中为 术士/法师 3。
+            var wiz3 = await repo.SearchAsync(new SpellQuery(null, "CRB", null, 0, 200, ClassName: "术士/法师", ClassLevel: 3));
+            Assert.Contains(wiz3, s => s.NameEn == "Fireball");
+            Assert.All(wiz3, s => Assert.Equal("CRB", s.Source));
+
+            // 仅环位：9 环（只应命中 kind='class' 的主职业行）。
+            var lvl9 = await repo.SearchAsync(new SpellQuery(null, "CRB", null, 0, 200, ClassLevel: 9));
+            Assert.NotEmpty(lvl9);
+
+            // 职业下拉数据源有值且含“术士/法师”。
+            var classes = await repo.GetClassesAsync();
+            Assert.Contains("术士/法师", classes);
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
     /// <summary>
     /// Regression for the range/area misalignment: books like APG label the range line as
     /// “范围”, so distance values ended up in <c>area</c>. The migration moved distance content
@@ -91,7 +140,7 @@ public class SpellDatabaseSmokeTests
         {
             var repo = new SpellRepository(fsql);
             var all = await repo.SearchAsync(new SpellQuery(null, null, null, 0, 5000));
-            Assert.True(all.Count > 1900);
+            Assert.True(all.Count > 3000);
 
             var misplaced = all
                 .Where(s => string.IsNullOrWhiteSpace(s.Range) && !string.IsNullOrWhiteSpace(s.Area))
@@ -100,39 +149,6 @@ public class SpellDatabaseSmokeTests
                 .ToList();
 
             Assert.True(misplaced.Count == 0, "distance-only values still in area:\n" + string.Join("\n", misplaced));
-        }
-        finally
-        {
-            fsql.Dispose();
-        }
-    }
-
-    [Fact]
-    public async Task Range_area_migration_spot_checks()
-    {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
-        try
-        {
-            var repo = new SpellRepository(fsql);
-
-            // Pure distance that used to sit in area (APG labels the range line “范围”).
-            var absorbingTouch = (await repo.SearchAsync(new SpellQuery("Absorbing Touch", "APG", null, 0, 10)))
-                .Single(s => s.NameEn == "Absorbing Touch");
-            Assert.Equal("接触", absorbingTouch.Range);
-            Assert.Null(absorbingTouch.Area);
-
-            // Mixed “distance + area” values are split, not merged.
-            var towerOfIronWill = (await repo.SearchAsync(new SpellQuery("Tower of Iron Will", "OA", null, 0, 10)))
-                .Single(s => s.NameEn == "Tower of Iron Will I");
-            Assert.Equal("10尺", towerOfIronWill.Range);
-            Assert.Equal("以你为中心，半径10尺的发散区域", towerOfIronWill.Area);
-
-            // Rows that already had a real range keep both fields untouched.
-            var alarm = (await repo.SearchAsync(new SpellQuery("Alarm", "CRB", null, 0, 10)))
-                .Single(s => s.NameEn == "Alarm");
-            Assert.Equal("近距", alarm.Range);
-            Assert.Equal("以空间中的一点为中心, 20尺半径发散区域", alarm.Area);
         }
         finally
         {

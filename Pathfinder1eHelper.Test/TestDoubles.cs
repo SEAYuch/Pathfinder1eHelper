@@ -9,6 +9,7 @@ public sealed class FakeSpellRepository : ISpellRepository
     public SpellQuery? LastQuery { get; private set; }
     public List<Spell> Data { get; } = new();
     public IReadOnlyList<string> SourceList { get; set; } = new List<string>();
+    public IReadOnlyList<string> ClassList { get; set; } = new List<string>();
 
     public Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default)
     {
@@ -25,6 +26,9 @@ public sealed class FakeSpellRepository : ISpellRepository
     public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
         Task.FromResult(SourceList);
 
+    public Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
+        Task.FromResult(ClassList);
+
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         Task.FromResult(Data.FirstOrDefault(s => s.Id == id));
 }
@@ -34,6 +38,7 @@ public sealed class FakeSpellService : ISpellService
 {
     public List<Spell> Results { get; } = new();
     public IReadOnlyList<string> SourceList { get; set; } = new List<string> { "CRB", "APG" };
+    public IReadOnlyList<string> ClassList { get; set; } = new List<string>();
     public SpellQuery? LastQuery { get; private set; }
 
     public Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default)
@@ -47,6 +52,9 @@ public sealed class FakeSpellService : ISpellService
 
     public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
         Task.FromResult(SourceList);
+
+    public Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
+        Task.FromResult(ClassList);
 
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         Task.FromResult(Results.FirstOrDefault(s => s.Id == id));

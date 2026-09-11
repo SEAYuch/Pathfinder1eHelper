@@ -1,7 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:semi="https://irihi.tech/semi"
-             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:afui="using:AvaloniaFluentUI.Styling"
              xmlns:local="using:Pathfinder1eHelper"
              x:Class="Pathfinder1eHelper.App"
              RequestedThemeVariant="Default">
@@ -11,10 +10,25 @@
         <local:ViewLocator />
     </Application.DataTemplates>
 
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <!-- 分隔线（细灰）：Fluent 主题不直接提供该语义色，故在此按明暗主题自定 -->
+                    <SolidColorBrush x:Key="AppDividerBrush" Color="#E0E0E0" />
+                    <!-- 错误提示红 -->
+                    <SolidColorBrush x:Key="AppDangerBrush" Color="#C42B1C" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AppDividerBrush" Color="#383838" />
+                    <SolidColorBrush x:Key="AppDangerBrush" Color="#FF8080" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
-        <semi:SemiTheme Locale="zh-CN" />
-        <semi:UrsaSemiTheme Locale="zh-CN" />
-        <materialIcons:MaterialIconStyles />
-        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml" />
+        <!-- AvaloniaFluentUI 皮肤（FluentAvalonia 的 Avalonia12 移植，自带完整 Fluent 主题与控件） -->
+        <afui:AvaloniaFluentTheme PreferSystemTheme="True" />
     </Application.Styles>
 </Application>

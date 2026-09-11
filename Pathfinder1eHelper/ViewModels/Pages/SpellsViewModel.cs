@@ -23,12 +23,20 @@ public sealed class SpellsViewModel : ViewModelBase
     /// <summary>Sentinel shown in the first-letter filter that means "all letters".</summary>
     public const string AllLetters = "全部";
 
+    /// <summary>Sentinel shown in the class/domain filter that means "all classes/domains".</summary>
+    public const string AllClasses = "全部职业/领域";
+
+    /// <summary>Sentinel shown in the level filter that means "all levels".</summary>
+    public const string AllLevels = "全部环位";
+
     private readonly ISpellService _spells;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
 
     private string? _searchText;
     private string? _selectedSource = AllSources;
     private string? _selectedLetter = AllLetters;
+    private string? _selectedClass = AllClasses;
+    private string? _selectedLevel = AllLevels;
     private Spell? _selectedSpell;
     private string _resultSummary = "";
     private string? _lastError;
@@ -43,6 +51,12 @@ public sealed class SpellsViewModel : ViewModelBase
         [
             .. new[] { AllLetters }.Concat(Enumerable.Range('A', 26).Select(c => ((char)c).ToString()))
         ];
+        Classes = [AllClasses];
+        // 环位 0–9（PF 1e：0 环戏法 ~ 9 环）。
+        Levels =
+        [
+            .. new[] { AllLevels }.Concat(Enumerable.Range(0, 10).Select(i => i.ToString()))
+        ];
 
         SearchCommand =
             ReactiveCommand.CreateFromTask<SpellQuery, IReadOnlyList<Spell>>((query, ct) =>
@@ -52,20 +66,25 @@ public sealed class SpellsViewModel : ViewModelBase
 
         this.WhenActivated(disposables =>
         {
-            // Populate the source filter once per activation (self-contained error handling).
+            // Populate the source & class filters once per activation (self-contained error handling).
             _ = LoadSourcesAsync();
+            _ = LoadClassesAsync();
 
             // Debounced query stream: any filter change -> a normalized query -> the search command.
             this.WhenAnyValue(
                     x => x.SearchText,
                     x => x.SelectedSource,
                     x => x.SelectedLetter,
-                    (term, source, letter) => new SpellQuery(
+                    x => x.SelectedClass,
+                    x => x.SelectedLevel,
+                    (term, source, letter, className, level) => new SpellQuery(
                         term,
                         source == AllSources ? null : source,
                         letter == AllLetters ? null : letter,
                         Skip: 0,
-                        Take: 200))
+                        Take: 200,
+                        ClassName: className == AllClasses ? null : className,
+                        ClassLevel: int.TryParse(level, out var parsedLevel) ? parsedLevel : null))
                 .Throttle(TimeSpan.FromMilliseconds(300), RxSchedulers.TaskpoolScheduler)
                 .DistinctUntilChanged()
                 .ObserveOn(RxSchedulers.MainThreadScheduler)
@@ -98,6 +117,8 @@ public sealed class SpellsViewModel : ViewModelBase
     public SpellsViewModel() : this(DesignTimeSpellService.Instance)
     {
         Sources.Add("CRB");
+        Classes.Add("术士/法师");
+        Classes.Add("牧师");
         Spells.Add(new Spell
         {
             Id = 705,
@@ -126,6 +147,12 @@ public sealed class SpellsViewModel : ViewModelBase
     /// <summary>英文首字母筛选项（“全部” + A–Z）。</summary>
     public ObservableCollection<string> Letters { get; }
 
+    /// <summary>职业/领域筛选项（“全部” + spell_levels.class_name 去重）。</summary>
+    public ObservableCollection<string> Classes { get; }
+
+    /// <summary>环位筛选项（“全部” + 0–9）。</summary>
+    public ObservableCollection<string> Levels { get; }
+
     public ReactiveCommand<SpellQuery, IReadOnlyList<Spell>> SearchCommand { get; }
 
     public bool IsBusy => _isBusy.Value;
@@ -146,6 +173,18 @@ public sealed class SpellsViewModel : ViewModelBase
     {
         get => _selectedLetter;
         set => this.RaiseAndSetIfChanged(ref _selectedLetter, value);
+    }
+
+    public string? SelectedClass
+    {
+        get => _selectedClass;
+        set => this.RaiseAndSetIfChanged(ref _selectedClass, value);
+    }
+
+    public string? SelectedLevel
+    {
+        get => _selectedLevel;
+        set => this.RaiseAndSetIfChanged(ref _selectedLevel, value);
     }
 
     public Spell? SelectedSpell
@@ -185,6 +224,25 @@ public sealed class SpellsViewModel : ViewModelBase
         }
     }
 
+    private async Task LoadClassesAsync()
+    {
+        try
+        {
+            var classes = await _spells.GetClassesAsync();
+            foreach (var className in classes)
+            {
+                if (!Classes.Contains(className))
+                {
+                    Classes.Add(className);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+        }
+    }
+
     /// <summary>Minimal no-op service used only by the design-time constructor.</summary>
     private sealed class DesignTimeSpellService : ISpellService
     {
@@ -196,6 +254,9 @@ public sealed class SpellsViewModel : ViewModelBase
         public Task<int> CountAsync(SpellQuery query, CancellationToken ct = default) => Task.FromResult(0);
 
         public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        public Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
 
         public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) => Task.FromResult<Spell?>(null);
