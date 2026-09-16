@@ -17,12 +17,12 @@ public sealed class MainWindowViewModel : ViewModelBase
     private ViewModelBase? _currentPage;
     private bool _isNavExpanded = true;
 
-    public MainWindowViewModel(Func<SpellsViewModel> spellsFactory)
+    public MainWindowViewModel(Func<SpellsViewModel> spellsFactory, Func<CombatViewModel> combatFactory)
     {
         NavItems =
         [
             new NavItemViewModel("法术", Symbol.Star, spellsFactory),
-            new NavItemViewModel("战斗", Symbol.Target, pageFactory: null, isEnabled: false),
+            new NavItemViewModel("战斗", Symbol.Target, combatFactory),
             new NavItemViewModel("角色", Symbol.People, pageFactory: null, isEnabled: false)
         ];
 
@@ -40,7 +40,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>Parameterless constructor for the XAML previewer.</summary>
-    public MainWindowViewModel() : this(() => new SpellsViewModel())
+    public MainWindowViewModel() : this(() => new SpellsViewModel(), () => new CombatViewModel())
     {
     }
 

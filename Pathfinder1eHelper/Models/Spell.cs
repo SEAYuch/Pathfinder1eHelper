@@ -50,4 +50,7 @@ public sealed class Spell
     /// <summary>出处显示文本：中文名存在时为“代码（中文名）”，否则仅代码。</summary>
     public string SourceDisplay =>
         string.IsNullOrWhiteSpace(SourceZh) ? Source : $"{Source}（{SourceZh}）";
+
+    /// <summary>供 AutoCompleteBox 等做文本匹配/显示（同时包含中英文名，便于两种搜索）。</summary>
+    public override string ToString() => DisplayName;
 }

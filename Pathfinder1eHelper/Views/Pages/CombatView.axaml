@@ -1,0 +1,457 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
+             xmlns:vmc="using:Pathfinder1eHelper.ViewModels.Combat"
+             xmlns:models="using:Pathfinder1eHelper.Models.Combat"
+             xmlns:spells="using:Pathfinder1eHelper.Models"
+             xmlns:controls="using:Pathfinder1eHelper.Views.Controls"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
+             x:Class="Pathfinder1eHelper.Views.Pages.CombatView"
+             x:DataType="vm:CombatViewModel">
+
+    <Design.DataContext>
+        <vm:CombatViewModel />
+    </Design.DataContext>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="16" Spacing="12">
+
+            <!-- 角色档案 -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="档案" VerticalAlignment="Center" Opacity="0.7" />
+                        <ComboBox ItemsSource="{Binding Characters}"
+                                  SelectedItem="{Binding SelectedCharacter}" MinWidth="150">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vmc:CharacterListItemViewModel">
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Content="新建" Command="{Binding NewCharacterCommand}" />
+                        <Button Content="复制" Command="{Binding DuplicateCharacterCommand}" />
+                        <Button Content="删除" Command="{Binding DeleteCharacterCommand}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="名称" VerticalAlignment="Center" Opacity="0.7" />
+                        <TextBox Text="{Binding Name}" MinWidth="160" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding SaveError}"
+                               Foreground="{DynamicResource AppDangerBrush}"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding SaveError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </WrapPanel>
+            </Border>
+
+            <!-- 属性与基础数值 -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="属性与基础数值" FontWeight="SemiBold" />
+
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="力量" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding Strength}" Minimum="1" Maximum="99"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="敏捷" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding Dexterity}" Minimum="1" Maximum="99"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="体质" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding Constitution}" Minimum="1" Maximum="99"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="智力" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding Intelligence}" Minimum="1" Maximum="99"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="感知" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding Wisdom}" Minimum="1" Maximum="99"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="魅力" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding Charisma}" Minimum="1" Maximum="99"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                    </WrapPanel>
+
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="BAB" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding BaseAttackBonus}" Minimum="0" Maximum="30"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="强韧基础" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding BaseFortitude}" Minimum="0" Maximum="20"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="反射基础" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding BaseReflex}" Minimum="0" Maximum="20"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="意志基础" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding BaseWill}" Minimum="0" Maximum="20"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="施法者等级" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding CasterLevel}" Minimum="0" Maximum="30"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="施法属性" VerticalAlignment="Center" />
+                            <controls:OptionPicker MinWidth="100"
+                                                   ItemsSource="{x:Static vmc:CombatOptions.Abilities}"
+                                                   SelectedItem="{Binding SelectedCastingAbility}">
+                                <controls:OptionPicker.ItemTemplate>
+                                    <DataTemplate x:DataType="vmc:AbilityOption">
+                                        <TextBlock Text="{Binding Display}" />
+                                    </DataTemplate>
+                                </controls:OptionPicker.ItemTemplate>
+                            </controls:OptionPicker>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="体型" VerticalAlignment="Center" />
+                            <controls:OptionPicker MinWidth="100"
+                                                   ItemsSource="{x:Static vmc:CombatOptions.Sizes}"
+                                                   SelectedItem="{Binding SelectedSize}">
+                                <controls:OptionPicker.ItemTemplate>
+                                    <DataTemplate x:DataType="vmc:SizeOption">
+                                        <TextBlock Text="{Binding Display}" />
+                                    </DataTemplate>
+                                </controls:OptionPicker.ItemTemplate>
+                            </controls:OptionPicker>
+                        </StackPanel>
+                    </WrapPanel>
+
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="6">
+                        <CheckBox Content="限制 AC 敏捷加值" IsChecked="{Binding LimitDex}" />
+                        <NumericUpDown Value="{Binding MaxDexBonus}" Minimum="0" Maximum="20"
+                                       IsEnabled="{Binding LimitDex}"
+                                       ShowButtonSpinner="False" Width="86" />
+                        <CheckBox Content="超小型及以下用敏捷计算 CMB" IsChecked="{Binding UseDexForManeuvers}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 战斗数值卡 -->
+            <ItemsControl ItemsSource="{Binding Cards}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vmc:StatCard">
+                        <Expander MinWidth="220" Margin="0,0,8,8">
+                            <Expander.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding TotalDisplay}" FontWeight="Bold" FontSize="16" />
+                                </StackPanel>
+                            </Expander.Header>
+                            <ItemsControl ItemsSource="{Binding Contributions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:Contribution">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,1"
+                                              Opacity="{Binding RowOpacity}"
+                                              ToolTip.Tip="{Binding Note}">
+                                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding ValueDisplay}"
+                                                       Margin="8,0,0,0" FontFamily="Consolas" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- 状态预设 -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="状态预设（一键加入加值明细，可再编辑/停用）" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding Presets}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vmc:PresetViewModel">
+                                <Button Content="{Binding Name}" Command="{Binding ApplyCommand}"
+                                        Margin="0,0,8,6" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- 加值明细（流式卡片，随宽度自动换行） -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="加值明细" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="添加加值" Command="{Binding AddBonusCommand}" />
+                        <Button Content="清除法术 Buff" Command="{Binding ClearBuffsCommand}"
+                                ToolTip.Tip="只清除由法术联动添加的条目" />
+                        <Button Content="清空全部加值" Command="{Binding ClearAllBonusesCommand}"
+                                ToolTip.Tip="清空全部加值条目（含手动条目）" />
+                        <TextBlock Text="同类型取高；闪避/无类型/种族/环境求和；减值总是叠加"
+                                   VerticalAlignment="Center" Opacity="0.6" FontSize="12" />
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding Bonuses}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vmc:BonusEntryViewModel">
+                                <Border Width="330" Margin="0,0,8,8" Padding="8"
+                                        BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                                        CornerRadius="4" Opacity="{Binding CardOpacity}">
+                                    <StackPanel Spacing="6">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
+                                            <CheckBox IsChecked="{Binding IsEnabled}" ToolTip.Tip="启用" />
+                                            <TextBox Grid.Column="1" Text="{Binding Name}"
+                                                     PlaceholderText="名称" />
+                                            <Button Grid.Column="2" Content="✕" Command="{Binding RemoveCommand}" />
+                                        </Grid>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="4">
+                                            <controls:OptionPicker MinWidth="110" Placeholder="类型"
+                                                                   ItemsSource="{x:Static vmc:CombatOptions.BonusTypes}"
+                                                                   SelectedItem="{Binding Type}">
+                                                <controls:OptionPicker.ItemTemplate>
+                                                    <DataTemplate x:DataType="vmc:BonusTypeOption">
+                                                        <TextBlock Text="{Binding Display}" />
+                                                    </DataTemplate>
+                                                </controls:OptionPicker.ItemTemplate>
+                                            </controls:OptionPicker>
+                                            <controls:OptionPicker MinWidth="110" Placeholder="增强对象"
+                                                                   IsEnabled="{Binding IsEnhancement}"
+                                                                   ItemsSource="{x:Static vmc:CombatOptions.Enhancements}"
+                                                                   SelectedItem="{Binding Enhancement}">
+                                                <controls:OptionPicker.ItemTemplate>
+                                                    <DataTemplate x:DataType="vmc:EnhancementOption">
+                                                        <TextBlock Text="{Binding Display}" />
+                                                    </DataTemplate>
+                                                </controls:OptionPicker.ItemTemplate>
+                                            </controls:OptionPicker>
+                                            <controls:OptionPicker MinWidth="140" Placeholder="作用目标"
+                                                                   ItemsSource="{x:Static vmc:CombatOptions.BonusTargets}"
+                                                                   SelectedItem="{Binding Target}">
+                                                <controls:OptionPicker.ItemTemplate>
+                                                    <DataTemplate x:DataType="vmc:BonusTargetOption">
+                                                        <TextBlock Text="{Binding Display}" />
+                                                    </DataTemplate>
+                                                </controls:OptionPicker.ItemTemplate>
+                                            </controls:OptionPicker>
+                                            <controls:OptionPicker MinWidth="110" Placeholder="属性"
+                                                                   IsEnabled="{Binding IsAbilityTarget}"
+                                                                   ItemsSource="{x:Static vmc:CombatOptions.Abilities}"
+                                                                   SelectedItem="{Binding Ability}">
+                                                <controls:OptionPicker.ItemTemplate>
+                                                    <DataTemplate x:DataType="vmc:AbilityOption">
+                                                        <TextBlock Text="{Binding Display}" />
+                                                    </DataTemplate>
+                                                </controls:OptionPicker.ItemTemplate>
+                                            </controls:OptionPicker>
+                                        </WrapPanel>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="4">
+                                            <NumericUpDown Width="110" Value="{Binding Value}"
+                                                           Minimum="0" Maximum="99"
+                                                           ShowButtonSpinner="False" />
+                                        </WrapPanel>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="4">
+                                            <TextBox Width="110" Text="{Binding SourceGroup}"
+                                                     PlaceholderText="同源" />
+                                            <TextBox Width="180" Text="{Binding Notes}"
+                                                     PlaceholderText="备注/来源" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- 法术 Buff 联动 -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="法术 Buff 联动（来自 spell_buffs 表）" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <AutoCompleteBox HorizontalAlignment="Stretch"
+                                         PlaceholderText="搜索法术（中/英文名）"
+                                         ItemsSource="{Binding BuffSpellCandidates}"
+                                         SelectedItem="{Binding SelectedBuffSpell}"
+                                         FilterMode="Contains"
+                                         MinimumPrefixLength="1"
+                                         MaxDropDownHeight="260">
+                            <AutoCompleteBox.ItemTemplate>
+                                <DataTemplate x:DataType="spells:Spell">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding NameZh}" />
+                                        <TextBlock Text="{Binding NameEn}" Opacity="0.7" />
+                                        <TextBlock Text="{Binding Source}" Opacity="0.5" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </AutoCompleteBox.ItemTemplate>
+                        </AutoCompleteBox>
+                        <Button Grid.Column="1" Content="添加为 Buff" Command="{Binding AddBuffCommand}" />
+                        <TextBlock Grid.Column="2" Text="{Binding BuffHint}" VerticalAlignment="Center"
+                                   Opacity="0.7" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 武器（流式卡片） -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="武器" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="添加武器" Command="{Binding AddWeaponCommand}" />
+                        <TextBlock Text="武器预设：" VerticalAlignment="Center" Opacity="0.7" FontSize="12" />
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding WeaponPresets}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vmc:PresetViewModel">
+                                <Button Content="{Binding Name}" Command="{Binding ApplyCommand}"
+                                        Margin="0,0,8,6" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl ItemsSource="{Binding Weapons}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vmc:WeaponViewModel">
+                                <Border Width="390" Margin="0,0,8,8" Padding="8"
+                                        BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                                        CornerRadius="4">
+                                    <StackPanel Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                                            <TextBox Text="{Binding Name}" PlaceholderText="武器名" />
+                                            <Button Grid.Column="1" Content="✕" Command="{Binding RemoveCommand}" />
+                                        </Grid>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="4">
+                                            <CheckBox Content="远程" IsChecked="{Binding IsRanged}" />
+                                            <TextBox Width="90" Text="{Binding DamageDice}"
+                                                     PlaceholderText="伤害骰" />
+                                            <controls:OptionPicker MinWidth="110" Placeholder="力量倍率"
+                                                                   ItemsSource="{x:Static vmc:CombatOptions.StrengthMultipliers}"
+                                                                   SelectedItem="{Binding StrengthMultiplier}">
+                                                <controls:OptionPicker.ItemTemplate>
+                                                    <DataTemplate x:DataType="vmc:StrengthMultiplierOption">
+                                                        <TextBlock Text="{Binding Display}" />
+                                                    </DataTemplate>
+                                                </controls:OptionPicker.ItemTemplate>
+                                            </controls:OptionPicker>
+                                            <NumericUpDown Width="86" Value="{Binding Enhancement}"
+                                                           Minimum="0" Maximum="10"
+                                                           ShowButtonSpinner="False" />
+                                            <TextBox Width="100" Text="{Binding Critical}"
+                                                     PlaceholderText="重击" />
+                                        </WrapPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="16">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="攻击" Opacity="0.7" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding AttackDisplay}" FontWeight="Bold" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="伤害" Opacity="0.7" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding DamageDisplay}" FontWeight="Bold" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- 专注检定 -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="专注检定" FontWeight="SemiBold" />
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="法术环位" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding SpellLevel}" Minimum="0" Maximum="9"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="情境" VerticalAlignment="Center" />
+                            <controls:OptionPicker MinWidth="230"
+                                                   ItemsSource="{x:Static vmc:CombatOptions.ConcentrationSituations}"
+                                                   SelectedItem="{Binding SelectedConcentrationSituation}">
+                                <controls:OptionPicker.ItemTemplate>
+                                    <DataTemplate x:DataType="vmc:ConcentrationOption">
+                                        <TextBlock Text="{Binding Display}" />
+                                    </DataTemplate>
+                                </controls:OptionPicker.ItemTemplate>
+                            </controls:OptionPicker>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="受伤数值" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding DamageTaken}" Minimum="0" Maximum="999"
+                                           IsEnabled="{Binding IsDamageMode}"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="擒抱者 CMB" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding GrapplerCmb}" Minimum="0" Maximum="99"
+                                           IsEnabled="{Binding IsGrappleMode}"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="自定义 DC" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding CustomDc}" Minimum="0" Maximum="99"
+                                           IsEnabled="{Binding IsCustomDc}"
+                                           ShowButtonSpinner="False" Width="86" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding ConcentrationCheckDisplay}" FontWeight="Bold"
+                                   FontSize="15" VerticalAlignment="Center" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="提示：加值条目可随时停用（取消勾选）；被同类型更高加值压制时会在数值卡中以半透明显示。"
+                       Opacity="0.55" FontSize="12" TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

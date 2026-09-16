@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Pathfinder1eHelper.Views.Controls.OptionPicker"
+             x:Name="PickerRoot">
+    <Button x:Name="Trigger" HorizontalContentAlignment="Stretch" Padding="8,2">
+        <Button.Content>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding Placeholder, ElementName=PickerRoot}"
+                           Opacity="0.5"
+                           IsVisible="{Binding SelectedItem, ElementName=PickerRoot, Converter={x:Static ObjectConverters.IsNull}}" />
+                <ContentControl Content="{Binding SelectedItem, ElementName=PickerRoot}"
+                                ContentTemplate="{Binding ItemTemplate, ElementName=PickerRoot}"
+                                VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="⌄" Margin="6,0,0,0" Opacity="0.6" />
+            </Grid>
+        </Button.Content>
+        <Button.Flyout>
+            <Flyout Placement="Bottom">
+                <ListBox x:Name="Options"
+                         MaxHeight="280" MinWidth="150"
+                         ItemsSource="{Binding ItemsSource, ElementName=PickerRoot}"
+                         ItemTemplate="{Binding ItemTemplate, ElementName=PickerRoot}"
+                         SelectedItem="{Binding SelectedItem, ElementName=PickerRoot, Mode=TwoWay}"
+                         SelectionChanged="OnSelectionChanged" />
+            </Flyout>
+        </Button.Flyout>
+    </Button>
+</UserControl>

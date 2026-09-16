@@ -54,6 +54,31 @@ Pathfinder1eHelper.slnx
 
 克隆后如未放置数据文件,启动时 `DbPathProvider` 会提示 `Reference database not found`。自行准备数据:将构建好的 `spells.duckdb` 放到仓库根 `data/` 目录并重新构建即可(`csproj` 会以 `CopyToOutputDirectory=PreserveNewest` 复制到输出目录)。重建脚本临时存放于本机(依赖 Node.js 与 duckdb CLI),未纳入版本控制。
 
+### 参考库表结构
+
+| 表 | 说明 |
+| --- | --- |
+| `spells` | 法术主表(约 3373 行):出处、中/英文名、首字母,以及学派/环位/施法时间/成分/距离/效果/范围/目标/持续时间/豁免/法术抗力/描述/附加/`spell_type` 等字段 |
+| `spell_levels` | 法术按职业/领域拆分的环位:`spell_id`、`class_name`、`level`、`kind`(`class` = 主职业,`domain` = 领域/子域),供“职业 + 环位”筛选 |
+| `spell_buffs` | 常见 Buff 法术的结构化加值效果,供战斗页“法术 Buff 联动”使用 |
+
+`spell_buffs` 列定义:
+
+| 列 | 说明 |
+| --- | --- |
+| `id` / `spell_id` | 主键 / 由 `name_en` 关联 `spells.id`(可空) |
+| `name_en` / `name_zh` | 匹配键:法术英文名(忽略大小写)/ 中文名 |
+| `effect_name` | 生成的加值条目名称 |
+| `bonus_type` / `target` | 加值类型 / 作用目标(对应代码中的 `BonusType` / `BonusTarget` 枚举名) |
+| `value` | 固定加值(存在 `scale_*` 时作为备用) |
+| `enhancement_subject` / `ability` | 增强对象(`EnhancementSubject`)/ 属性(`Ability`),可空 |
+| `scale_base` `scale_offset` `scale_step` `scale_min` `scale_max` | 按施法者等级线性缩放的参数 |
+| `notes` / `sort_order` | 备注 / 排序 |
+
+缩放公式:`value = clamp(scale_base + floor((CL − scale_offset) / scale_step), scale_min, scale_max)`;`scale_step` 为空时直接使用 `value`。例如树皮术 `scale = 2,3,3,2,5`,CL9 → +4 天生护甲(增强)。
+
+`spell_buffs` 由 `scripts/build-spell-db/spell_buffs.sql` 建表并写入(当前 20 个法术 / 47 条效果),运行时只读;应用端实体为 `Pathfinder1eHelper/Models/SpellBuff.cs`,展开逻辑见 `Pathfinder1eHelper/Services/SpellBuffResolver.cs`。
+
 ## 构建与运行
 
 需要 .NET 10 SDK。

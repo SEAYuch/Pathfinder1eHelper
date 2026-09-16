@@ -29,6 +29,9 @@ public sealed class SpellService(ISpellRepository repository) : ISpellService
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         repository.GetByIdAsync(id, ct);
 
+    public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
+        repository.GetBuffsForSpellAsync(nameEn, nameZh, ct);
+
     internal static SpellQuery Normalize(SpellQuery query)
     {
         var term = string.IsNullOrWhiteSpace(query.Term) ? null : query.Term.Trim();

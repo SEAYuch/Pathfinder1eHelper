@@ -25,6 +25,11 @@ public sealed class AppModule : Module
         builder.RegisterType<SpellRepository>().As<ISpellRepository>().InstancePerDependency();
         builder.RegisterType<SpellService>().As<ISpellService>().InstancePerDependency();
 
+        // Character sheet persistence (user data, independent from the read-only reference DB)
+        builder.RegisterInstance(new JsonCharacterRepository(JsonCharacterRepository.DefaultDirectory))
+            .As<ICharacterRepository>()
+            .SingleInstance();
+
         // Shell
         builder.RegisterType<MainWindowViewModel>().AsSelf().SingleInstance();
         builder.RegisterType<MainWindow>().AsSelf();
@@ -32,5 +37,7 @@ public sealed class AppModule : Module
         // Pages (page VMs resolved by the shell via Func<T> factories; views by the ViewLocator)
         builder.RegisterType<SpellsViewModel>().AsSelf().InstancePerDependency();
         builder.RegisterType<SpellsView>().AsSelf().InstancePerDependency();
+        builder.RegisterType<CombatViewModel>().AsSelf().InstancePerDependency();
+        builder.RegisterType<CombatView>().AsSelf().InstancePerDependency();
     }
 }

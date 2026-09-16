@@ -22,4 +22,7 @@ public interface ISpellRepository
 
     /// <summary>Loads a single spell by primary key, or null if not found.</summary>
     Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default);
+
+    /// <summary>Returns structured buff effects (spell_buffs) matching a spell name, ordered by sort_order.</summary>
+    Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default);
 }

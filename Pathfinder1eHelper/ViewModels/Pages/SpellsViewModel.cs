@@ -260,5 +260,8 @@ public sealed class SpellsViewModel : ViewModelBase
             Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
 
         public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) => Task.FromResult<Spell?>(null);
+
+        public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<SpellBuff>>(Array.Empty<SpellBuff>());
     }
 }

@@ -70,4 +70,20 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
 
     public async Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         await fsql.Select<Spell>().Where(s => s.Id == id).FirstAsync(ct);
+
+    public async Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default)
+    {
+        var lowerEnglish = string.IsNullOrWhiteSpace(nameEn) ? null : nameEn.Trim().ToLowerInvariant();
+        var chinese = string.IsNullOrWhiteSpace(nameZh) ? null : nameZh.Trim();
+        if (lowerEnglish is null && chinese is null)
+        {
+            return [];
+        }
+
+        return await fsql.Select<SpellBuff>()
+            .Where(b => (b.NameEn != null && b.NameEn.ToLower() == lowerEnglish)
+                || (b.NameZh != null && b.NameZh == chinese))
+            .OrderBy(b => b.SortOrder)
+            .ToListAsync(ct);
+    }
 }
