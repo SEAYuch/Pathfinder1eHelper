@@ -8,15 +8,12 @@ using ReactiveUI.Primitives;
 namespace Pathfinder1eHelper.ViewModels;
 
 /// <summary>
-/// Shell view model: a data-driven navigation list (<see cref="NavItems"/>) drives a ViewModel-first
-/// content region (<see cref="CurrentPage"/>) rendered by the name-convention <c>ViewLocator</c>.
+/// Shell view model: a data-driven navigation list (<see cref="NavItems"/>) drives ReactiveUI routing
+/// (<see cref="Router"/>), whose current view model is rendered by <c>RoutedViewHost</c> through the
+/// name-convention <see cref="Views.ViewLocator"/>.
 /// </summary>
-public sealed class MainWindowViewModel : ViewModelBase
+public sealed class MainWindowViewModel : ViewModelBase, IScreen
 {
-    private NavItemViewModel? _selectedNavItem;
-    private ViewModelBase? _currentPage;
-    private bool _isNavExpanded = true;
-
     public MainWindowViewModel(Func<SpellsViewModel> spellsFactory, Func<CombatViewModel> combatFactory)
     {
         NavItems =
@@ -27,13 +24,13 @@ public sealed class MainWindowViewModel : ViewModelBase
         ];
 
         // The shell lives for the whole app, so a constructor subscription is fine (nothing to leak).
+        // Top-level tab switching resets the stack (see NavigateAndReset) so it does not grow unbounded.
         this.WhenAnyValue(x => x.SelectedNavItem)
             .Subscribe(item =>
             {
-                if (item?.Page is { } page)
-                {
-                    CurrentPage = page;
-                }
+                if (item?.Page is not { } page) return;
+                page.HostScreen = this;
+                Router.NavigateAndReset.Execute(page).Subscribe(_ => { });
             });
 
         SelectedNavItem = NavItems[0];
@@ -48,22 +45,12 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<NavItemViewModel> NavItems { get; }
 
+    /// <summary>ReactiveUI routing state; the current view model is shown by <c>RoutedViewHost</c>.</summary>
+    public RoutingState Router { get; } = new();
+
     public NavItemViewModel? SelectedNavItem
     {
-        get => _selectedNavItem;
-        set => this.RaiseAndSetIfChanged(ref _selectedNavItem, value);
-    }
-
-    public ViewModelBase? CurrentPage
-    {
-        get => _currentPage;
-        private set => this.RaiseAndSetIfChanged(ref _currentPage, value);
-    }
-
-    /// <summary>侧边导航是否展开（绑定 NavigationView.IsPaneOpen；收缩时仅显示图标）。</summary>
-    public bool IsNavExpanded
-    {
-        get => _isNavExpanded;
-        set => this.RaiseAndSetIfChanged(ref _isNavExpanded, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 }

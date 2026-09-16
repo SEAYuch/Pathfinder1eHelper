@@ -15,8 +15,14 @@ namespace Pathfinder1eHelper.ViewModels.Pages;
 /// Spell browser page: a reactive, debounced search over <see cref="ISpellService"/> feeding a
 /// master-detail view (list + selected-spell detail).
 /// </summary>
-public sealed class SpellsViewModel : ViewModelBase
+public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 {
+    /// <summary>ReactiveUI 路由：宿主屏幕（由 shell 在导航前赋值）。</summary>
+    public IScreen HostScreen { get; set; } = null!;
+
+    /// <summary>ReactiveUI 路由标识。</summary>
+    public string UrlPathSegment => "spells";
+
     /// <summary>Sentinel shown in the source filter that means "no source filter".</summary>
     public const string AllSources = "（全部）";
 
@@ -31,15 +37,6 @@ public sealed class SpellsViewModel : ViewModelBase
 
     private readonly ISpellService _spells;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
-
-    private string? _searchText;
-    private string? _selectedSource = AllSources;
-    private string? _selectedLetter = AllLetters;
-    private string? _selectedClass = AllClasses;
-    private string? _selectedLevel = AllLevels;
-    private Spell? _selectedSpell;
-    private string _resultSummary = "";
-    private string? _lastError;
 
     public SpellsViewModel(ISpellService spells)
     {
@@ -159,50 +156,50 @@ public sealed class SpellsViewModel : ViewModelBase
 
     public string? SearchText
     {
-        get => _searchText;
-        set => this.RaiseAndSetIfChanged(ref _searchText, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public string? SelectedSource
     {
-        get => _selectedSource;
-        set => this.RaiseAndSetIfChanged(ref _selectedSource, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = AllSources;
 
     public string? SelectedLetter
     {
-        get => _selectedLetter;
-        set => this.RaiseAndSetIfChanged(ref _selectedLetter, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = AllLetters;
 
     public string? SelectedClass
     {
-        get => _selectedClass;
-        set => this.RaiseAndSetIfChanged(ref _selectedClass, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = AllClasses;
 
     public string? SelectedLevel
     {
-        get => _selectedLevel;
-        set => this.RaiseAndSetIfChanged(ref _selectedLevel, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = AllLevels;
 
     public Spell? SelectedSpell
     {
-        get => _selectedSpell;
-        set => this.RaiseAndSetIfChanged(ref _selectedSpell, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public string ResultSummary
     {
-        get => _resultSummary;
-        private set => this.RaiseAndSetIfChanged(ref _resultSummary, value);
-    }
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     public string? LastError
     {
-        get => _lastError;
-        private set => this.RaiseAndSetIfChanged(ref _lastError, value);
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     private async Task LoadSourcesAsync()

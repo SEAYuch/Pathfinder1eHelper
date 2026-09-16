@@ -98,9 +98,9 @@ public sealed class WeaponViewModel : ReactiveObject
         }
     }
 
-    public string AttackDisplay => _result?.AttackDisplay ?? "";
+    public string AttackDisplay => _result?.AttackDisplay ?? string.Empty;
 
-    public string DamageDisplay => _result?.DamageDisplay ?? "";
+    public string DamageDisplay => _result?.DamageDisplay ?? string.Empty;
 
     public IReadOnlyList<Contribution> AttackContributions => _result?.Attack.Contributions ?? [];
 

@@ -18,13 +18,13 @@ public sealed class SpellBuff
 
     [Column(Name = "name_zh")] public string? NameZh { get; set; }
 
-    [Column(Name = "effect_name")] public string EffectName { get; set; } = "";
+    [Column(Name = "effect_name")] public string EffectName { get; set; } = string.Empty;
 
     /// <summary>加值类型（<c>BonusType</c> 枚举名）。</summary>
-    [Column(Name = "bonus_type")] public string BonusType { get; set; } = "";
+    [Column(Name = "bonus_type")] public string BonusType { get; set; } = string.Empty;
 
     /// <summary>作用目标（<c>BonusTarget</c> 枚举名）。</summary>
-    [Column(Name = "target")] public string Target { get; set; } = "";
+    [Column(Name = "target")] public string Target { get; set; } = string.Empty;
 
     [Column(Name = "value")] public int? Value { get; set; }
 

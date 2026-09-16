@@ -18,13 +18,13 @@ public sealed class Spell
     [Column(Name = "id", IsPrimary = true)]
     public int Id { get; set; }
 
-    [Column(Name = "source")] public string Source { get; set; } = "";
+    [Column(Name = "source")] public string Source { get; set; } = string.Empty;
     [Column(Name = "source_zh")] public string? SourceZh { get; set; }
     [Column(Name = "source_en")] public string? SourceEn { get; set; }
 
-    [Column(Name = "name_zh")] public string NameZh { get; set; } = "";
-    [Column(Name = "name_en")] public string NameEn { get; set; } = "";
-    [Column(Name = "first_letter")] public string FirstLetter { get; set; } = "";
+    [Column(Name = "name_zh")] public string NameZh { get; set; } = string.Empty;
+    [Column(Name = "name_en")] public string NameEn { get; set; } = string.Empty;
+    [Column(Name = "first_letter")] public string FirstLetter { get; set; } = string.Empty;
 
     [Column(Name = "school")] public string? School { get; set; }
     [Column(Name = "level")] public string? Level { get; set; }

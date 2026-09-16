@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Pathfinder1eHelper.ViewModels"
         xmlns:afui="using:AvaloniaFluentUI.Controls"
+        xmlns:reactive="using:ReactiveUI.Avalonia"
+        xmlns:views="using:Pathfinder1eHelper.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
@@ -16,8 +18,10 @@
     </Design.DataContext>
 
     <!-- AvaloniaFluentUI 标准导航：左侧可折叠 pane（紧凑/展开由 NavigationView 管理），Content 区承载当前页 -->
-    <afui:NavigationView IsPaneOpen="{Binding IsNavExpanded}"
-                         PaneDisplayMode="Left"
+    <!-- PaneDisplayMode=Auto：宽度 ≥ ExpandedModeThresholdWidth 展开，否则收缩为图标态（CompactPaneLength） -->
+    <afui:NavigationView PaneDisplayMode="Auto"
+                         ExpandedModeThresholdWidth="1024"
+                         CompactModeThresholdWidth="0"
                          OpenPaneLength="220"
                          CompactPaneLength="48"
                          MenuItemsSource="{Binding NavItems}"
@@ -36,8 +40,12 @@
             </DataTemplate>
         </afui:NavigationView.MenuItemTemplate>
 
-        <!-- 内容区：页面切换由 ViewModel 的 CurrentPage 驱动 -->
-        <TransitioningContentControl Content="{Binding CurrentPage}" />
+        <!-- 内容区：ReactiveUI 路由，RoutedViewHost 依据 Router 当前 VM 解析并嵌入对应 View -->
+        <reactive:RoutedViewHost Router="{Binding Router}">
+            <reactive:RoutedViewHost.ViewLocator>
+                <views:ViewLocator />
+            </reactive:RoutedViewHost.ViewLocator>
+        </reactive:RoutedViewHost>
     </afui:NavigationView>
 
 </Window>

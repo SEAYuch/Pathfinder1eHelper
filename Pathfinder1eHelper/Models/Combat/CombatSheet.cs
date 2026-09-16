@@ -41,7 +41,7 @@ public sealed record WeaponResult(WeaponProfile Weapon, StatResult Attack, StatR
     {
         get
         {
-            var dice = Weapon.DamageDice?.Trim() ?? "";
+            var dice = Weapon.DamageDice?.Trim() ?? string.Empty;
             if (Damage.Total == 0)
             {
                 return dice;

@@ -17,8 +17,14 @@ namespace Pathfinder1eHelper.ViewModels.Pages;
 /// 战斗页：管理多个角色档案，编辑基础数据与手动加值/武器，实时用
 /// <see cref="CombatCalculator"/> 汇总，并保存到 <see cref="ICharacterRepository"/>。
 /// </summary>
-public sealed class CombatViewModel : ViewModelBase
+public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 {
+    /// <summary>ReactiveUI 路由：宿主屏幕（由 shell 在导航前赋值）。</summary>
+    public IScreen HostScreen { get; set; } = null!;
+
+    /// <summary>ReactiveUI 路由标识。</summary>
+    public string UrlPathSegment => "combat";
+
     private readonly ICharacterRepository _repository;
     private readonly ISpellService _spells;
     private bool _loading;
@@ -26,36 +32,11 @@ public sealed class CombatViewModel : ViewModelBase
     private Guid _profileId;
     private int _schemaVersion;
 
-    private string _name = "";
-    private int? _level;
     private SizeOption _selectedSize = CombatOptions.Size(SizeCategory.Medium);
     private AbilityOption _selectedCastingAbility = CombatOptions.Ability(Ability.Intelligence);
-    private int? _strength;
-    private int? _dexterity;
-    private int? _constitution;
-    private int? _intelligence;
-    private int? _wisdom;
-    private int? _charisma;
-    private int? _baseAttackBonus;
-    private int? _baseFortitude;
-    private int? _baseReflex;
-    private int? _baseWill;
-    private bool _limitDex;
-    private int? _maxDexBonus;
-    private int? _casterLevel;
-    private bool _useDexForManeuvers;
-    private int? _spellLevel;
-    private int? _damageTaken;
-    private int? _grapplerCmb;
-    private int? _customDc = 15;
     private ConcentrationOption _concentrationSituation = CombatOptions.Concentration(ConcentrationSituation.DefensiveCasting);
-    private int _concentrationDc;
-    private CombatSheet _sheet = null!;
-    private IReadOnlyList<StatCard> _cards = [];
-    private string? _saveError;
     private CharacterProfile? _lastProfile;
     private Spell? _selectedBuffSpell;
-    private string _buffHint = "";
 
     public CombatViewModel(ICharacterRepository repository, ISpellService spells)
     {
@@ -150,28 +131,28 @@ public sealed class CombatViewModel : ViewModelBase
 
     public CombatSheet Sheet
     {
-        get => _sheet;
-        private set => this.RaiseAndSetIfChanged(ref _sheet, value);
-    }
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = null!;
 
     public IReadOnlyList<StatCard> Cards
     {
-        get => _cards;
-        private set => this.RaiseAndSetIfChanged(ref _cards, value);
-    }
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
 
     public string? SaveError
     {
-        get => _saveError;
-        private set => this.RaiseAndSetIfChanged(ref _saveError, value);
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public string Name
     {
-        get => _name;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _name, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             if (!_loading && _selectedCharacter is not null)
             {
                 _selectedCharacter.Name = value;
@@ -179,14 +160,14 @@ public sealed class CombatViewModel : ViewModelBase
 
             OnInputChanged();
         }
-    }
+    } = string.Empty;
 
     public int? Level
     {
-        get => _level;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _level, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
@@ -213,183 +194,183 @@ public sealed class CombatViewModel : ViewModelBase
 
     public int? Strength
     {
-        get => _strength;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _strength, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? Dexterity
     {
-        get => _dexterity;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _dexterity, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? Constitution
     {
-        get => _constitution;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _constitution, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? Intelligence
     {
-        get => _intelligence;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _intelligence, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? Wisdom
     {
-        get => _wisdom;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _wisdom, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? Charisma
     {
-        get => _charisma;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _charisma, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? BaseAttackBonus
     {
-        get => _baseAttackBonus;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _baseAttackBonus, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? BaseFortitude
     {
-        get => _baseFortitude;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _baseFortitude, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? BaseReflex
     {
-        get => _baseReflex;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _baseReflex, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? BaseWill
     {
-        get => _baseWill;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _baseWill, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public bool LimitDex
     {
-        get => _limitDex;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _limitDex, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? MaxDexBonus
     {
-        get => _maxDexBonus;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _maxDexBonus, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? CasterLevel
     {
-        get => _casterLevel;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _casterLevel, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public bool UseDexForManeuvers
     {
-        get => _useDexForManeuvers;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _useDexForManeuvers, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? SpellLevel
     {
-        get => _spellLevel;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _spellLevel, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? DamageTaken
     {
-        get => _damageTaken;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _damageTaken, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? GrapplerCmb
     {
-        get => _grapplerCmb;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _grapplerCmb, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
     }
 
     public int? CustomDc
     {
-        get => _customDc;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _customDc, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             OnInputChanged();
         }
-    }
+    } = 15;
 
     public ConcentrationOption SelectedConcentrationSituation
     {
@@ -422,14 +403,14 @@ public sealed class CombatViewModel : ViewModelBase
 
     public string BuffHint
     {
-        get => _buffHint;
-        private set => this.RaiseAndSetIfChanged(ref _buffHint, value);
-    }
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     public int ConcentrationDc
     {
-        get => _concentrationDc;
-        private set => this.RaiseAndSetIfChanged(ref _concentrationDc, value);
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public string ConcentrationCheckDisplay => $"d20 {Sheet.Concentration.TotalDisplay} vs DC {ConcentrationDc}";
@@ -623,7 +604,7 @@ public sealed class CombatViewModel : ViewModelBase
     {
         if (_selectedBuffSpell is null)
         {
-            BuffHint = "";
+            BuffHint = string.Empty;
             return;
         }
 

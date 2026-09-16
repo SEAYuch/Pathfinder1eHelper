@@ -13,7 +13,7 @@ public sealed class BonusEntry
     /// <summary>来源：手动 / 法术 Buff / 状态预设（见 <see cref="BonusOrigin"/>）。</summary>
     public BonusOrigin Origin { get; set; } = BonusOrigin.Manual;
 
-    public string Name { get; set; } = "";
+    public string Name { get; set; } = string.Empty;
 
     public BonusType Type { get; set; } = BonusType.Untyped;
 

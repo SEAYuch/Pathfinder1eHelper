@@ -21,5 +21,5 @@ public sealed class WeaponProfile
     public int Enhancement { get; set; }
 
     /// <summary>重击威胁范围/倍率，仅作展示，如 <c>19–20/×2</c>。</summary>
-    public string Critical { get; set; } = "";
+    public string Critical { get; set; } = string.Empty;
 }
