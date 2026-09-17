@@ -1,50 +1,43 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
+using System.Collections.Generic;
+using Pathfinder1eHelper.ViewModels.Pages;
+using Pathfinder1eHelper.Views.Pages;
 using ReactiveUI;
 using Splat;
 
 namespace Pathfinder1eHelper.Views;
 
 /// <summary>
-/// Name-convention <see cref="IViewLocator"/> used by ReactiveUI routing
-/// (<c>RoutedViewHost</c>/<c>ViewModelViewHost</c>): <c>*.ViewModels.*ViewModel</c> → <c>*.Views.*View</c>.
-/// Views are resolved from the DI container (Splat/Autofac), falling back to
-/// <see cref="Activator"/> when unregistered.
+/// Explicit-mapping <see cref="IViewLocator"/> for ReactiveUI routing (<c>RoutedViewHost</c>):
+/// view-model type → view factory, without any reflection (NativeAOT/裁剪安全，重命名即编译期可见)。
+/// 新增可路由页面时在 <see cref="Map"/> 里加一行即可。
 /// </summary>
 public sealed class ViewLocator : IViewLocator
 {
+    private static readonly Dictionary<Type, Func<IViewFor>> Map = new()
+    {
+        [typeof(SpellsViewModel)] = Create<SpellsView>,
+        [typeof(CombatViewModel)] = Create<CombatView>,
+    };
+
     public IViewFor<TViewModel>? ResolveView<TViewModel>()
         where TViewModel : class =>
         ResolveView<TViewModel>(null);
 
+    // 单视图/VM，contract 预留扩展（按需升级为 (Type, contract) 复合键）。
     public IViewFor<TViewModel>? ResolveView<TViewModel>(string? contract)
         where TViewModel : class =>
-        ResolveViewByType(typeof(TViewModel)) as IViewFor<TViewModel>;
+        ResolveByType(typeof(TViewModel)) as IViewFor<TViewModel>;
 
-    [RequiresUnreferencedCode("Uses reflection to map the view model type name to a view type at runtime.")]
-    [RequiresDynamicCode("Uses reflection to map the view model type name to a view type at runtime.")]
     public IViewFor? ResolveView(object? instance) => ResolveView(instance, null);
 
-    [RequiresUnreferencedCode("Uses reflection to map the view model type name to a view type at runtime.")]
-    [RequiresDynamicCode("Uses reflection to map the view model type name to a view type at runtime.")]
     public IViewFor? ResolveView(object? instance, string? contract) =>
-        instance is null ? null : ResolveViewByType(instance.GetType());
+        instance is null ? null : ResolveByType(instance.GetType());
 
-    private static IViewFor? ResolveViewByType(Type viewModelType)
-    {
-        var viewTypeName = viewModelType.FullName!
-            .Replace("ViewModels", "Views", StringComparison.Ordinal);
-        viewTypeName = viewTypeName.EndsWith("ViewModel", StringComparison.Ordinal)
-            ? string.Concat(viewTypeName.AsSpan(0, viewTypeName.Length - "ViewModel".Length), "View")
-            : viewTypeName + "View";
+    private static IViewFor? ResolveByType(Type viewModelType) =>
+        Map.TryGetValue(viewModelType, out var factory) ? factory() : null;
 
-        var viewType = Type.GetType(viewTypeName);
-        if (viewType is null)
-        {
-            return null;
-        }
-
-        var view = Locator.Current.GetService(viewType) ?? Activator.CreateInstance(viewType);
-        return view as IViewFor;
-    }
+    private static TView Create<TView>()
+        where TView : class, new() =>
+        Locator.Current.GetService<TView>() ?? new TView();
 }

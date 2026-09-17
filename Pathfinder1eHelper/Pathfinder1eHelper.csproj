@@ -28,10 +28,10 @@
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="FluentIcons.Avalonia" Version="2.1.339.1" />
+        <PackageReference Include="FluentIcons.Avalonia" Version="2.1.341" />
         <PackageReference Include="FreeSql" Version="3.5.311" />
         <PackageReference Include="FreeSql.Provider.Duckdb" Version="3.5.311" />
-        <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.1" />
-        <PackageReference Include="ReactiveUI.Avalonia.Autofac" Version="12.1.1" />
+        <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.2" />
+        <PackageReference Include="ReactiveUI.Avalonia.Autofac" Version="12.1.2" />
     </ItemGroup>
 </Project>
