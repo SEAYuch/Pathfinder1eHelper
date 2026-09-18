@@ -8,6 +8,7 @@ Pathfinder 1e 中文助手 —— 一款基于 Avalonia 的桌面法术查询工
 ## 功能
 
 - **法术浏览**:只读参考库约 3373 条法术,覆盖 101 个出处(由 pf_searcher_v1.0 数据重建,补充旧库独有法术,以英文名为准去重/补缺)
+- **怪物浏览**:怪物图鉴 1-3 约 838 条怪物(含中/英文名、CR、体型、类型、阵营、属性、生态与原文数据块);支持中/英文名搜索与英文首字母/生物类型筛选;概览页(如“龙类绪论”)与所属怪物互相跳转
 - **实时搜索**:按中文名/英文名模糊搜索,300ms 防抖
 - **筛选**:按出处(`source`)、英文首字母 A–Z 过滤
 - **主从详情**:列表 + 详情双栏,展示学派/环位/施法时间/成分/距离/效果/范围/目标/持续时间/豁免/法术抗力/描述/出处等字段
@@ -50,9 +51,9 @@ Pathfinder1eHelper.slnx
 
 ## 数据说明
 
-`data/spells.duckdb` 为只读参考数据,**该文件(及数据构建管线 `scripts/`)不在 Git 仓库中**(见 `.gitignore`)。当前库由 **pf_searcher_v1.0** 按出处的法术 JSON(100 个来源文件、约 3104 条原始记录)重建:英文名缺失的记录从 `名称（English）` 中提取,与旧库对账后补齐旧库独有法术(以归一化英文名为准,共约 3373 条、101 个出处);`first_letter` 由英文名推导,首字母筛选完好保留。部分来源另提供 `spell_type`(法术类型)字段。数据文本版权归原著作权人所有;本仓库仅发布代码。
+`data/pathfinder1e.duckdb` 为只读参考数据,**该文件(及数据构建管线 `scripts/`)不在 Git 仓库中**(见 `.gitignore`)。当前库含两部分:**法术**由 **pf_searcher_v1.0** 按出处的法术 JSON 重建(约 3373 条、101 个出处,`first_letter` 由英文名推导;部分来源另提供 `spell_type` 字段);**怪物**由「Pathfinder 怪物图鉴 1-3」CHM 提取(约 838 条,名称照抄原文,`first_letter` 由英文名推导,并保留概览页与所属怪物的关联)。数据文本版权归原著作权人所有;本仓库仅发布代码。
 
-克隆后如未放置数据文件,启动时 `DbPathProvider` 会提示 `Reference database not found`。自行准备数据:将构建好的 `spells.duckdb` 放到仓库根 `data/` 目录并重新构建即可(`csproj` 会以 `CopyToOutputDirectory=PreserveNewest` 复制到输出目录)。重建脚本临时存放于本机(依赖 Node.js 与 duckdb CLI),未纳入版本控制。
+克隆后如未放置数据文件,启动时 `DbPathProvider` 会提示 `Reference database not found`。自行准备数据:将构建好的 `pathfinder1e.duckdb` 放到仓库根 `data/` 目录并重新构建即可(`csproj` 会以 `CopyToOutputDirectory=PreserveNewest` 复制到输出目录)。重建脚本临时存放于本机(依赖 Node.js 与 duckdb CLI),未纳入版本控制。
 
 ### 参考库表结构
 
@@ -61,6 +62,11 @@ Pathfinder1eHelper.slnx
 | `spells` | 法术主表(约 3373 行):出处、中/英文名、首字母,以及学派/环位/施法时间/成分/距离/效果/范围/目标/持续时间/豁免/法术抗力/描述/附加/`spell_type` 等字段 |
 | `spell_levels` | 法术按职业/领域拆分的环位:`spell_id`、`class_name`、`level`、`kind`(`class` = 主职业,`domain` = 领域/子域),供“职业 + 环位”筛选 |
 | `spell_buffs` | 常见 Buff 法术的结构化加值效果,供战斗页“法术 Buff 联动”使用 |
+| `monsters` | 怪物主表(约 838 行):`source`(B1/B2/B3)、`page`、中/英文名、`first_letter`、CR、体型、类型/亚种、阵营、六属性、环境/组织/宝物、描述、`stat_block`/`special_abilities`/`raw_text`(原文兜底) |
+| `monster_groups` | 概览页(“绪论/概述”,如 龙类绪论):`name_zh`/`name_en`、`description`(风味描述)、`content`(可渲染正文:规则段落 + GFM 管道表)、`raw_text` |
+| `monster_group_members` | 概览页 ↔ 怪物 的多对多关系(`group_id`、`monster_id`) |
+
+`monsters` 索引:`idx_monsters_first_letter`(首字母)、`idx_monsters_name_en`/`idx_monsters_name_zh`;概览关系索引:`idx_mgm_group`、`idx_mgm_monster`,以及 `monster_groups` 的名称索引。按需求**不建出处索引**。怪物数据由 `scripts/build-monster-db/`(extract_monsters.mjs + schema.sql + load.sql + build.sh)提取;概览页与成员的关联在 CHM 中没有显式链接,由“英文名前缀 + 龙类/发条/特里埃人工种子”生成。
 
 `spell_buffs` 列定义:
 

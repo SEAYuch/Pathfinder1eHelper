@@ -22,7 +22,7 @@ public class SpellDatabaseSmokeTests
     public async Task Reference_database_opens_readonly_maps_entities_and_returns_rows()
     {
         var provider = new DbPathProvider(); // AppContext.BaseDirectory\data\spells.duckdb
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -56,7 +56,7 @@ public class SpellDatabaseSmokeTests
     public async Task English_search_is_case_insensitive()
     {
         var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -77,7 +77,7 @@ public class SpellDatabaseSmokeTests
     public async Task Spell_buff_table_exposes_structured_effects()
     {
         var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -103,7 +103,7 @@ public class SpellDatabaseSmokeTests
     public async Task Source_and_first_letter_filters_narrow_results()
     {
         var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -127,7 +127,7 @@ public class SpellDatabaseSmokeTests
     public async Task Class_and_level_filters_query_spell_levels_index()
     {
         var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -161,7 +161,7 @@ public class SpellDatabaseSmokeTests
     public async Task No_distance_only_values_remain_in_area_when_range_is_empty()
     {
         var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.SpellsDbPath);
+        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
         try
         {
             var repo = new SpellRepository(fsql);

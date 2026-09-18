@@ -1,5 +1,5 @@
 using System;
-using AvaloniaFluentUI.Controls;
+using FluentIcons.Common;
 using ReactiveUI;
 
 namespace Pathfinder1eHelper.ViewModels;
@@ -10,13 +10,13 @@ namespace Pathfinder1eHelper.ViewModels;
 /// </summary>
 public sealed class NavItemViewModel(
     string header,
-    Symbol icon,
+    Icon icon,
     Func<IPageViewModel>? pageFactory,
     bool isEnabled = true)
 {
     public string Header { get; } = header;
 
-    public Symbol Icon { get; } = icon;
+    public Icon Icon { get; } = icon;
 
     public bool IsEnabled { get; } = isEnabled;
 

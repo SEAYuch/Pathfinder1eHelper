@@ -19,11 +19,13 @@ public sealed class AppModule : Module
     {
         // Data layer
         builder.RegisterType<DbPathProvider>().As<IDbPathProvider>().SingleInstance();
-        builder.Register(c => FreeSqlFactory.CreateReadOnly(c.Resolve<IDbPathProvider>().SpellsDbPath))
+        builder.Register(c => FreeSqlFactory.CreateReadOnly(c.Resolve<IDbPathProvider>().DbPath))
             .As<IFreeSql>()
             .SingleInstance(); // IFreeSql is thread-safe → one shared instance
         builder.RegisterType<SpellRepository>().As<ISpellRepository>().InstancePerDependency();
         builder.RegisterType<SpellService>().As<ISpellService>().InstancePerDependency();
+        builder.RegisterType<MonsterRepository>().As<IMonsterRepository>().InstancePerDependency();
+        builder.RegisterType<MonsterService>().As<IMonsterService>().InstancePerDependency();
 
         // Character sheet persistence (user data, independent from the read-only reference DB)
         builder.RegisterInstance(new JsonCharacterRepository(JsonCharacterRepository.DefaultDirectory))
@@ -39,5 +41,7 @@ public sealed class AppModule : Module
         builder.RegisterType<SpellsView>().AsSelf().InstancePerDependency();
         builder.RegisterType<CombatViewModel>().AsSelf().InstancePerDependency();
         builder.RegisterType<CombatView>().AsSelf().InstancePerDependency();
+        builder.RegisterType<MonstersViewModel>().AsSelf().InstancePerDependency();
+        builder.RegisterType<MonstersView>().AsSelf().InstancePerDependency();
     }
 }

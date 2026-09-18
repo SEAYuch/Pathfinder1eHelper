@@ -18,6 +18,7 @@ public sealed class ViewLocator : IViewLocator
     {
         [typeof(SpellsViewModel)] = Create<SpellsView>,
         [typeof(CombatViewModel)] = Create<CombatView>,
+        [typeof(MonstersViewModel)] = Create<MonstersView>,
     };
 
     public IViewFor<TViewModel>? ResolveView<TViewModel>()

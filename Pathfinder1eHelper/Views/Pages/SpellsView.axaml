@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
              xmlns:models="using:Pathfinder1eHelper.Models"
-             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:fi="using:FluentIcons.Avalonia.Fluent"
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
              x:Class="Pathfinder1eHelper.Views.Pages.SpellsView"
              x:DataType="vm:SpellsViewModel">

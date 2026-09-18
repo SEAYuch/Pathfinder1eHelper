@@ -91,3 +91,61 @@ public sealed class FakeSpellService : ISpellService
         return Task.FromResult<IReadOnlyList<SpellBuff>>(matched);
     }
 }
+
+/// <summary>In-memory <see cref="IMonsterRepository"/> for smoke-level tests.</summary>
+public sealed class FakeMonsterRepository : IMonsterRepository
+{
+    public List<Monster> Data { get; } = new();
+    public List<MonsterGroup> Groups { get; } = new();
+    public IReadOnlyList<string> TypeList { get; set; } = new List<string>();
+    public MonsterQuery? LastQuery { get; private set; }
+
+    public Task<IReadOnlyList<Monster>> SearchAsync(MonsterQuery query, CancellationToken ct = default)
+    {
+        LastQuery = query;
+        return Task.FromResult<IReadOnlyList<Monster>>(Data.ToList());
+    }
+
+    public Task<int> CountAsync(MonsterQuery query, CancellationToken ct = default)
+    {
+        LastQuery = query;
+        return Task.FromResult(Data.Count);
+    }
+
+    public Task<IReadOnlyList<string>> GetCreatureTypesAsync(CancellationToken ct = default) =>
+        Task.FromResult(TypeList);
+
+    public Task<IReadOnlyList<MonsterGroup>> GetGroupsForMonsterAsync(int monsterId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<MonsterGroup>>(Groups);
+
+    public Task<IReadOnlyList<Monster>> GetGroupMembersAsync(int groupId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<Monster>>(Data);
+}
+
+/// <summary>In-memory <see cref="IMonsterService"/> for view-model tests.</summary>
+public sealed class FakeMonsterService : IMonsterService
+{
+    public List<Monster> Results { get; } = new();
+    public List<MonsterGroup> Groups { get; } = new();
+    public List<Monster> GroupMembers { get; } = new();
+    public IReadOnlyList<string> TypeList { get; set; } = new List<string> { "龙类", "异怪" };
+    public MonsterQuery? LastQuery { get; private set; }
+
+    public Task<IReadOnlyList<Monster>> SearchAsync(MonsterQuery query, CancellationToken ct = default)
+    {
+        LastQuery = query;
+        return Task.FromResult<IReadOnlyList<Monster>>(Results.ToList());
+    }
+
+    public Task<int> CountAsync(MonsterQuery query, CancellationToken ct = default) =>
+        Task.FromResult(Results.Count);
+
+    public Task<IReadOnlyList<string>> GetCreatureTypesAsync(CancellationToken ct = default) =>
+        Task.FromResult(TypeList);
+
+    public Task<IReadOnlyList<MonsterGroup>> GetGroupsForMonsterAsync(int monsterId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<MonsterGroup>>(Groups);
+
+    public Task<IReadOnlyList<Monster>> GetGroupMembersAsync(int groupId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<Monster>>(GroupMembers);
+}

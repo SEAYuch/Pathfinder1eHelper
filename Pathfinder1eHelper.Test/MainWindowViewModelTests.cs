@@ -10,7 +10,7 @@ public class MainWindowViewModelTests
     [Fact]
     public void First_nav_item_is_navigated_on_construction()
     {
-        var (vm, spells, _) = Create();
+        var (vm, spells, _, _) = Create();
 
         Assert.Same(spells, vm.Router.GetCurrentViewModel());
         Assert.Single(vm.Router.NavigationStack);
@@ -19,7 +19,7 @@ public class MainWindowViewModelTests
     [Fact]
     public void Selecting_another_nav_item_resets_to_that_page()
     {
-        var (vm, _, combat) = Create();
+        var (vm, _, combat, _) = Create();
 
         vm.SelectedNavItem = vm.NavItems[1];
 
@@ -29,20 +29,22 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public void Disabled_nav_item_does_not_navigate()
+    public void Selecting_monsters_navigates_to_the_monster_page()
     {
-        var (vm, spells, _) = Create();
+        var (vm, _, _, monsters) = Create();
 
-        vm.SelectedNavItem = vm.NavItems[2]; // 角色（占位项，无页面）
+        vm.SelectedNavItem = vm.NavItems[2]; // 怪物
 
-        Assert.Same(spells, vm.Router.GetCurrentViewModel());
+        Assert.Same(monsters, vm.Router.GetCurrentViewModel());
+        Assert.Same(vm, monsters.HostScreen);
     }
 
-    private static (MainWindowViewModel Vm, SpellsViewModel Spells, CombatViewModel Combat) Create()
+    private static (MainWindowViewModel Vm, SpellsViewModel Spells, CombatViewModel Combat, MonstersViewModel Monsters) Create()
     {
         var spells = new SpellsViewModel(new FakeSpellService());
         var combat = new CombatViewModel(new FakeCharacterRepository(), new FakeSpellService());
-        var vm = new MainWindowViewModel(() => spells, () => combat);
-        return (vm, spells, combat);
+        var monsters = new MonstersViewModel(new FakeMonsterService());
+        var vm = new MainWindowViewModel(() => spells, () => combat, () => monsters);
+        return (vm, spells, combat, monsters);
     }
 }

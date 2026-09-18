@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Headless;
 using Pathfinder1eHelper;
@@ -8,24 +7,23 @@ using ReactiveUI.Builder;
 using ReactiveUI.Primitives.Concurrency;
 using Splat;
 
+[assembly: Xunit.AssemblyFixture(typeof(Pathfinder1eHelper.Test.TestAppFixture))]
+
 namespace Pathfinder1eHelper.Test;
 
 /// <summary>
-/// One-time initialization for the test assembly:
+/// One-time test-assembly setup, run as an xUnit.net v3 assembly fixture (execution phase, NOT during
+/// test discovery — heavy initialization in a <c>[ModuleInitializer]</c> can hang MTP discovery).
 /// <list type="bullet">
-/// <item>ReactiveUI 24 builder must run before <c>WhenAnyValue</c>/activation work; the app does
-/// this via <c>UseReactiveUIWithAutofac</c>, the test host does it explicitly. The main-thread
+/// <item>ReactiveUI 24 builder must run before <c>WhenAnyValue</c>/activation work; the main-thread
 /// scheduler is <see cref="ImmediateSequencer"/> so command output is delivered synchronously.</item>
-/// <item>The Avalonia activation fetcher is registered so tests may construct
-/// <c>ReactiveUserControl</c>-based views.</item>
-/// <item>A headless Avalonia platform is started so tests can instantiate real XAML views
-/// (the locator tests do) without a windowing backend.</item>
+/// <item>A headless Avalonia platform is started so tests may construct real XAML views, and the
+/// Avalonia activation fetcher is registered for <c>ReactiveUserControl</c>-based views.</item>
 /// </list>
 /// </summary>
-internal static class TestInit
+public sealed class TestAppFixture
 {
-    [ModuleInitializer]
-    public static void Initialize()
+    public TestAppFixture()
     {
         AppBuilder.Configure<App>()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions())

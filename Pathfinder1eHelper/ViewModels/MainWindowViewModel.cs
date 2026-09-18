@@ -1,6 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
-using AvaloniaFluentUI.Controls;
+using FluentIcons.Common;
 using Pathfinder1eHelper.ViewModels.Pages;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -14,13 +14,13 @@ namespace Pathfinder1eHelper.ViewModels;
 /// </summary>
 public sealed class MainWindowViewModel : ViewModelBase, IScreen
 {
-    public MainWindowViewModel(Func<SpellsViewModel> spellsFactory, Func<CombatViewModel> combatFactory)
+    public MainWindowViewModel(Func<SpellsViewModel> spellsFactory, Func<CombatViewModel> combatFactory, Func<MonstersViewModel> monstersFactory)
     {
         NavItems =
         [
-            new NavItemViewModel("法术", Symbol.Star, spellsFactory),
-            new NavItemViewModel("战斗", Symbol.Target, combatFactory),
-            new NavItemViewModel("角色", Symbol.People, pageFactory: null, isEnabled: false)
+            new NavItemViewModel("法术", Icon.Wand, spellsFactory),
+            new NavItemViewModel("战斗", Icon.Flash, combatFactory),
+            new NavItemViewModel("怪物", Icon.Bug, monstersFactory)
         ];
 
         // The shell lives for the whole app, so a constructor subscription is fine (nothing to leak).
@@ -37,7 +37,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IScreen
     }
 
     /// <summary>Parameterless constructor for the XAML previewer.</summary>
-    public MainWindowViewModel() : this(() => new SpellsViewModel(), () => new CombatViewModel())
+    public MainWindowViewModel() : this(() => new SpellsViewModel(), () => new CombatViewModel(), () => new MonstersViewModel())
     {
     }
 

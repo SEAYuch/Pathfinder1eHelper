@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Pathfinder1eHelper.ViewModels"
-        xmlns:afui="using:AvaloniaFluentUI.Controls"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
+        xmlns:ic="using:FluentIcons.Avalonia.Fluent"
         xmlns:reactive="using:ReactiveUI.Avalonia"
         xmlns:views="using:Pathfinder1eHelper.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -17,9 +18,9 @@
         <vm:MainWindowViewModel />
     </Design.DataContext>
 
-    <!-- AvaloniaFluentUI 标准导航：左侧可折叠 pane（紧凑/展开由 NavigationView 管理），Content 区承载当前页 -->
+    <!-- FluentAvalonia 标准导航：左侧可折叠 pane（紧凑/展开由 NavigationView 管理），Content 区承载当前页 -->
     <!-- PaneDisplayMode=Auto：宽度 ≥ ExpandedModeThresholdWidth 展开，否则收缩为图标态（CompactPaneLength） -->
-    <afui:NavigationView PaneDisplayMode="Auto"
+    <ui:FANavigationView PaneDisplayMode="Auto"
                          ExpandedModeThresholdWidth="1024"
                          CompactModeThresholdWidth="0"
                          OpenPaneLength="220"
@@ -27,18 +28,18 @@
                          MenuItemsSource="{Binding NavItems}"
                          SelectedItem="{Binding SelectedNavItem, Mode=TwoWay}">
 
-        <afui:NavigationView.MenuItemTemplate>
+        <ui:FANavigationView.MenuItemTemplate>
             <DataTemplate x:DataType="vm:NavItemViewModel">
-                <afui:NavigationViewItem IsEnabled="{Binding IsEnabled}">
-                    <afui:NavigationViewItem.IconSource>
-                        <afui:SymbolIcon Symbol="{Binding Icon}" />
-                    </afui:NavigationViewItem.IconSource>
-                    <afui:NavigationViewItem.Content>
+                <ui:FANavigationViewItem IsEnabled="{Binding IsEnabled}">
+                    <ui:FANavigationViewItem.IconSource>
+                        <ic:FluentIconSource Icon="{Binding Icon}" IconVariant="Regular" />
+                    </ui:FANavigationViewItem.IconSource>
+                    <ui:FANavigationViewItem.Content>
                         <TextBlock Text="{Binding Header}" FontSize="16" />
-                    </afui:NavigationViewItem.Content>
-                </afui:NavigationViewItem>
+                    </ui:FANavigationViewItem.Content>
+                </ui:FANavigationViewItem>
             </DataTemplate>
-        </afui:NavigationView.MenuItemTemplate>
+        </ui:FANavigationView.MenuItemTemplate>
 
         <!-- 内容区：ReactiveUI 路由，RoutedViewHost 依据 Router 当前 VM 解析并嵌入对应 View -->
         <reactive:RoutedViewHost Router="{Binding Router}">
@@ -46,6 +47,6 @@
                 <views:ViewLocator />
             </reactive:RoutedViewHost.ViewLocator>
         </reactive:RoutedViewHost>
-    </afui:NavigationView>
+    </ui:FANavigationView>
 
 </Window>

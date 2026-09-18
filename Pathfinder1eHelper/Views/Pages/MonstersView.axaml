@@ -1,0 +1,187 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
+             xmlns:models="using:Pathfinder1eHelper.Models"
+             xmlns:controls="using:Pathfinder1eHelper.Views.Controls"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
+             x:Class="Pathfinder1eHelper.Views.Pages.MonstersView"
+             x:DataType="vm:MonstersViewModel">
+
+    <Design.DataContext>
+        <vm:MonstersViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Filter bar -->
+        <Border Grid.Row="0" Padding="12" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <TextBox Width="280"
+                         PlaceholderText="搜索怪物（中/英文名）"
+                         Text="{Binding SearchText}" />
+                <TextBlock Text="首字母" VerticalAlignment="Center" Opacity="0.7" />
+                <ComboBox MinWidth="92"
+                          ItemsSource="{Binding Letters}"
+                          SelectedItem="{Binding SelectedLetter}" />
+                <TextBlock Text="类型" VerticalAlignment="Center" Opacity="0.7" />
+                <ComboBox MinWidth="150"
+                          ItemsSource="{Binding CreatureTypes}"
+                          SelectedItem="{Binding SelectedCreatureType}" />
+                <TextBlock Text="{Binding ResultSummary}" VerticalAlignment="Center" Opacity="0.7" />
+                <TextBlock Text="{Binding LastError}"
+                           Foreground="{DynamicResource AppDangerBrush}"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding LastError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Master-detail -->
+        <Grid Grid.Row="1" ColumnDefinitions="3*,4,2*">
+
+            <Panel Grid.Column="0">
+                <DataGrid ItemsSource="{Binding Monsters}"
+                          SelectedItem="{Binding SelectedMonster}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserResizeColumns="True"
+                          GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="中文名" Binding="{Binding NameZh}" Width="160" />
+                        <DataGridTextColumn Header="英文名" Binding="{Binding NameEn}" Width="Auto" />
+                        <DataGridTextColumn Header="CR" Binding="{Binding Cr}" Width="60" />
+                        <DataGridTextColumn Header="类型" Binding="{Binding CreatureType}" Width="Auto" />
+                        <DataGridTextColumn Header="体型" Binding="{Binding Size}" Width="Auto" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <Border IsVisible="{Binding IsBusy}"
+                        Background="#40000000"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <ProgressBar IsIndeterminate="True" Width="160"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Panel>
+
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+            <Border Grid.Column="2" Padding="16" Margin="4,0,0,0">
+                <Panel>
+                    <TextBlock Text="选择左侧的怪物查看详情"
+                               Opacity="0.5"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding SelectedMonster, Converter={x:Static ObjectConverters.IsNull}}" />
+
+                    <!-- 怪物详情 -->
+                    <ScrollViewer IsVisible="{Binding SelectedGroup, Converter={x:Static ObjectConverters.IsNull}}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding SelectedMonster.NameZh}" FontSize="22" FontWeight="Bold"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SelectedMonster.NameEn}" FontSize="15" Opacity="0.7"
+                                       TextWrapping="Wrap" />
+
+                            <!-- 相关绪论链接 -->
+                            <StackPanel Spacing="4"
+                                        IsVisible="{Binding RelatedGroups.Count}">
+                                <TextBlock Text="相关绪论" FontWeight="SemiBold" Opacity="0.7" />
+                                <ItemsControl ItemsSource="{Binding RelatedGroups}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:MonsterGroup">
+                                            <Button Content="{Binding NameZh}" Margin="0,0,8,4"
+                                                    Click="OnGroupClick" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <Border Height="1" Background="{DynamicResource AppDividerBrush}" Margin="0,4" />
+
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="CR" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.Cr}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="体型" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.Size}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="类型" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.CreatureType}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="亚种" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.Subtypes}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="阵营" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.Alignment}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="属性" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock>
+                                    <Run Text="{Binding SelectedMonster.Strength}" /><Run Text=" / " />
+                                    <Run Text="{Binding SelectedMonster.Dexterity}" /><Run Text=" / " />
+                                    <Run Text="{Binding SelectedMonster.Constitution}" /><Run Text=" / " />
+                                    <Run Text="{Binding SelectedMonster.Intelligence}" /><Run Text=" / " />
+                                    <Run Text="{Binding SelectedMonster.Wisdom}" /><Run Text=" / " />
+                                    <Run Text="{Binding SelectedMonster.Charisma}" />
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="环境" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.Environment}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="组织" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.Organization}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="宝物" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                                <TextBlock Text="{Binding SelectedMonster.Treasure}" TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding SelectedMonster.Description}" TextWrapping="Wrap"
+                                       LineHeight="22" Margin="0,4" />
+                            <controls:MonsterTextView Text="{Binding SelectedMonster.StatBlock}" />
+                            <controls:MonsterTextView Text="{Binding SelectedMonster.SpecialAbilities}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- 绪论(概述)详情 -->
+                    <ScrollViewer IsVisible="{Binding SelectedGroup, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Spacing="8">
+                            <Button Content="← 返回怪物" Command="{Binding CloseGroupCommand}"
+                                    HorizontalAlignment="Left" />
+                            <TextBlock Text="{Binding SelectedGroup.NameZh}" FontSize="22" FontWeight="Bold"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SelectedGroup.NameEn}" FontSize="15" Opacity="0.7"
+                                       TextWrapping="Wrap" />
+                            <controls:MonsterTextView Text="{Binding SelectedGroup.Content}" />
+                            <Border Height="1" Background="{DynamicResource AppDividerBrush}" Margin="0,4" />
+                            <TextBlock Text="包含怪物" FontWeight="SemiBold" Opacity="0.7" />
+                            <ItemsControl ItemsSource="{Binding GroupMembers}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:Monster">
+                                        <Button Content="{Binding NameZh}" Margin="0,0,8,4"
+                                                Click="OnMemberClick" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Panel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
