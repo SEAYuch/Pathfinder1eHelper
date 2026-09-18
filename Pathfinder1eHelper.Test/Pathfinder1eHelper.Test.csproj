@@ -9,8 +9,6 @@
         <IsPackable>false</IsPackable>
         <!-- xUnit1051 为“传入 TestContext.Current.CancellationToken”的样式提示，非正确性问题，统一关闭以保持零告警 -->
         <NoWarn>$(NoWarn);xUnit1051</NoWarn>
-        <!-- 走 VSTest 通道：.NET 10 MTP 服务器模式与 xunit.v3 4.0.1 不兼容（零测试），故声明非 MTP 应用 -->
-        <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
     </PropertyGroup>
 
     <ItemGroup>
