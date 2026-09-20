@@ -10,6 +10,7 @@ using Pathfinder1eHelper.Models.Combat;
 using Pathfinder1eHelper.Services;
 using Pathfinder1eHelper.ViewModels.Combat;
 using ReactiveUI;
+using ReactiveUI.Primitives;
 
 namespace Pathfinder1eHelper.ViewModels.Pages;
 
@@ -17,6 +18,11 @@ namespace Pathfinder1eHelper.ViewModels.Pages;
 /// 战斗页：管理多个角色档案，编辑基础数据与手动加值/武器，实时用
 /// <see cref="CombatCalculator"/> 汇总，并保存到 <see cref="ICharacterRepository"/>。
 /// </summary>
+/// <remarks>
+/// 具体职责已拆分到协作类：角色列表与增删改见 <see cref="CharacterRoster"/>，
+/// 后台写回见 <see cref="CharacterAutoSaver"/>，法术 Buff 见 <see cref="CombatBuffLibrary"/>，
+/// 专注 DC 见 <see cref="ConcentrationCalculator"/>。
+/// </remarks>
 public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 {
     /// <summary>ReactiveUI 路由：宿主屏幕（由 shell 在导航前赋值）。</summary>
@@ -25,8 +31,9 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     /// <summary>ReactiveUI 路由标识。</summary>
     public string UrlPathSegment => "combat";
 
-    private readonly ICharacterRepository _repository;
-    private readonly ISpellService _spells;
+    private readonly CharacterRoster _roster;
+    private readonly CharacterAutoSaver _autoSaver;
+    private readonly CombatBuffLibrary _buffs;
     private bool _loading;
     private CharacterListItemViewModel? _selectedCharacter;
     private Guid _profileId;
@@ -35,15 +42,18 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     private SizeOption _selectedSize = CombatOptions.Size(SizeCategory.Medium);
     private AbilityOption _selectedCastingAbility = CombatOptions.Ability(Ability.Intelligence);
     private ConcentrationOption _concentrationSituation = CombatOptions.Concentration(ConcentrationSituation.DefensiveCasting);
-    private CharacterProfile? _lastProfile;
     private Spell? _selectedBuffSpell;
 
     public CombatViewModel(ICharacterRepository repository, ISpellService spells)
     {
-        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _spells = spells ?? throw new ArgumentNullException(nameof(spells));
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(spells);
 
-        BuffSpellCandidates = [];
+        _roster = new CharacterRoster(repository);
+        _autoSaver = new CharacterAutoSaver(repository);
+        _buffs = new CombatBuffLibrary(spells);
+
+        Characters = _roster.Characters;
         Bonuses = [];
         Weapons = [];
         Bonuses.CollectionChanged += (_, _) => OnInputChanged();
@@ -65,19 +75,23 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         ClearBuffsCommand = ReactiveCommand.Create(ClearBuffs);
         ClearAllBonusesCommand = ReactiveCommand.Create(ClearAllBonuses);
 
-        _ = LoadBuffCandidatesAsync();
-
-        Characters = new ObservableCollection<CharacterListItemViewModel>(
-            repository.LoadAll().Select(p => new CharacterListItemViewModel(p)));
-        if (Characters.Count == 0)
-        {
-            var profile = CreateNewProfile();
-            _repository.Save(profile);
-            Characters.Add(new CharacterListItemViewModel(profile));
-        }
-
-        _selectedCharacter = Characters[0];
+        _roster.Load();
+        _selectedCharacter = _roster.EnsureAtLeastOne();
         LoadProfile(_selectedCharacter.Profile);
+
+        // 法术目录按需载入（首次激活时才拉取），并随页面停用取消。
+        this.WhenActivated(disposables =>
+        {
+            var loadCts = new CancellationTokenSource();
+            disposables.Add(ActionDisposable.Create(() =>
+            {
+                loadCts.Cancel();
+                loadCts.Dispose();
+                _ = _autoSaver.FlushAsync();
+            }));
+
+            _ = LoadBuffCandidatesAsync(loadCts.Token);
+        });
     }
 
     /// <summary>设计时构造：示例数据，供 XAML 预览器使用。</summary>
@@ -95,8 +109,8 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public IReadOnlyList<PresetViewModel> WeaponPresets { get; }
 
-    /// <summary>法术 Buff 搜索候选（一次性载入法术库，由 AutoCompleteBox 在本地过滤）。</summary>
-    public ObservableCollection<Spell> BuffSpellCandidates { get; }
+    /// <summary>法术 Buff 搜索候选（惰性载入法术库，由 AutoCompleteBox 在本地过滤）。</summary>
+    public ObservableCollection<Spell> BuffSpellCandidates => _buffs.Candidates;
 
     public CharacterListItemViewModel? SelectedCharacter
     {
@@ -454,15 +468,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     private void RemoveWeapon(WeaponViewModel weapon) => Weapons.Remove(weapon);
 
-    private void NewCharacter()
-    {
-        var profile = CreateNewProfile();
-        _repository.Save(profile);
-
-        var item = new CharacterListItemViewModel(profile);
-        Characters.Add(item);
-        SelectedCharacter = item;
-    }
+    private void NewCharacter() => SelectedCharacter = _roster.Create();
 
     private void DeleteCharacter()
     {
@@ -471,17 +477,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             return;
         }
 
-        _repository.Delete(_selectedCharacter.Profile.Id);
-        Characters.Remove(_selectedCharacter);
-
-        if (Characters.Count == 0)
-        {
-            var profile = CreateNewProfile();
-            _repository.Save(profile);
-            Characters.Add(new CharacterListItemViewModel(profile));
-        }
-
-        SelectedCharacter = Characters[0];
+        SelectedCharacter = _roster.Delete(_selectedCharacter);
     }
 
     private void DuplicateCharacter()
@@ -491,47 +487,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             return;
         }
 
-        var clone = CharacterCloner.Duplicate(BuildProfile());
-        clone.Name = NextDuplicateName(_selectedCharacter.Name);
-        _repository.Save(clone);
-
-        var item = new CharacterListItemViewModel(clone);
-        Characters.Add(item);
-        SelectedCharacter = item;
-    }
-
-    private string NextDuplicateName(string baseName)
-    {
-        var index = 1;
-        string name;
-        do
-        {
-            index++;
-            name = index == 2 ? $"{baseName} 副本" : $"{baseName} 副本 {index - 1}";
-        }
-        while (Characters.Any(c => c.Name == name));
-
-        return name;
-    }
-
-    private CharacterProfile CreateNewProfile()
-    {
-        var profile = new CharacterProfile { Name = NextCharacterName() };
-        profile.ApplyDefaults();
-        return profile;
-    }
-
-    private string NextCharacterName()
-    {
-        var index = Characters.Count + 1;
-        string name;
-        do
-        {
-            name = $"新角色 {index++}";
-        }
-        while (Characters.Any(c => c.Name == name));
-
-        return name;
+        SelectedCharacter = _roster.Duplicate(BuildProfile());
     }
 
     private void LoadProfile(CharacterProfile profile)
@@ -582,22 +538,28 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         Refresh(save: false);
     }
 
-    /// <summary>载入全部法术作为 Buff 搜索候选（AutoCompleteBox 本地过滤，无需服务端搜索）。</summary>
-    public async Task LoadBuffCandidatesAsync()
+    /// <summary>惰性载入全部法术作为 Buff 搜索候选（首次激活时触发；失败不影响其余功能）。</summary>
+    public async Task LoadBuffCandidatesAsync(CancellationToken ct = default)
     {
         try
         {
-            var all = await _spells.SearchAsync(new SpellQuery(null, null, null, 0, 10000));
-            BuffSpellCandidates.Clear();
-            foreach (var spell in all)
-            {
-                BuffSpellCandidates.Add(spell);
-            }
+            await _buffs.EnsureLoadedAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // 页面停用/切换时取消，属正常路径。
         }
         catch (Exception ex)
         {
             SaveError = ex.Message;
         }
+    }
+
+    /// <summary>等待后台挂起的档案保存完成（测试与退出前使用）。</summary>
+    public async Task FlushPendingSavesAsync()
+    {
+        await _autoSaver.FlushAsync();
+        SaveError = _autoSaver.Error;
     }
 
     private void UpdateBuffHint()
@@ -619,11 +581,10 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             return;
         }
 
-        var sourceLabel = $"《{spell.Source}》{spell.NameEn}";
-        IReadOnlyList<SpellBuff> buffs;
+        BuffResolution resolution;
         try
         {
-            buffs = await _spells.GetBuffsForSpellAsync(spell.NameEn, spell.NameZh);
+            resolution = await _buffs.ResolveAsync(spell, CasterLevel ?? 0);
         }
         catch (Exception ex)
         {
@@ -631,29 +592,14 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             return;
         }
 
-        var entries = buffs.Count == 0
-            ? new List<BonusEntry>
-            {
-                new()
-                {
-                    Origin = BonusOrigin.SpellBuff,
-                    Name = spell.NameZh,
-                    Type = BonusType.Untyped,
-                    Target = BonusTarget.ArmorClass,
-                    Value = 1,
-                    Notes = $"{sourceLabel}：spell_buffs 未收录，请手动设置类型/目标/数值",
-                },
-            }
-            : buffs.Select(b => SpellBuffResolver.ToEntry(b, CasterLevel ?? 0, sourceLabel)).ToList();
-
-        foreach (var entry in entries)
+        foreach (var entry in resolution.Entries)
         {
             Bonuses.Add(new BonusEntryViewModel(entry, OnInputChanged, RemoveBonus));
         }
 
-        BuffHint = buffs.Count == 0
+        BuffHint = resolution.MatchedCount == 0
             ? "spell_buffs 未收录：已添加 1 条空白加值"
-            : $"已添加 {buffs.Count} 条加值（按 CL {CasterLevel ?? 0}）";
+            : $"已添加 {resolution.MatchedCount} 条加值（按 CL {CasterLevel ?? 0}）";
     }
 
     private void ApplyWeaponPreset(WeaponPreset preset)
@@ -675,27 +621,23 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     private void Refresh(bool save)
     {
         var profile = BuildProfile();
-        var sheet = CombatCalculator.Calculate(profile);
-        ApplySheet(sheet);
+        ApplySheet(CombatCalculator.Calculate(profile));
         UpdateConcentration();
-        _lastProfile = profile;
 
         if (save)
         {
-            TrySave();
+            _autoSaver.Schedule(profile);
         }
     }
 
     private void UpdateConcentration()
     {
-        var spellLevel = SpellLevel ?? 0;
-        ConcentrationDc = _concentrationSituation.Value switch
-        {
-            ConcentrationSituation.DefensiveCasting => 15 + 2 * spellLevel,
-            ConcentrationSituation.DamageWhileCasting => 10 + Math.Max(0, DamageTaken ?? 0) + spellLevel,
-            ConcentrationSituation.Grappled => 10 + Math.Max(0, GrapplerCmb ?? 0) + spellLevel,
-            _ => CustomDc ?? 0,
-        };
+        ConcentrationDc = ConcentrationCalculator.Dc(
+            _concentrationSituation.Value,
+            SpellLevel ?? 0,
+            DamageTaken,
+            GrapplerCmb,
+            CustomDc);
         this.RaisePropertyChanged(nameof(ConcentrationCheckDisplay));
     }
 
@@ -761,19 +703,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         Weapons = Weapons.Select(w => w.ToModel()).ToList(),
     };
 
-    private void TrySave()
-    {
-        try
-        {
-            _repository.Save(_lastProfile ?? BuildProfile());
-            SaveError = null;
-        }
-        catch (Exception ex)
-        {
-            SaveError = ex.Message;
-        }
-    }
-
     private static IReadOnlyList<StatCard> BuildCards(CombatSheet sheet) =>
     [
         new StatCard("近战攻击", sheet.MeleeAttack),
@@ -790,100 +719,4 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         new StatCard("专注", sheet.Concentration),
         new StatCard("先攻", sheet.Initiative),
     ];
-
-    private sealed class DesignTimeCharacterRepository : ICharacterRepository
-    {
-        public string DirectoryPath => "(design-time)";
-
-        public IReadOnlyList<CharacterProfile> LoadAll() => [SampleProfile()];
-
-        public void Save(CharacterProfile profile)
-        {
-        }
-
-        public void Delete(Guid id)
-        {
-        }
-
-        private static CharacterProfile SampleProfile()
-        {
-            var profile = new CharacterProfile
-            {
-                Name = "示例角色",
-                Level = 10,
-                Size = SizeCategory.Medium,
-                Abilities = new AbilityScores
-                {
-                    Strength = 20,
-                    Dexterity = 14,
-                    Constitution = 16,
-                    Intelligence = 10,
-                    Wisdom = 12,
-                    Charisma = 8,
-                },
-                BaseAttackBonus = 10,
-                BaseFortitude = 7,
-                BaseReflex = 3,
-                BaseWill = 3,
-                CasterLevel = 10,
-                CastingAbility = Ability.Intelligence,
-                Bonuses =
-                [
-                    new BonusEntry { Name = "武器专攻", Type = BonusType.Untyped, Target = BonusTarget.MeleeAttack, Value = 1 },
-                    new BonusEntry { Name = "天生护甲", Type = BonusType.NaturalArmor, Target = BonusTarget.ArmorClass, Value = 1 },
-                    new BonusEntry
-                    {
-                        Name = "树皮术",
-                        Type = BonusType.Enhancement,
-                        Enhancement = EnhancementSubject.NaturalArmor,
-                        Target = BonusTarget.ArmorClass,
-                        Value = 3,
-                    },
-                    new BonusEntry { Name = "掩护", Type = BonusType.Circumstance, Target = BonusTarget.ArmorClass, Value = 4 },
-                    new BonusEntry { Name = "勇气激励", Type = BonusType.Competence, Target = BonusTarget.MeleeAttack, Value = 2 },
-                    new BonusEntry { Name = "勇气激励", Type = BonusType.Competence, Target = BonusTarget.Damage, Value = 2 },
-                ],
-                Weapons =
-                [
-                    new WeaponProfile { Name = "长剑", DamageDice = "1d8", StrengthMultiplier = 1, Enhancement = 1 },
-                    new WeaponProfile
-                    {
-                        Name = "复合长弓",
-                        IsRanged = true,
-                        DamageDice = "1d8",
-                        StrengthMultiplier = 0,
-                        Enhancement = 2,
-                    },
-                ],
-            };
-
-            profile.ApplyDefaults();
-            return profile;
-        }
-    }
-
-    private sealed class DesignTimeSpellService : ISpellService
-    {
-        public static readonly DesignTimeSpellService Instance = new();
-
-        public Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<Spell>>(
-            [
-                new Spell { Id = 1, NameZh = "祝福术", NameEn = "Bless", Source = "CRB", FirstLetter = "B" },
-                new Spell { Id = 2, NameZh = "树皮术", NameEn = "Barkskin", Source = "CRB", FirstLetter = "B" },
-            ]);
-
-        public Task<int> CountAsync(SpellQuery query, CancellationToken ct = default) => Task.FromResult(2);
-
-        public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<string>>([]);
-
-        public Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<string>>([]);
-
-        public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) => Task.FromResult<Spell?>(null);
-
-        public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<SpellBuff>>([]);
-    }
 }

@@ -30,10 +30,34 @@ internal static class SpellBuffResolver
             var baseValue = buff.ScaleBase ?? buff.Value ?? 0;
             var offset = buff.ScaleOffset ?? 0;
             var value = baseValue + (int)Math.Floor((casterLevel - offset) / (double)step);
-            return Math.Max(0, Math.Clamp(value, buff.ScaleMin ?? int.MinValue, buff.ScaleMax ?? int.MaxValue));
+            return Clamp(value, buff.ScaleMin, buff.ScaleMax);
         }
 
-        return Math.Max(0, buff.Value ?? 0);
+        return buff.Value ?? 0;
+    }
+
+    /// <summary>
+    /// 按显式上下界夹取；未提供界时不限制（保留符号，允许减值法术）。
+    /// 当数据异常出现 <paramref name="min"/> &gt; <paramref name="max"/> 时不夹取，避免 <see cref="Math.Clamp"/> 抛错。
+    /// </summary>
+    private static int Clamp(int value, int? min, int? max)
+    {
+        if (min is { } lower && max is { } upper)
+        {
+            return lower <= upper ? Math.Clamp(value, lower, upper) : value;
+        }
+
+        if (min is { } floor)
+        {
+            return Math.Max(floor, value);
+        }
+
+        if (max is { } ceiling)
+        {
+            return Math.Min(ceiling, value);
+        }
+
+        return value;
     }
 
     private static string? Compose(string source, string? notes)

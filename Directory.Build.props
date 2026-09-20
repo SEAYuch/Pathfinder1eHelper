@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- 统一告警策略：告警即错误，保证主干零告警。
+         分析器级别使用 SDK 默认（latest），不额外上调到 latest-recommended：
+         后者会引入大量本地化/性能类规则（CA1305/CA1304/CA1859 等），对本应用收益低。 -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

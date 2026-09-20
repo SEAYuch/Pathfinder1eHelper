@@ -59,4 +59,32 @@ public class SpellsViewModelTests
         Assert.NotNull(service.LastQuery);
         Assert.Null(service.LastQuery!.Source);
     }
+
+    [Fact]
+    public async Task Load_more_expands_the_page_and_reports_the_true_total()
+    {
+        var service = new FakeSpellService();
+        service.Results.Add(new Spell { Id = 1, NameEn = "Acid Splash" });
+        service.Results.Add(new Spell { Id = 2, NameEn = "Bless" });
+        service.Results.Add(new Spell { Id = 3, NameEn = "Cure Light Wounds" });
+        var vm = new SpellsViewModel(service);
+        using var activation = vm.Activator.Activate();
+
+        // 手动执行一页（2 条）→ 触发“还有更多”，并显示真实总数。
+        var firstPage = new TaskCompletionSource();
+        using var subscription = vm.SearchCommand.Subscribe(_ => firstPage.TrySetResult());
+        ((ICommand)vm.SearchCommand).Execute(new SpellQuery(null, null, null, 0, 2));
+        await firstPage.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(2, vm.Spells.Count);
+        Assert.True(vm.HasMoreResults);
+        Assert.Contains("共 3 条", vm.ResultSummary);
+
+        // 加载更多：扩大页大小后重新查询，得到全部 3 条。
+        ((ICommand)vm.LoadMoreCommand).Execute(null);
+        await Task.Delay(100);
+
+        Assert.Equal(3, vm.Spells.Count);
+        Assert.False(vm.HasMoreResults);
+    }
 }

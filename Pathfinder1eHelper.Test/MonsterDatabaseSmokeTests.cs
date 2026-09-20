@@ -1,5 +1,4 @@
 using Pathfinder1eHelper.Data;
-using Pathfinder1eHelper.Infrastructure;
 using Pathfinder1eHelper.Models;
 using Pathfinder1eHelper.Services;
 
@@ -11,8 +10,8 @@ public class MonsterDatabaseSmokeTests
     [Fact]
     public async Task Monster_tables_are_populated()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new MonsterRepository(fsql);
@@ -32,8 +31,8 @@ public class MonsterDatabaseSmokeTests
     [Fact]
     public async Task Monster_fields_and_first_letter_filter_round_trip()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new MonsterRepository(fsql);
@@ -68,8 +67,8 @@ public class MonsterDatabaseSmokeTests
     [Fact]
     public async Task True_dragons_link_to_their_overview()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new MonsterRepository(fsql);

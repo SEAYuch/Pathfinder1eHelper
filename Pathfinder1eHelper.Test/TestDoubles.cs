@@ -67,7 +67,8 @@ public sealed class FakeSpellService : ISpellService
     public Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default)
     {
         LastQuery = query;
-        return Task.FromResult<IReadOnlyList<Spell>>(Results.ToList());
+        return Task.FromResult<IReadOnlyList<Spell>>(
+            Results.Skip(query.Skip).Take(query.Take).ToList());
     }
 
     public Task<int> CountAsync(SpellQuery query, CancellationToken ct = default) =>
@@ -134,7 +135,8 @@ public sealed class FakeMonsterService : IMonsterService
     public Task<IReadOnlyList<Monster>> SearchAsync(MonsterQuery query, CancellationToken ct = default)
     {
         LastQuery = query;
-        return Task.FromResult<IReadOnlyList<Monster>>(Results.ToList());
+        return Task.FromResult<IReadOnlyList<Monster>>(
+            Results.Skip(query.Skip).Take(query.Take).ToList());
     }
 
     public Task<int> CountAsync(MonsterQuery query, CancellationToken ct = default) =>

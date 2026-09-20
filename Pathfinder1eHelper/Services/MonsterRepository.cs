@@ -32,14 +32,15 @@ public sealed class MonsterRepository(IFreeSql fsql) : IMonsterRepository
     public async Task<int> CountAsync(MonsterQuery query, CancellationToken ct = default) =>
         (int)await Filtered(query).CountAsync(ct);
 
+    // 去重与排序下推到 SQL（DISTINCT + ORDER BY），避免把整列拉进内存再处理。
     public async Task<IReadOnlyList<string>> GetCreatureTypesAsync(CancellationToken ct = default)
     {
-        var types = await fsql.Select<Monster>().ToListAsync(m => m.CreatureType, ct);
-        return types
-            .Where(t => !string.IsNullOrWhiteSpace(t))
+        var types = await fsql.Select<Monster>()
+            .Where(m => m.CreatureType != null && m.CreatureType != "")
             .Distinct()
-            .OrderBy(t => t, System.StringComparer.Ordinal)
-            .ToList()!;
+            .OrderBy(m => m.CreatureType)
+            .ToListAsync(m => m.CreatureType, ct);
+        return types.Select(t => t!).ToList();
     }
 
     public async Task<IReadOnlyList<MonsterGroup>> GetGroupsForMonsterAsync(int monsterId, CancellationToken ct = default)

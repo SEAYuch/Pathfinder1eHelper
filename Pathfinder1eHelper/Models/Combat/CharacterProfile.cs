@@ -44,11 +44,21 @@ public sealed class CharacterProfile
 
     public List<WeaponProfile> Weapons { get; set; } = [];
 
-    /// <summary>补齐旧档案缺少的字段/列表。</summary>
+    /// <summary>补齐旧档案缺少的字段/列表，并把已废弃的加值目标迁移到现行目标。</summary>
     public void ApplyDefaults()
     {
         Abilities ??= new AbilityScores();
         Bonuses ??= [];
         Weapons ??= [];
+
+        foreach (var bonus in Bonuses)
+        {
+            bonus.Target = bonus.Target switch
+            {
+                BonusTarget.MeleeTouchAttack => BonusTarget.MeleeAttack,
+                BonusTarget.RangedTouchAttack => BonusTarget.RangedAttack,
+                _ => bonus.Target,
+            };
+        }
     }
 }

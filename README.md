@@ -46,7 +46,7 @@ Pathfinder1eHelper.slnx
 ### 架构要点
 
 - **组合根**:`Program.cs` 通过 `UseReactiveUIWithAutofac` 一次性完成 Autofac 注册、Splat 定位器接管与 ReactiveUI 钩子安装;`Infrastructure/AppModule` 集中注册全部依赖(单例共享 `IFreeSql`,页面惰性工厂)。
-- **MVVM + ViewLocator**:命名约定 `*.ViewModels.*ViewModel → *.Views.*View` 解析视图,优先走 DI 容器,支持视图注入。
+- **MVVM + ViewLocator**:`Views/ViewLocator.cs` 用显式映射(`ViewModel 类型 → View`)解析视图,无反射、AOT/裁剪安全;视图优先从 DI 容器解析。
 - **响应式数据流**:`SpellsViewModel` 用 `WhenAnyValue + Throttle(300ms) + DistinctUntilChanged + ObserveOn(MainThread)` 驱动搜索命令,`ThrownExceptions` 兜底展示错误;设计时用示例服务支持 XAML 预览器。
 
 ## 数据说明
@@ -93,17 +93,19 @@ Pathfinder1eHelper.slnx
 dotnet restore
 dotnet build Pathfinder1eHelper.slnx
 
-# 运行(需先准备 data/spells.duckdb)
+# 运行(需先准备 data/pathfinder1e.duckdb)
 dotnet run --project Pathfinder1eHelper
 ```
 
 ## 测试
 
+测试工程基于 xUnit v3 + Microsoft.Testing.Platform(`global.json` 指定),直接运行测试宿主:
+
 ```bash
-dotnet test Pathfinder1eHelper.slnx
+dotnet run --project Pathfinder1eHelper.Test
 ```
 
-测试包含三类:服务层单元测试(Fake 仓储)、`SpellDatabaseSmokeTests` 连真实 DuckDB 的集成冒烟测试、`SpellsViewModelTests` 视图模型数据流测试。
+测试包含三类:服务/领域单元测试(Fake 仓储)、连真实 DuckDB 的集成冒烟测试(`*DatabaseSmokeTests`)、视图模型数据流测试。**冒烟测试需要 `data/pathfinder1e.duckdb`**;缺失时会自动跳过(Skipped),不阻塞其余测试。
 
 ## 许可证
 

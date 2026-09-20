@@ -48,25 +48,20 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
     public async Task<int> CountAsync(SpellQuery query, CancellationToken ct = default) =>
         (int)await Filtered(query).CountAsync(ct);
 
-    public async Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default)
-    {
-        var sources = await fsql.Select<Spell>().ToListAsync(s => s.Source, ct);
-        return sources
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(s => s, StringComparer.Ordinal)
-            .ToList();
-    }
+    // 去重与排序下推到 SQL（DISTINCT + ORDER BY），避免把整列拉进内存再处理。
+    public async Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
+        await fsql.Select<Spell>()
+            .Where(s => s.Source != null && s.Source != "")
+            .Distinct()
+            .OrderBy(s => s.Source)
+            .ToListAsync(s => s.Source, ct);
 
-    public async Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default)
-    {
-        var names = await fsql.Select<SpellLevel>().ToListAsync(sl => sl.ClassName, ct);
-        return names
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-    }
+    public async Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
+        await fsql.Select<SpellLevel>()
+            .Where(sl => sl.ClassName != null && sl.ClassName != "")
+            .Distinct()
+            .OrderBy(sl => sl.ClassName)
+            .ToListAsync(sl => sl.ClassName, ct);
 
     public async Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         await fsql.Select<Spell>().Where(s => s.Id == id).FirstAsync(ct);

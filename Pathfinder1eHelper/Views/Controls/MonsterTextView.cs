@@ -17,6 +17,7 @@ public sealed class MonsterTextView : UserControl
         AvaloniaProperty.Register<MonsterTextView, string?>(nameof(Text));
 
     private readonly StackPanel _panel = new() { Spacing = 6 };
+    private string? _renderedText;
 
     public MonsterTextView()
     {
@@ -40,6 +41,13 @@ public sealed class MonsterTextView : UserControl
 
     private void Rebuild()
     {
+        // 绑定重复写入同一文本（如重新选中同一项）时跳过重建，避免长原文的重复解析与控件创建。
+        if (string.Equals(_renderedText, Text, System.StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _renderedText = Text;
         _panel.Children.Clear();
         foreach (var block in PipeTableParser.Parse(Text))
         {

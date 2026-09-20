@@ -1,15 +1,14 @@
 using System.Text.RegularExpressions;
 using Pathfinder1eHelper.Data;
-using Pathfinder1eHelper.Infrastructure;
 using Pathfinder1eHelper.Models;
 using Pathfinder1eHelper.Services;
 
 namespace Pathfinder1eHelper.Test;
 
 /// <summary>
-/// Integration smoke test against the real, shipped <c>spells.duckdb</c> (copied to the test
-/// output by the csproj). Validates that the DuckDB.NET engine bundled with the FreeSql provider
-/// can open the CLI-produced file read-only and that the entity mapping round-trips.
+/// Integration smoke test against the real, shipped <c>pathfinder1e.duckdb</c> (copied to the test
+/// output by the csproj; skipped when absent). Validates that the DuckDB.NET engine bundled with the
+/// FreeSql provider can open the CLI-produced file read-only and that the entity mapping round-trips.
 /// </summary>
 public class SpellDatabaseSmokeTests
 {
@@ -21,8 +20,8 @@ public class SpellDatabaseSmokeTests
     [Fact]
     public async Task Reference_database_opens_readonly_maps_entities_and_returns_rows()
     {
-        var provider = new DbPathProvider(); // AppContext.BaseDirectory\data\spells.duckdb
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable(); // AppContext.BaseDirectory\data\pathfinder1e.duckdb
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -55,8 +54,8 @@ public class SpellDatabaseSmokeTests
     [Fact]
     public async Task English_search_is_case_insensitive()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -76,8 +75,8 @@ public class SpellDatabaseSmokeTests
     [Fact]
     public async Task Spell_buff_table_exposes_structured_effects()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -102,8 +101,8 @@ public class SpellDatabaseSmokeTests
     [Fact]
     public async Task Source_and_first_letter_filters_narrow_results()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -126,8 +125,8 @@ public class SpellDatabaseSmokeTests
     [Fact]
     public async Task Class_and_level_filters_query_spell_levels_index()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new SpellRepository(fsql);
@@ -160,8 +159,8 @@ public class SpellDatabaseSmokeTests
     [Fact]
     public async Task No_distance_only_values_remain_in_area_when_range_is_empty()
     {
-        var provider = new DbPathProvider();
-        var fsql = FreeSqlFactory.CreateReadOnly(provider.DbPath);
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
         try
         {
             var repo = new SpellRepository(fsql);

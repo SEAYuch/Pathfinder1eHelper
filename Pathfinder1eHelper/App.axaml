@@ -23,9 +23,9 @@
     </Application.Resources>
 
     <Application.Styles>
-        <!-- FluentAvaloniaTheme：WinUI3 风格主题（与 DdraigBench 一致）；基础主题只放这一个 -->
+        <!-- FluentAvaloniaTheme：WinUI3 风格主题。它已内置 DataGrid 的样式（DataGridColumnHeaderStyles 等），
+             因此不要再显式 StyleInclude Avalonia.Controls.DataGrid 的 Fluent.xaml——两套 DataGrid 主题叠加会
+             使列表的列标题（表头）渲染为透明/不可见。 -->
         <sty:FluentAvaloniaTheme PreferSystemTheme="True" PreferUserAccentColor="True" />
-        <!-- DataGrid 属控件自带主题，需显式引入 -->
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
     </Application.Styles>
 </Application>

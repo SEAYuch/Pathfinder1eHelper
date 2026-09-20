@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Pathfinder1eHelper.slnx
+
+      - name: Build
+        run: dotnet build Pathfinder1eHelper.slnx -c Release --no-restore
+
+      # 测试宿主为 Microsoft.Testing.Platform（见 global.json / 测试 csproj 注释），直接运行测试工程。
+      # 参考库 data/pathfinder1e.duckdb 不在版本库中，冒烟测试会自动跳过。
+      - name: Test
+        run: dotnet run --project Pathfinder1eHelper.Test/Pathfinder1eHelper.Test.csproj -c Release --no-build

@@ -112,4 +112,30 @@ public class MonstersViewModelTests
         Assert.Single(vm.RelatedGroups);
         Assert.Equal("龙类绪论", vm.RelatedGroups[0].NameZh);
     }
+
+    [Fact]
+    public async Task Load_more_expands_the_page_and_reports_the_true_total()
+    {
+        var service = new FakeMonsterService();
+        service.Results.Add(new Monster { Id = 1, NameZh = "甲", NameEn = "Aboleth" });
+        service.Results.Add(new Monster { Id = 2, NameZh = "乙", NameEn = "Ankheg" });
+        service.Results.Add(new Monster { Id = 3, NameZh = "丙", NameEn = "Basilisk" });
+        var vm = new MonstersViewModel(service);
+        using var activation = vm.Activator.Activate();
+
+        var firstPage = new TaskCompletionSource();
+        using var subscription = vm.SearchCommand.Subscribe(_ => firstPage.TrySetResult());
+        ((ICommand)vm.SearchCommand).Execute(new MonsterQuery(null, null, null, 0, 2));
+        await firstPage.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(2, vm.Monsters.Count);
+        Assert.True(vm.HasMoreResults);
+        Assert.Contains("共 3 条", vm.ResultSummary);
+
+        ((ICommand)vm.LoadMoreCommand).Execute(null);
+        await Task.Delay(100);
+
+        Assert.Equal(3, vm.Monsters.Count);
+        Assert.False(vm.HasMoreResults);
+    }
 }

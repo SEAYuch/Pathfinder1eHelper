@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Runtime / UI -->
+    <PackageVersion Include="Avalonia" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+    <PackageVersion Include="FluentAvaloniaUI" Version="3.1.0" />
+    <PackageVersion Include="FluentIcons.Avalonia.Fluent" Version="2.1.341" />
+
+    <!-- MVVM / DI -->
+    <PackageVersion Include="ReactiveUI.Avalonia" Version="12.1.2" />
+    <PackageVersion Include="ReactiveUI.Avalonia.Autofac" Version="12.1.2" />
+
+    <!-- Data -->
+    <PackageVersion Include="FreeSql" Version="3.5.311" />
+    <PackageVersion Include="FreeSql.Provider.Duckdb" Version="3.5.311" />
+
+    <!-- Test -->
+    <PackageVersion Include="Avalonia.Headless" Version="12.1.2" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <PackageVersion Include="xunit.v3" Version="4.0.1" />
+  </ItemGroup>
+</Project>

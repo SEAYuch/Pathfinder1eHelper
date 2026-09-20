@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Pathfinder1eHelper.Models;
 using Pathfinder1eHelper.Services;
 using ReactiveUI;
@@ -35,8 +36,15 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     /// <summary>Sentinel shown in the level filter that means "all levels".</summary>
     public const string AllLevels = "全部环位";
 
+    /// <summary>默认每页条数；“加载更多”按 <see cref="PageSizeStep"/> 递增。</summary>
+    public const int DefaultPageSize = 200;
+
+    private const int PageSizeStep = 200;
+
     private readonly ISpellService _spells;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
+    private readonly HashSet<string> _knownSources = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _knownClasses = new(StringComparer.Ordinal);
 
     public SpellsViewModel(ISpellService spells)
     {
@@ -55,59 +63,100 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
             .. new[] { AllLevels }.Concat(Enumerable.Range(0, 10).Select(i => i.ToString()))
         ];
 
-        SearchCommand =
-            ReactiveCommand.CreateFromTask<SpellQuery, IReadOnlyList<Spell>>((query, ct) =>
-                _spells.SearchAsync(query, ct));
-
+        SearchCommand = ReactiveCommand.CreateFromTask<SpellQuery, SpellPage>(SearchAsync);
         _isBusy = SearchCommand.IsExecuting.ToProperty(this, x => x.IsBusy);
+
+        LoadMoreCommand = ReactiveCommand.CreateFromTask(
+            LoadMoreAsync,
+            this.WhenAnyValue(x => x.HasMoreResults));
 
         this.WhenActivated(disposables =>
         {
+            // 页面停用时取消过滤器的一次性载入与执行中的搜索。
+            var loadCts = new CancellationTokenSource();
+            disposables.Add(ActionDisposable.Create(loadCts.Cancel));
+
             // Populate the source & class filters once per activation (self-contained error handling).
-            _ = LoadSourcesAsync();
-            _ = LoadClassesAsync();
+            _ = LoadSourcesAsync(loadCts.Token);
+            _ = LoadClassesAsync(loadCts.Token);
 
             // Debounced query stream: any filter change -> a normalized query -> the search command.
+            // Throttle 已在任务线程池上投递，命令因此也在后台执行数据库查询；结果再切回主线程应用。
             this.WhenAnyValue(
                     x => x.SearchText,
                     x => x.SelectedSource,
                     x => x.SelectedLetter,
                     x => x.SelectedClass,
                     x => x.SelectedLevel,
-                    (term, source, letter, className, level) => new SpellQuery(
-                        term,
-                        source == AllSources ? null : source,
-                        letter == AllLetters ? null : letter,
-                        Skip: 0,
-                        Take: 200,
-                        ClassName: className == AllClasses ? null : className,
-                        ClassLevel: int.TryParse(level, out var parsedLevel) ? parsedLevel : null))
+                    (_, _, _, _, _) => BuildQuery())
                 .Throttle(TimeSpan.FromMilliseconds(300), RxSchedulers.TaskpoolScheduler)
                 .DistinctUntilChanged()
-                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .InvokeCommand(SearchCommand)
                 .DisposeWith(disposables);
 
-            // Apply results on the UI thread (ReactiveCommand delivers on the main scheduler).
-            SearchCommand.Subscribe(list =>
-            {
-                Spells.Clear();
-                foreach (var spell in list)
-                {
-                    Spells.Add(spell);
-                }
-
-                SelectedSpell = Spells.Count > 0 ? Spells[0] : null;
-                ResultSummary = list.Count >= 200
-                    ? "显示前 200 条法术（可用筛选缩小范围）"
-                    : $"共 {list.Count} 条法术";
-            }).DisposeWith(disposables);
+            // Apply results on the UI thread.
+            SearchCommand
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
+                .Subscribe(ApplyPage)
+                .DisposeWith(disposables);
 
             // Surface async failures instead of tearing down the pipeline.
             SearchCommand.ThrownExceptions
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(ex => LastError = ex.Message)
                 .DisposeWith(disposables);
         });
+    }
+
+    private SpellQuery BuildQuery() => new(
+        SearchText,
+        SelectedSource == AllSources ? null : SelectedSource,
+        SelectedLetter == AllLetters ? null : SelectedLetter,
+        Skip: 0,
+        Take: PageSize,
+        ClassName: SelectedClass == AllClasses ? null : SelectedClass,
+        ClassLevel: int.TryParse(SelectedLevel, out var level) ? level : null);
+
+    private async Task<SpellPage> SearchAsync(SpellQuery query, CancellationToken ct)
+    {
+        var items = await _spells.SearchAsync(query, ct);
+        // 结果不足一页即说明已到末尾，无需再查总数；否则查询真实总数用于提示与“加载更多”。
+        var total = items.Count < query.Take ? items.Count : await _spells.CountAsync(query, ct);
+        return new SpellPage(items, total);
+    }
+
+    private async Task LoadMoreAsync(CancellationToken ct)
+    {
+        try
+        {
+            PageSize += PageSizeStep;
+            var page = await Task.Run(() => SearchAsync(BuildQuery(), ct), ct);
+            ct.ThrowIfCancellationRequested();
+            ApplyPage(page);
+        }
+        catch (OperationCanceledException)
+        {
+            // 页面停用：忽略。
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+        }
+    }
+
+    private void ApplyPage(SpellPage page)
+    {
+        Spells.Clear();
+        foreach (var spell in page.Items)
+        {
+            Spells.Add(spell);
+        }
+
+        SelectedSpell = Spells.Count > 0 ? Spells[0] : null;
+        HasMoreResults = Spells.Count < page.Total;
+        ResultSummary = HasMoreResults
+            ? $"共 {page.Total} 条法术，已显示前 {Spells.Count} 条"
+            : $"共 {page.Total} 条法术";
     }
 
     /// <summary>Design-time constructor: sample data so the XAML previewer renders without DI.</summary>
@@ -150,7 +199,20 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     /// <summary>环位筛选项（“全部” + 0–9）。</summary>
     public ObservableCollection<string> Levels { get; }
 
-    public ReactiveCommand<SpellQuery, IReadOnlyList<Spell>> SearchCommand { get; }
+    public ReactiveCommand<SpellQuery, SpellPage> SearchCommand { get; }
+
+    /// <summary>“加载更多”：按 <see cref="PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
+    public ICommand LoadMoreCommand { get; }
+
+    /// <summary>当前页大小；“加载更多”每次递增 <see cref="PageSizeStep"/>。</summary>
+    public int PageSize { get; private set; } = DefaultPageSize;
+
+    /// <summary>是否还有未显示的匹配结果（由 <see cref="ApplyPage"/> 更新）。</summary>
+    public bool HasMoreResults
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public bool IsBusy => _isBusy.Value;
 
@@ -202,63 +264,54 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    private async Task LoadSourcesAsync()
+    private async Task LoadSourcesAsync(CancellationToken ct)
     {
         try
         {
-            var sources = await _spells.GetSourcesAsync();
+            var sources = await Task.Run(() => _spells.GetSourcesAsync(ct), ct);
+            ct.ThrowIfCancellationRequested();
             foreach (var source in sources)
             {
-                if (!Sources.Contains(source))
+                if (_knownSources.Add(source))
                 {
                     Sources.Add(source);
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            // 页面停用：忽略。
+        }
         catch (Exception ex)
         {
             LastError = ex.Message;
         }
     }
 
-    private async Task LoadClassesAsync()
+    private async Task LoadClassesAsync(CancellationToken ct)
     {
         try
         {
-            var classes = await _spells.GetClassesAsync();
+            var classes = await Task.Run(() => _spells.GetClassesAsync(ct), ct);
+            ct.ThrowIfCancellationRequested();
             foreach (var className in classes)
             {
-                if (!Classes.Contains(className))
+                if (_knownClasses.Add(className))
                 {
                     Classes.Add(className);
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            // 页面停用：忽略。
+        }
         catch (Exception ex)
         {
             LastError = ex.Message;
         }
     }
-
-    /// <summary>Minimal no-op service used only by the design-time constructor.</summary>
-    private sealed class DesignTimeSpellService : ISpellService
-    {
-        public static readonly DesignTimeSpellService Instance = new();
-
-        public Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<Spell>>(Array.Empty<Spell>());
-
-        public Task<int> CountAsync(SpellQuery query, CancellationToken ct = default) => Task.FromResult(0);
-
-        public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
-
-        public Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
-
-        public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) => Task.FromResult<Spell?>(null);
-
-        public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<SpellBuff>>(Array.Empty<SpellBuff>());
-    }
 }
+
+/// <summary>一页法术结果：当前页条目与满足筛选条件的总数。</summary>
+public sealed record SpellPage(IReadOnlyList<Spell> Items, int Total);

@@ -27,17 +27,44 @@ public class CombatViewModelTests
     }
 
     [Fact]
-    public void Changing_strength_recalculates_and_saves()
+    public async Task Changing_strength_recalculates_and_saves_in_background()
     {
         var repository = new FakeCharacterRepository();
         repository.Data.Add(new CharacterProfile { Name = "测试" });
         var vm = Create(repository);
 
         vm.Strength = 20;
+        Assert.Equal(5, vm.Sheet.MeleeAttack.Total); // 重算仍同步生效
 
-        Assert.Equal(5, vm.Sheet.MeleeAttack.Total);
+        await vm.FlushPendingSavesAsync(); // 落盘在后台合并进行
+
         Assert.NotNull(repository.LastSaved);
         Assert.Equal(20, repository.LastSaved!.Abilities.Strength);
+    }
+
+    [Fact]
+    public void Legacy_touch_bonus_targets_are_migrated_on_load()
+    {
+        var repository = new FakeCharacterRepository();
+        repository.Data.Add(new CharacterProfile
+        {
+            Name = "旧档",
+            Bonuses =
+            [
+                new BonusEntry
+                {
+                    Name = "旧接触加值",
+                    Type = BonusType.Untyped,
+                    Target = BonusTarget.MeleeTouchAttack,
+                    Value = 2,
+                },
+            ],
+        });
+
+        var vm = Create(repository);
+
+        Assert.Equal(2, vm.Sheet.MeleeAttack.Total);
+        Assert.Equal(BonusTarget.MeleeAttack, vm.Bonuses[0].Target.Value);
     }
 
     [Fact]
@@ -215,6 +242,60 @@ public class CombatViewModelTests
         Assert.Equal(1, bonus.Value);
         Assert.Equal(BonusOrigin.SpellBuff, bonus.Origin);
         Assert.Contains("CRB", bonus.Notes);
+    }
+
+    [Fact]
+    public async Task Buff_with_negative_value_is_preserved()
+    {
+        var spells = new FakeSpellService();
+        spells.Results.Add(new Spell { Id = 9, NameZh = "虚弱诅咒", NameEn = "Bane", Source = "CRB" });
+        spells.Buffs.Add(new SpellBuff
+        {
+            Id = 9,
+            NameEn = "Bane",
+            NameZh = "虚弱诅咒",
+            EffectName = "虚弱诅咒·攻击",
+            BonusType = "Untyped",
+            Target = "MeleeAttack",
+            Value = -1,
+        });
+        var vm = Create(new FakeCharacterRepository(), spells);
+
+        await vm.LoadBuffCandidatesAsync();
+        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        await vm.AddBuffAsync();
+
+        var bonus = Assert.Single(vm.Bonuses);
+        Assert.Equal(-1, bonus.Value);
+        Assert.Equal(-1, vm.Sheet.MeleeAttack.Total);
+    }
+
+    [Fact]
+    public async Task Buff_with_inverted_scale_bounds_does_not_throw()
+    {
+        var spells = new FakeSpellService();
+        spells.Results.Add(new Spell { Id = 10, NameZh = "异常", NameEn = "Weird", Source = "CRB" });
+        spells.Buffs.Add(new SpellBuff
+        {
+            Id = 10,
+            NameEn = "Weird",
+            NameZh = "异常",
+            EffectName = "异常",
+            BonusType = "Untyped",
+            Target = "MeleeAttack",
+            ScaleBase = 1,
+            ScaleOffset = 0,
+            ScaleStep = 1,
+            ScaleMin = 5,
+            ScaleMax = 2,
+        });
+        var vm = Create(new FakeCharacterRepository(), spells);
+
+        await vm.LoadBuffCandidatesAsync();
+        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        await vm.AddBuffAsync();
+
+        Assert.Single(vm.Bonuses);
     }
 
     [Fact]
