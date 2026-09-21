@@ -103,6 +103,29 @@ public class JsonCharacterRepositoryTests : IDisposable
         Assert.True(File.Exists(repository.FilePathFor(profile.Id)));
     }
 
+    [Fact]
+    public void Legacy_isRanged_flag_migrates_to_dexterity_attack_ability()
+    {
+        Directory.CreateDirectory(_directory);
+        var id = Guid.NewGuid();
+        var json = $$"""
+        {
+          "id": "{{id}}",
+          "name": "旧弓手",
+          "weapons": [
+            { "name": "长弓", "isRanged": true, "damageDice": "1d8", "strengthMultiplier": 0 }
+          ]
+        }
+        """;
+        File.WriteAllText(Path.Combine(_directory, $"{id:N}.json"), json);
+
+        var repository = new JsonCharacterRepository(_directory);
+        var profile = Assert.Single(repository.LoadAll());
+
+        var weapon = Assert.Single(profile.Weapons);
+        Assert.Equal(WeaponAbility.Dexterity, weapon.AttackAbility);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directory))

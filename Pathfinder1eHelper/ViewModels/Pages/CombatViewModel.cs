@@ -608,9 +608,10 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             new WeaponProfile
             {
                 Name = preset.Weapon.Name,
-                IsRanged = preset.Weapon.IsRanged,
+                AttackAbility = preset.Weapon.AttackAbility,
                 DamageDice = preset.Weapon.DamageDice,
                 StrengthMultiplier = preset.Weapon.StrengthMultiplier,
+                DamageAbility = preset.Weapon.DamageAbility,
                 Enhancement = preset.Weapon.Enhancement,
                 Critical = preset.Weapon.Critical,
             },
@@ -705,8 +706,8 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     private static IReadOnlyList<StatCard> BuildCards(CombatSheet sheet) =>
     [
-        new StatCard("近战攻击", sheet.MeleeAttack),
-        new StatCard("远程攻击", sheet.RangedAttack),
+        new StatCard("力上命中", sheet.MeleeAttack),
+        new StatCard("敏上命中", sheet.RangedAttack),
         new StatCard("远程接触攻击", sheet.RangedTouchAttack),
         new StatCard("防御等级 AC", sheet.ArmorClass, signed: false),
         new StatCard("接触 AC", sheet.TouchArmorClass, signed: false),

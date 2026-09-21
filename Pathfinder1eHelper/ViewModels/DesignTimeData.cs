@@ -100,7 +100,7 @@ internal sealed class DesignTimeCharacterRepository : ICharacterRepository
                 new WeaponProfile
                 {
                     Name = "复合长弓",
-                    IsRanged = true,
+                    AttackAbility = WeaponAbility.Dexterity,
                     DamageDice = "1d8",
                     StrengthMultiplier = 0,
                     Enhancement = 2,

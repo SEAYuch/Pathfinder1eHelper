@@ -207,6 +207,53 @@ public class CombatCalculatorTests
     }
 
     [Fact]
+    public void Weapon_can_deal_dexterity_based_damage()
+    {
+        var profile = Profile();
+        profile.Abilities.Dexterity = 16; // +3
+        profile.BaseAttackBonus = 5;
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "细剑",
+            DamageDice = "1d6",
+            StrengthMultiplier = 1,
+            DamageAbility = WeaponAbility.Dexterity,
+            Enhancement = 1,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+        var weapon = Assert.Single(sheet.Weapons);
+
+        Assert.Equal("1d6+4", weapon.DamageDisplay); // 3（敏捷）+ 1（增强）
+        Assert.Contains(weapon.Damage.Contributions, c => c.Included && c.Label.StartsWith("敏捷"));
+    }
+
+    [Fact]
+    public void Weapon_attack_ability_selects_ability_and_bonus_target()
+    {
+        var profile = Profile();
+        profile.Abilities.Dexterity = 16; // +3
+        profile.BaseAttackBonus = 4;
+        profile.Bonuses.Add(new BonusEntry { Name = "远程幸运", Type = BonusType.Luck, Target = BonusTarget.RangedAttack, Value = 1 });
+        profile.Bonuses.Add(new BonusEntry { Name = "武器专攻", Type = BonusType.Untyped, Target = BonusTarget.MeleeAttack, Value = 2 });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "长弓",
+            AttackAbility = WeaponAbility.Dexterity,
+            DamageDice = "1d8",
+            StrengthMultiplier = 0,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+        var weapon = Assert.Single(sheet.Weapons);
+
+        Assert.Equal(8, weapon.Attack.Total); // BAB4 + 敏捷3 + 远程幸运1
+        Assert.Contains(weapon.Attack.Contributions, c => c.Included && c.Label == "远程幸运");
+        Assert.DoesNotContain(weapon.Attack.Contributions, c => c.Included && c.Label == "武器专攻");
+        Assert.Equal("1d8", weapon.DamageDisplay); // 倍率 0 → 无属性伤害
+    }
+
+    [Fact]
     public void Disabled_entries_are_ignored()
     {
         var profile = Profile();

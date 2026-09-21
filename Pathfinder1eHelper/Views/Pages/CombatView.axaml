@@ -367,14 +367,31 @@
                                             <Button Grid.Column="1" Content="✕" Command="{Binding RemoveCommand}" />
                                         </Grid>
                                         <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="4">
-                                            <CheckBox Content="远程" IsChecked="{Binding IsRanged}" />
+                                            <controls:OptionPicker MinWidth="96" Placeholder="命中属性"
+                                                                   ItemsSource="{x:Static vmc:CombatOptions.WeaponAbilities}"
+                                                                   SelectedItem="{Binding AttackAbility}">
+                                                <controls:OptionPicker.ItemTemplate>
+                                                    <DataTemplate x:DataType="vmc:WeaponAbilityOption">
+                                                        <TextBlock Text="{Binding Display}" />
+                                                    </DataTemplate>
+                                                </controls:OptionPicker.ItemTemplate>
+                                            </controls:OptionPicker>
                                             <TextBox Width="90" Text="{Binding DamageDice}"
                                                      PlaceholderText="伤害骰" />
-                                            <controls:OptionPicker MinWidth="110" Placeholder="力量倍率"
+                                            <controls:OptionPicker MinWidth="110" Placeholder="倍率"
                                                                    ItemsSource="{x:Static vmc:CombatOptions.StrengthMultipliers}"
                                                                    SelectedItem="{Binding StrengthMultiplier}">
                                                 <controls:OptionPicker.ItemTemplate>
                                                     <DataTemplate x:DataType="vmc:StrengthMultiplierOption">
+                                                        <TextBlock Text="{Binding Display}" />
+                                                    </DataTemplate>
+                                                </controls:OptionPicker.ItemTemplate>
+                                            </controls:OptionPicker>
+                                            <controls:OptionPicker MinWidth="96" Placeholder="伤害属性"
+                                                                   ItemsSource="{x:Static vmc:CombatOptions.WeaponAbilities}"
+                                                                   SelectedItem="{Binding DamageAbility}">
+                                                <controls:OptionPicker.ItemTemplate>
+                                                    <DataTemplate x:DataType="vmc:WeaponAbilityOption">
                                                         <TextBlock Text="{Binding Display}" />
                                                     </DataTemplate>
                                                 </controls:OptionPicker.ItemTemplate>

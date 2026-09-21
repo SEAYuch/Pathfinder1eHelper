@@ -166,9 +166,10 @@ public static class CombatCalculator
         int dexMod,
         int sizeAttack)
     {
-        var abilityLabel = weapon.IsRanged ? "敏捷" : "力量";
-        var abilityMod = weapon.IsRanged ? dexMod : strMod;
-        var attackTarget = weapon.IsRanged ? BonusTarget.RangedAttack : BonusTarget.MeleeAttack;
+        var isRanged = weapon.AttackAbility == WeaponAbility.Dexterity;
+        var abilityLabel = isRanged ? "敏捷" : "力量";
+        var abilityMod = isRanged ? dexMod : strMod;
+        var attackTarget = isRanged ? BonusTarget.RangedAttack : BonusTarget.MeleeAttack;
 
         var attack = BonusEngine.Stat(
         [
@@ -179,10 +180,13 @@ public static class CombatCalculator
             .. BonusEngine.ToContributions(BonusEngine.Resolve(Target(bonuses, attackTarget))),
         ]);
 
-        var strengthDamage = strMod < 0 ? strMod : (int)Math.Floor(strMod * weapon.StrengthMultiplier);
+        // 伤害默认计力量（力上伤）；可切换为敏捷（敏上伤）。
+        var damageMod = weapon.DamageAbility == WeaponAbility.Dexterity ? dexMod : strMod;
+        var damageLabel = weapon.DamageAbility == WeaponAbility.Dexterity ? "敏捷" : "力量";
+        var abilityDamage = damageMod < 0 ? damageMod : (int)Math.Floor(damageMod * weapon.StrengthMultiplier);
         var damage = BonusEngine.Stat(
         [
-            BonusEngine.Base($"力量×{weapon.StrengthMultiplier:0.##}", strengthDamage),
+            BonusEngine.Base($"{damageLabel}×{weapon.StrengthMultiplier:0.##}", abilityDamage),
             BonusEngine.Base("武器增强", weapon.Enhancement),
             .. BonusEngine.ToContributions(BonusEngine.Resolve(Target(bonuses, BonusTarget.Damage))),
         ]);

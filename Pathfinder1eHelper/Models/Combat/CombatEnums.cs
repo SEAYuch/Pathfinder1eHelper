@@ -11,6 +11,16 @@ public enum Ability
     Charisma,
 }
 
+/// <summary>武器在命中/伤害上使用的能力调整值：力量 / 敏捷。</summary>
+public enum WeaponAbility
+{
+    /// <summary>力量（近战/投掷命中；常规力量上伤）。</summary>
+    Strength,
+
+    /// <summary>敏捷（远程命中；灵巧类敏上伤）。</summary>
+    Dexterity,
+}
+
 /// <summary>生物体型（由小到大）。</summary>
 public enum SizeCategory
 {

@@ -11,9 +11,10 @@ public sealed class WeaponViewModel : ReactiveObject
 {
     private readonly Action _changed;
     private string _name;
-    private bool _isRanged;
+    private WeaponAbilityOption _attackAbility;
     private string _damageDice;
     private StrengthMultiplierOption _strengthMultiplier;
+    private WeaponAbilityOption _damageAbility;
     private int? _enhancement;
     private string _critical;
     private WeaponResult? _result;
@@ -25,9 +26,10 @@ public sealed class WeaponViewModel : ReactiveObject
         _changed = changed;
         Id = model.Id;
         _name = model.Name;
-        _isRanged = model.IsRanged;
+        _attackAbility = CombatOptions.WeaponChoice(model.AttackAbility);
         _damageDice = model.DamageDice;
         _strengthMultiplier = CombatOptions.Multiplier(model.StrengthMultiplier);
+        _damageAbility = CombatOptions.WeaponChoice(model.DamageAbility);
         _enhancement = model.Enhancement;
         _critical = model.Critical;
 
@@ -48,12 +50,13 @@ public sealed class WeaponViewModel : ReactiveObject
         }
     }
 
-    public bool IsRanged
+    /// <summary>命中属性：力量 / 敏捷。</summary>
+    public WeaponAbilityOption AttackAbility
     {
-        get => _isRanged;
+        get => _attackAbility;
         set
         {
-            this.RaiseAndSetIfChanged(ref _isRanged, value);
+            this.RaiseAndSetIfChanged(ref _attackAbility, value);
             _changed();
         }
     }
@@ -74,6 +77,17 @@ public sealed class WeaponViewModel : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref _strengthMultiplier, value);
+            _changed();
+        }
+    }
+
+    /// <summary>伤害属性：力量 / 敏捷。</summary>
+    public WeaponAbilityOption DamageAbility
+    {
+        get => _damageAbility;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _damageAbility, value);
             _changed();
         }
     }
@@ -119,9 +133,10 @@ public sealed class WeaponViewModel : ReactiveObject
     {
         Id = Id,
         Name = Name,
-        IsRanged = IsRanged,
+        AttackAbility = _attackAbility.Value,
         DamageDice = DamageDice,
         StrengthMultiplier = _strengthMultiplier.Value,
+        DamageAbility = _damageAbility.Value,
         Enhancement = Enhancement ?? 0,
         Critical = Critical,
     };

@@ -134,6 +134,22 @@ public class CombatViewModelTests
     }
 
     [Fact]
+    public void Weapon_damage_can_switch_between_strength_and_dexterity()
+    {
+        var vm = Create(new FakeCharacterRepository(), out _);
+        vm.Dexterity = 16; // +3
+        ((ICommand)vm.AddWeaponCommand).Execute(null);
+
+        var weapon = Assert.Single(vm.Weapons);
+        Assert.Equal(WeaponAbility.Strength, weapon.DamageAbility.Value);
+
+        weapon.DamageAbility = CombatOptions.WeaponChoice(WeaponAbility.Dexterity);
+
+        Assert.Equal(WeaponAbility.Dexterity, weapon.DamageAbility.Value);
+        Assert.Equal(3, vm.Sheet.Weapons[0].Damage.Total);
+    }
+
+    [Fact]
     public void Applying_a_weapon_preset_adds_a_weapon()
     {
         var vm = Create(new FakeCharacterRepository(), out _);

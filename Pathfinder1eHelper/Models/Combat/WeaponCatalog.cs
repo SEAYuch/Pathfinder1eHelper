@@ -16,10 +16,10 @@ public static class WeaponCatalog
         new()
         {
             Name = name,
+            AttackAbility = ranged ? WeaponAbility.Dexterity : WeaponAbility.Strength,
             DamageDice = damage,
             StrengthMultiplier = strengthMultiplier,
             Critical = critical,
-            IsRanged = ranged,
         };
 
     public static IReadOnlyList<WeaponPreset> All { get; } =

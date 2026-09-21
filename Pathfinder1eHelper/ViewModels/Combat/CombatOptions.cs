@@ -18,6 +18,8 @@ public sealed record AbilityOption(Ability Value, string Display);
 
 public sealed record StrengthMultiplierOption(double Value, string Display);
 
+public sealed record WeaponAbilityOption(WeaponAbility Value, string Display);
+
 /// <summary>专注检定的常见情境。</summary>
 public enum ConcentrationSituation
 {
@@ -59,6 +61,13 @@ public static class CombatOptions
         new(1.5, "×1.5 双手"),
     ];
 
+    /// <summary>武器命中/伤害可选的能力属性：力量 / 敏捷。</summary>
+    public static IReadOnlyList<WeaponAbilityOption> WeaponAbilities { get; } =
+    [
+        new(WeaponAbility.Strength, "力量"),
+        new(WeaponAbility.Dexterity, "敏捷"),
+    ];
+
     public static IReadOnlyList<ConcentrationOption> ConcentrationSituations { get; } =
     [
         new(ConcentrationSituation.Custom, "自定义 DC"),
@@ -81,6 +90,9 @@ public static class CombatOptions
 
     public static StrengthMultiplierOption Multiplier(double value) =>
         StrengthMultipliers.FirstOrDefault(o => Math.Abs(o.Value - value) < 0.001) ?? StrengthMultipliers[2];
+
+    public static WeaponAbilityOption WeaponChoice(WeaponAbility value) =>
+        WeaponAbilities.First(o => o.Value == value);
 
     public static ConcentrationOption Concentration(ConcentrationSituation value) =>
         ConcentrationSituations.First(o => o.Value == value);
