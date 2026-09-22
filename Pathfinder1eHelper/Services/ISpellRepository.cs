@@ -17,7 +17,11 @@ public interface ISpellRepository
     /// <summary>Returns the distinct set of source-book codes present in the data, sorted.</summary>
     Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default);
 
-    /// <summary>Returns the distinct set of class/domain names (spell_levels.class_name), sorted.</summary>
+    /// <summary>
+    /// Returns the distinct set of class/domain names (spell_levels.class_name), sorted. Compound
+    /// entries such as <c>术士/法师</c> are flattened into their individual classes (<c>术士</c>,
+    /// <c>法师</c>) so the filter lists one option per class/domain.
+    /// </summary>
     Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default);
 
     /// <summary>Loads a single spell by primary key, or null if not found.</summary>

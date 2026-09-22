@@ -61,7 +61,7 @@ Pathfinder1eHelper.slnx
 | 表 | 说明 |
 | --- | --- |
 | `spells` | 法术主表(约 3373 行):出处、中/英文名、首字母,以及学派/环位/施法时间/成分/距离/效果/范围/目标/持续时间/豁免/法术抗力/描述/附加/`spell_type` 等字段 |
-| `spell_levels` | 法术按职业/领域拆分的环位:`spell_id`、`class_name`、`level`、`kind`(`class` = 主职业,`domain` = 领域/子域),供“职业 + 环位”筛选 |
+| `spell_levels` | 法术按职业/领域拆分的环位:`spell_id`、`class_name`、`level`、`kind`(`class` = 主职业,`domain` = 领域/子域),供“职业 + 环位”筛选。`class_name` 可含复合项(如 `术士/法师`);筛选下拉在读取时按 `/` 摊平为单个职业/领域并去重,查询时对 `class_name` 分词精确匹配 |
 | `spell_buffs` | 常见 Buff 法术的结构化加值效果,供战斗页“Buff 联动”使用 |
 | `feats` | 专长主表(约 1178 行):`source`(CRB/APG/ARG/UM/UC/UCa/ACG/UI/B1)、中/英文名、`first_letter`、`feat_type`、`is_fighter_bonus`、`prerequisites`、`summary`、`benefit`、`flavor` |
 | `feat_buffs` | 专长的结构化加值效果(列与 `spell_buffs` 同构),供战斗页“Buff 联动”使用 |

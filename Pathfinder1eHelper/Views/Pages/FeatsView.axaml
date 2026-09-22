@@ -86,7 +86,9 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                IsVisible="{Binding SelectedFeat, Converter={x:Static ObjectConverters.IsNull}}" />
 
-                    <ScrollViewer IsVisible="{Binding SelectedFeat, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <!-- 水平滚动禁用：让字段值在可视宽度内自动换行，而不是被裁掉 -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                  IsVisible="{Binding SelectedFeat, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <ContentControl Content="{Binding SelectedFeat}">
                             <ContentControl.ContentTemplate>
                                 <DataTemplate x:DataType="models:Feat">
@@ -99,24 +101,25 @@
                                         <Border Height="1" Background="{DynamicResource AppDividerBrush}"
                                                 Margin="0,4" />
 
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="类型" FontWeight="SemiBold" Width="88" Opacity="0.7" />
-                                            <TextBlock Text="{Binding FeatType}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="战士奖励" FontWeight="SemiBold" Width="88" Opacity="0.7" />
-                                            <TextBlock Text="{Binding FighterBonusDisplay}" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Prerequisites, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="先决条件" FontWeight="SemiBold" Width="88" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Prerequisites}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="简述" FontWeight="SemiBold" Width="88" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
-                                        </StackPanel>
+                                        <!-- 字段行：两列 Grid（标签定宽 + 值占满剩余宽度）以支持长文本换行 -->
+                                        <Grid ColumnDefinitions="88,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="类型" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding FeatType}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="88,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="战士奖励" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding FighterBonusDisplay}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="88,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Prerequisites, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="先决条件" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Prerequisites}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="88,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="简述" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Summary}" TextWrapping="Wrap" />
+                                        </Grid>
 
                                         <Border Height="1" Background="{DynamicResource AppDividerBrush}"
                                                 Margin="0,4"
@@ -131,10 +134,10 @@
                                                    Opacity="0.7" Margin="0,4,0,0"
                                                    IsVisible="{Binding Flavor, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                                            <TextBlock Text="出处" FontWeight="SemiBold" Width="88" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Source}" TextWrapping="Wrap" />
-                                        </StackPanel>
+                                        <Grid ColumnDefinitions="88,*" ColumnSpacing="8" Margin="0,4,0,0">
+                                            <TextBlock Grid.Column="0" Text="出处" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Source}" TextWrapping="Wrap" />
+                                        </Grid>
                                     </StackPanel>
                                 </DataTemplate>
                             </ContentControl.ContentTemplate>

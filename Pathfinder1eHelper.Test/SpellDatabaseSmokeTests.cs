@@ -131,18 +131,25 @@ public class SpellDatabaseSmokeTests
         {
             var repo = new SpellRepository(fsql);
 
-            // 职业+环位：CRB 火球术在 spell_levels 中为 术士/法师 3。
-            var wiz3 = await repo.SearchAsync(new SpellQuery(null, "CRB", null, 0, 200, ClassName: "术士/法师", ClassLevel: 3));
+            // 职业+环位：CRB 火球术在 spell_levels 中为“术士/法师 3”；下拉已摊平，按单个职业匹配。
+            var wiz3 = await repo.SearchAsync(new SpellQuery(null, "CRB", null, 0, 200, ClassName: "法师", ClassLevel: 3));
             Assert.Contains(wiz3, s => s.NameEn == "Fireball");
             Assert.All(wiz3, s => Assert.Equal("CRB", s.Source));
+
+            // 复合职业的另一分量“术士”同样命中火球术（分词匹配）。
+            var sor3 = await repo.SearchAsync(new SpellQuery(null, "CRB", null, 0, 200, ClassName: "术士", ClassLevel: 3));
+            Assert.Contains(sor3, s => s.NameEn == "Fireball");
 
             // 仅环位：9 环（只应命中 kind='class' 的主职业行）。
             var lvl9 = await repo.SearchAsync(new SpellQuery(null, "CRB", null, 0, 200, ClassLevel: 9));
             Assert.NotEmpty(lvl9);
 
-            // 职业下拉数据源有值且含“术士/法师”。
+            // 职业下拉数据源已摊平：含单个职业，且不再出现任何复合项。
             var classes = await repo.GetClassesAsync();
-            Assert.Contains("术士/法师", classes);
+            Assert.Contains("法师", classes);
+            Assert.Contains("术士", classes);
+            Assert.DoesNotContain("术士/法师", classes);
+            Assert.DoesNotContain(classes, c => c.Contains('/'));
         }
         finally
         {

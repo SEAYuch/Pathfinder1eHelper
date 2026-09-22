@@ -104,7 +104,9 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                IsVisible="{Binding SelectedSpell, Converter={x:Static ObjectConverters.IsNull}}" />
 
-                    <ScrollViewer IsVisible="{Binding SelectedSpell, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <!-- 水平滚动禁用：让字段值在可视宽度内自动换行，而不是被裁掉 -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                  IsVisible="{Binding SelectedSpell, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <ContentControl Content="{Binding SelectedSpell}">
                             <ContentControl.ContentTemplate>
                                 <DataTemplate x:DataType="models:Spell">
@@ -117,61 +119,62 @@
                                         <Border Height="1" Background="{DynamicResource AppDividerBrush}"
                                                 Margin="0,4" />
 
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding School, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="学派" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding School}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Level, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="环位" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Level}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding CastingTime, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="施法时间" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding CastingTime}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Components, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="成分" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Components}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Range, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="距离" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Range}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Effect, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="效果" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Effect}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Area, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="范围" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Area}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Targets, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="目标" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Targets}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding Duration, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="持续时间" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Duration}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding SavingThrow, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="豁免" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding SavingThrow}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding SpellResistance, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="法术抗力" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding SpellResistance}" TextWrapping="Wrap" />
-                                        </StackPanel>
+                                        <!-- 字段行：两列 Grid（标签定宽 + 值占满剩余宽度）以支持长文本换行 -->
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding School, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="学派" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding School}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Level, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="环位" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Level}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding CastingTime, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="施法时间" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding CastingTime}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Components, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="成分" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Components}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Range, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="距离" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Range}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Effect, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="效果" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Effect}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Area, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="范围" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Area}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Targets, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="目标" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Targets}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Duration, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="持续时间" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Duration}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding SavingThrow, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="豁免" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding SavingThrow}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding SpellResistance, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="法术抗力" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding SpellResistance}" TextWrapping="Wrap" />
+                                        </Grid>
 
                                         <Border Height="1" Background="{DynamicResource AppDividerBrush}"
                                                 Margin="0,4"
@@ -180,20 +183,20 @@
                                                    LineHeight="22"
                                                    IsVisible="{Binding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0"
-                                                    IsVisible="{Binding Extra, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="附加" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Extra}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                    IsVisible="{Binding SpellType, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Text="法术类型" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding SpellType}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="出处" FontWeight="SemiBold" Width="72" Opacity="0.7" />
-                                            <TextBlock Text="{Binding SourceDisplay}" TextWrapping="Wrap" />
-                                        </StackPanel>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Margin="0,4,0,0"
+                                              IsVisible="{Binding Extra, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="附加" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Extra}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                              IsVisible="{Binding SpellType, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Grid.Column="0" Text="法术类型" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding SpellType}" TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="出处" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1" Text="{Binding SourceDisplay}" TextWrapping="Wrap" />
+                                        </Grid>
                                     </StackPanel>
                                 </DataTemplate>
                             </ContentControl.ContentTemplate>

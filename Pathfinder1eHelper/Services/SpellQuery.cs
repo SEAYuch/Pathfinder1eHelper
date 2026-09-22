@@ -9,9 +9,10 @@ namespace Pathfinder1eHelper.Services;
 /// <param name="Skip">Rows to skip (paging offset).</param>
 /// <param name="Take">Max rows to return (page size).</param>
 /// <param name="ClassName">
-/// Class/domain filter (exact group name such as <c>术士/法师</c> or a domain name).
-/// When set, matched against <c>spell_levels.class_name</c>; when null, level-only filtering
-/// applies to the <c>class</c> rows only.
+/// Class/domain filter using a single class or domain name (never a compound such as
+/// <c>术士/法师</c>). When set, matched against each <c>/</c>-separated component of
+/// <c>spell_levels.class_name</c>; when null, level-only filtering applies to the
+/// <c>class</c> rows only.
 /// </param>
 /// <param name="ClassLevel">Spell level 0–9 filter (null = all levels).</param>
 public sealed record SpellQuery(

@@ -24,15 +24,25 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
             .WhereIf(!string.IsNullOrEmpty(q.FirstLetter), s => s.FirstLetter == q.FirstLetter);
 
         // 环位/职业筛选走 spell_levels（EXISTS 子查询，命中 (class_name, level) 索引）。
-        // 指定职业/领域时按其 class_name 精确匹配（含 domain 行）；仅指定环位时限定 kind='class' 的主职业行。
+        // class_name 可能为复合值（如“术士/法师”），下拉已摊平为单个职业/领域，故按 '/' 分词后
+        // 精确匹配任一分量；仅指定环位时限定 kind='class' 的主职业行。
         var hasClass = !string.IsNullOrWhiteSpace(q.ClassName);
         var hasLevel = q.ClassLevel is >= 0 and <= 9;
         if (hasClass || hasLevel)
         {
+            var className = q.ClassName!;
+            var firstToken = className + "/";
+            var lastToken = "/" + className;
+            var middleToken = "/" + className + "/";
             sel = sel.Where(s => fsql.Select<SpellLevel>().Any(sl =>
                 sl.SpellId == s.Id
                 && (!hasLevel || sl.Level == q.ClassLevel)
-                && (hasClass ? sl.ClassName == q.ClassName : sl.Kind == "class")));
+                && (hasClass
+                    ? (sl.ClassName == className
+                        || sl.ClassName.StartsWith(firstToken)
+                        || sl.ClassName.EndsWith(lastToken)
+                        || sl.ClassName.Contains(middleToken))
+                    : sl.Kind == "class")));
         }
 
         return sel;
@@ -56,12 +66,21 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
             .OrderBy(s => s.Source)
             .ToListAsync(s => s.Source, ct);
 
-    public async Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default) =>
-        await fsql.Select<SpellLevel>()
+    public async Task<IReadOnlyList<string>> GetClassesAsync(CancellationToken ct = default)
+    {
+        // DISTINCT 下推到 SQL 取回原始 class_name，再在内存里把复合项（如“术士/法师”）按 '/'
+        // 摊平成单个职业/领域并去重——去重后集合很小（职业+领域约百余项），无需 SQL 侧 unnest。
+        var names = await fsql.Select<SpellLevel>()
             .Where(sl => sl.ClassName != null && sl.ClassName != "")
             .Distinct()
-            .OrderBy(sl => sl.ClassName)
             .ToListAsync(sl => sl.ClassName, ct);
+
+        return names
+            .SelectMany(n => n.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+    }
 
     public async Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         await fsql.Select<Spell>().Where(s => s.Id == id).FirstAsync(ct);

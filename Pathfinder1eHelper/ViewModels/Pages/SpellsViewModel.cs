@@ -163,7 +163,8 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     public SpellsViewModel() : this(DesignTimeSpellService.Instance)
     {
         Sources.Add("CRB");
-        Classes.Add("术士/法师");
+        Classes.Add("法师");
+        Classes.Add("术士");
         Classes.Add("牧师");
         Spells.Add(new Spell
         {
@@ -193,7 +194,7 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     /// <summary>英文首字母筛选项（“全部” + A–Z）。</summary>
     public ObservableCollection<string> Letters { get; }
 
-    /// <summary>职业/领域筛选项（“全部” + spell_levels.class_name 去重）。</summary>
+    /// <summary>职业/领域筛选项（“全部” + spell_levels.class_name 摊平为单个职业/领域后去重）。</summary>
     public ObservableCollection<string> Classes { get; }
 
     /// <summary>环位筛选项（“全部” + 0–9）。</summary>
