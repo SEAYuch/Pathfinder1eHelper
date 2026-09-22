@@ -42,16 +42,17 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     private SizeOption _selectedSize = CombatOptions.Size(SizeCategory.Medium);
     private AbilityOption _selectedCastingAbility = CombatOptions.Ability(Ability.Intelligence);
     private ConcentrationOption _concentrationSituation = CombatOptions.Concentration(ConcentrationSituation.DefensiveCasting);
-    private Spell? _selectedBuffSpell;
+    private BuffCandidate? _selectedBuff;
 
-    public CombatViewModel(ICharacterRepository repository, ISpellService spells)
+    public CombatViewModel(ICharacterRepository repository, ISpellService spells, IFeatService feats)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(spells);
+        ArgumentNullException.ThrowIfNull(feats);
 
         _roster = new CharacterRoster(repository);
         _autoSaver = new CharacterAutoSaver(repository);
-        _buffs = new CombatBuffLibrary(spells);
+        _buffs = new CombatBuffLibrary(spells, feats);
 
         Characters = _roster.Characters;
         Bonuses = [];
@@ -95,7 +96,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     }
 
     /// <summary>设计时构造：示例数据，供 XAML 预览器使用。</summary>
-    public CombatViewModel() : this(new DesignTimeCharacterRepository(), DesignTimeSpellService.Instance)
+    public CombatViewModel() : this(new DesignTimeCharacterRepository(), DesignTimeSpellService.Instance, DesignTimeFeatService.Instance)
     {
     }
 
@@ -109,8 +110,8 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public IReadOnlyList<PresetViewModel> WeaponPresets { get; }
 
-    /// <summary>法术 Buff 搜索候选（惰性载入法术库，由 AutoCompleteBox 在本地过滤）。</summary>
-    public ObservableCollection<Spell> BuffSpellCandidates => _buffs.Candidates;
+    /// <summary>Buff 搜索候选（法术 + 专长；惰性载入，由 AutoCompleteBox 在本地过滤）。</summary>
+    public ObservableCollection<BuffCandidate> BuffCandidates => _buffs.Candidates;
 
     public CharacterListItemViewModel? SelectedCharacter
     {
@@ -405,12 +406,12 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public bool IsGrappleMode => _concentrationSituation.Value == ConcentrationSituation.Grappled;
 
-    public Spell? SelectedBuffSpell
+    public BuffCandidate? SelectedBuff
     {
-        get => _selectedBuffSpell;
+        get => _selectedBuff;
         set
         {
-            this.RaiseAndSetIfChanged(ref _selectedBuffSpell, value);
+            this.RaiseAndSetIfChanged(ref _selectedBuff, value);
             UpdateBuffHint();
         }
     }
@@ -446,12 +447,12 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     private void RemoveBonus(BonusEntryViewModel entry) => Bonuses.Remove(entry);
 
-    /// <summary>只清除由“法术 Buff 联动”添加的条目，保留手动与状态预设条目。</summary>
+    /// <summary>只清除由“Buff 联动”添加的条目（法术 spell_buffs + 专长 feat_buffs），保留手动与状态预设条目。</summary>
     private void ClearBuffs()
     {
         for (var i = Bonuses.Count - 1; i >= 0; i--)
         {
-            if (Bonuses[i].Origin == BonusOrigin.SpellBuff)
+            if (Bonuses[i].Origin is BonusOrigin.SpellBuff or BonusOrigin.FeatBuff)
             {
                 Bonuses.RemoveAt(i);
             }
@@ -564,19 +565,19 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     private void UpdateBuffHint()
     {
-        if (_selectedBuffSpell is null)
+        if (_selectedBuff is null)
         {
             BuffHint = string.Empty;
             return;
         }
 
-        BuffHint = $"已选择：{_selectedBuffSpell.NameZh}（点击“添加为 Buff”）";
+        BuffHint = $"已选择：{_selectedBuff.NameZh}（{_selectedBuff.KindDisplay}，点击“添加为 Buff”）";
     }
 
-    /// <summary>把所选法术在 <c>spell_buffs</c> 中的效果加入加值明细（供面板与测试调用）。</summary>
+    /// <summary>把所选法术/专长在 <c>spell_buffs</c> / <c>feat_buffs</c> 中的效果加入加值明细（供面板与测试调用）。</summary>
     public async Task AddBuffAsync()
     {
-        if (_selectedBuffSpell is not { } spell)
+        if (_selectedBuff is not { } candidate)
         {
             return;
         }
@@ -584,7 +585,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         BuffResolution resolution;
         try
         {
-            resolution = await _buffs.ResolveAsync(spell, CasterLevel ?? 0);
+            resolution = await _buffs.ResolveAsync(candidate, CasterLevel ?? 0);
         }
         catch (Exception ex)
         {
@@ -597,8 +598,9 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             Bonuses.Add(new BonusEntryViewModel(entry, OnInputChanged, RemoveBonus));
         }
 
+        var table = candidate.Kind == BuffCandidateKind.Feat ? "feat_buffs" : "spell_buffs";
         BuffHint = resolution.MatchedCount == 0
-            ? "spell_buffs 未收录：已添加 1 条空白加值"
+            ? $"{table} 未收录：已添加 1 条空白加值"
             : $"已添加 {resolution.MatchedCount} 条加值（按 CL {CasterLevel ?? 0}）";
     }
 

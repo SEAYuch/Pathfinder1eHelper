@@ -14,11 +14,12 @@ namespace Pathfinder1eHelper.ViewModels;
 /// </summary>
 public sealed class MainWindowViewModel : ViewModelBase, IScreen
 {
-    public MainWindowViewModel(Func<SpellsViewModel> spellsFactory, Func<CombatViewModel> combatFactory, Func<MonstersViewModel> monstersFactory)
+    public MainWindowViewModel(Func<SpellsViewModel> spellsFactory, Func<FeatsViewModel> featsFactory, Func<CombatViewModel> combatFactory, Func<MonstersViewModel> monstersFactory)
     {
         NavItems =
         [
             new NavItemViewModel("法术", Icon.Wand, spellsFactory),
+            new NavItemViewModel("专长", Icon.Medal, featsFactory),
             new NavItemViewModel("战斗", Icon.Flash, combatFactory),
             new NavItemViewModel("怪物", Icon.Bug, monstersFactory)
         ];
@@ -37,7 +38,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IScreen
     }
 
     /// <summary>Parameterless constructor for the XAML previewer.</summary>
-    public MainWindowViewModel() : this(() => new SpellsViewModel(), () => new CombatViewModel(), () => new MonstersViewModel())
+    public MainWindowViewModel() : this(() => new SpellsViewModel(), () => new FeatsViewModel(), () => new CombatViewModel(), () => new MonstersViewModel())
     {
     }
 

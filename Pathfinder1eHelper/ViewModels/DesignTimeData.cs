@@ -113,6 +113,42 @@ internal sealed class DesignTimeCharacterRepository : ICharacterRepository
     }
 }
 
+/// <summary>设计时专长服务：一条示例专长。</summary>
+internal sealed class DesignTimeFeatService : IFeatService
+{
+    public static readonly DesignTimeFeatService Instance = new();
+
+    private static readonly IReadOnlyList<Feat> Sample =
+    [
+        new Feat
+        {
+            Id = 1,
+            Source = "CRB",
+            NameZh = "猛力攻击",
+            NameEn = "Power Attack",
+            FirstLetter = "P",
+            FeatType = "战斗",
+            IsFighterBonus = true,
+            Prerequisites = "力量13，基本攻击加值+1。",
+            Summary = "以近战攻击加值换取伤害加值",
+        },
+    ];
+
+    public Task<IReadOnlyList<Feat>> SearchAsync(FeatQuery query, CancellationToken ct = default) =>
+        Task.FromResult(Sample);
+
+    public Task<int> CountAsync(FeatQuery query, CancellationToken ct = default) => Task.FromResult(Sample.Count);
+
+    public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
+
+    public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
+
+    public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<FeatBuff>>([]);
+}
+
 /// <summary>设计时怪物服务：空实现。</summary>
 internal sealed class DesignTimeMonsterService : IMonsterService
 {

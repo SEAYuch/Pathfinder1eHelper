@@ -24,6 +24,8 @@ public sealed class AppModule : Module
             .SingleInstance(); // IFreeSql is thread-safe → one shared instance
         builder.RegisterType<SpellRepository>().As<ISpellRepository>().InstancePerDependency();
         builder.RegisterType<SpellService>().As<ISpellService>().InstancePerDependency();
+        builder.RegisterType<FeatRepository>().As<IFeatRepository>().InstancePerDependency();
+        builder.RegisterType<FeatService>().As<IFeatService>().InstancePerDependency();
         builder.RegisterType<MonsterRepository>().As<IMonsterRepository>().InstancePerDependency();
         builder.RegisterType<MonsterService>().As<IMonsterService>().InstancePerDependency();
 
@@ -39,6 +41,8 @@ public sealed class AppModule : Module
         // Pages (page VMs resolved by the shell via Func<T> factories; views by the ViewLocator)
         builder.RegisterType<SpellsViewModel>().AsSelf().InstancePerDependency();
         builder.RegisterType<SpellsView>().AsSelf().InstancePerDependency();
+        builder.RegisterType<FeatsViewModel>().AsSelf().InstancePerDependency();
+        builder.RegisterType<FeatsView>().AsSelf().InstancePerDependency();
         builder.RegisterType<CombatViewModel>().AsSelf().InstancePerDependency();
         builder.RegisterType<CombatView>().AsSelf().InstancePerDependency();
         builder.RegisterType<MonstersViewModel>().AsSelf().InstancePerDependency();

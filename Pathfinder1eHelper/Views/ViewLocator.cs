@@ -17,6 +17,7 @@ public sealed class ViewLocator : IViewLocator
     private static readonly Dictionary<Type, Func<IViewFor>> Map = new()
     {
         [typeof(SpellsViewModel)] = Create<SpellsView>,
+        [typeof(FeatsViewModel)] = Create<FeatsView>,
         [typeof(CombatViewModel)] = Create<CombatView>,
         [typeof(MonstersViewModel)] = Create<MonstersView>,
     };

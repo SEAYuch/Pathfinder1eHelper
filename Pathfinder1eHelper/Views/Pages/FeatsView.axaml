@@ -1,0 +1,147 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
+             xmlns:models="using:Pathfinder1eHelper.Models"
+             xmlns:fi="using:FluentIcons.Avalonia.Fluent"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
+             x:Class="Pathfinder1eHelper.Views.Pages.FeatsView"
+             x:DataType="vm:FeatsViewModel">
+
+    <Design.DataContext>
+        <vm:FeatsViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Filter bar -->
+        <Border Grid.Row="0" Padding="12" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <fi:FluentIcon Icon="Search" IconVariant="Regular" IconSize="Size20"
+                               VerticalAlignment="Center" />
+                <TextBox Width="260"
+                         PlaceholderText="搜索专长（中/英文名）"
+                         Text="{Binding SearchText}" />
+                <TextBlock Text="出处" VerticalAlignment="Center" Opacity="0.7" />
+                <ComboBox MinWidth="140"
+                          ItemsSource="{Binding Sources}"
+                          SelectedItem="{Binding SelectedSource}" />
+                <TextBlock Text="首字母" VerticalAlignment="Center" Opacity="0.7" />
+                <ComboBox MinWidth="92"
+                          ItemsSource="{Binding Letters}"
+                          SelectedItem="{Binding SelectedLetter}" />
+                <TextBlock Text="类型" VerticalAlignment="Center" Opacity="0.7" />
+                <ComboBox MinWidth="120"
+                          ItemsSource="{Binding Types}"
+                          SelectedItem="{Binding SelectedType}" />
+                <TextBlock Text="{Binding ResultSummary}"
+                           VerticalAlignment="Center" Opacity="0.7" />
+                <TextBlock Text="{Binding LastError}"
+                           Foreground="{DynamicResource AppDangerBrush}"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding LastError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Master-detail -->
+        <Grid Grid.Row="1" ColumnDefinitions="3*,4,2*">
+
+            <Panel Grid.Column="0">
+                <DataGrid ItemsSource="{Binding Feats}"
+                          SelectedItem="{Binding SelectedFeat}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserResizeColumns="True"
+                          GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="中文名" Binding="{Binding NameZh}" Width="150" />
+                        <DataGridTextColumn Header="英文名" Binding="{Binding NameEn}" Width="Auto" />
+                        <DataGridTextColumn Header="出处" Binding="{Binding Source}" Width="Auto" />
+                        <DataGridTextColumn Header="类型" Binding="{Binding FeatType}" Width="Auto" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <Border IsVisible="{Binding IsBusy}"
+                        Background="#40000000"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <ProgressBar IsIndeterminate="True" Width="160"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <Button Content="加载更多"
+                        Command="{Binding LoadMoreCommand}"
+                        IsVisible="{Binding HasMoreResults}"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                        Margin="0,0,0,12" />
+            </Panel>
+
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+            <!-- Detail -->
+            <Border Grid.Column="2" Padding="16" Margin="4,0,0,0">
+                <Panel>
+                    <TextBlock Text="选择左侧的专长查看详情"
+                               Opacity="0.5"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding SelectedFeat, Converter={x:Static ObjectConverters.IsNull}}" />
+
+                    <ScrollViewer IsVisible="{Binding SelectedFeat, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <ContentControl Content="{Binding SelectedFeat}">
+                            <ContentControl.ContentTemplate>
+                                <DataTemplate x:DataType="models:Feat">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="{Binding NameZh}" FontSize="22" FontWeight="Bold"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding NameEn}" FontSize="15" Opacity="0.7"
+                                                   TextWrapping="Wrap" />
+
+                                        <Border Height="1" Background="{DynamicResource AppDividerBrush}"
+                                                Margin="0,4" />
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="类型" FontWeight="SemiBold" Width="88" Opacity="0.7" />
+                                            <TextBlock Text="{Binding FeatType}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="战士奖励" FontWeight="SemiBold" Width="88" Opacity="0.7" />
+                                            <TextBlock Text="{Binding FighterBonusDisplay}" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                                    IsVisible="{Binding Prerequisites, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Text="先决条件" FontWeight="SemiBold" Width="88" Opacity="0.7" />
+                                            <TextBlock Text="{Binding Prerequisites}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                                    IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock Text="简述" FontWeight="SemiBold" Width="88" Opacity="0.7" />
+                                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <Border Height="1" Background="{DynamicResource AppDividerBrush}"
+                                                Margin="0,4"
+                                                IsVisible="{Binding Benefit, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <TextBlock Text="专长效果" FontWeight="SemiBold" Opacity="0.7"
+                                                   IsVisible="{Binding Benefit, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <TextBlock Text="{Binding Benefit}" TextWrapping="Wrap"
+                                                   LineHeight="22"
+                                                   IsVisible="{Binding Benefit, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                                        <TextBlock Text="{Binding Flavor}" TextWrapping="Wrap"
+                                                   Opacity="0.7" Margin="0,4,0,0"
+                                                   IsVisible="{Binding Flavor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                            <TextBlock Text="出处" FontWeight="SemiBold" Width="88" Opacity="0.7" />
+                                            <TextBlock Text="{Binding Source}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ContentControl.ContentTemplate>
+                        </ContentControl>
+                    </ScrollViewer>
+                </Panel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

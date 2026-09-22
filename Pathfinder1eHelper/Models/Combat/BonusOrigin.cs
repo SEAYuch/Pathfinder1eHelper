@@ -6,8 +6,11 @@ public enum BonusOrigin
     /// <summary>玩家手动添加/编辑，视为长期生效。</summary>
     Manual,
 
-    /// <summary>由“法术 Buff 联动”从 spell_buffs 表添加。</summary>
+    /// <summary>由“Buff 联动”从 spell_buffs 表添加。</summary>
     SpellBuff,
+
+    /// <summary>由“Buff 联动”从 feat_buffs 表添加。</summary>
+    FeatBuff,
 
     /// <summary>由状态预设按钮添加。</summary>
     Preset,

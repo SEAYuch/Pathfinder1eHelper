@@ -93,6 +93,70 @@ public sealed class FakeSpellService : ISpellService
     }
 }
 
+/// <summary>In-memory <see cref="IFeatRepository"/> that records the last query it received.</summary>
+public sealed class FakeFeatRepository : IFeatRepository
+{
+    public FeatQuery? LastQuery { get; private set; }
+    public List<Feat> Data { get; } = new();
+    public IReadOnlyList<string> SourceList { get; set; } = new List<string>();
+    public IReadOnlyList<string> TypeList { get; set; } = new List<string>();
+
+    public Task<IReadOnlyList<Feat>> SearchAsync(FeatQuery query, CancellationToken ct = default)
+    {
+        LastQuery = query;
+        return Task.FromResult<IReadOnlyList<Feat>>(Data.Skip(query.Skip).Take(query.Take).ToList());
+    }
+
+    public Task<int> CountAsync(FeatQuery query, CancellationToken ct = default)
+    {
+        LastQuery = query;
+        return Task.FromResult(Data.Count);
+    }
+
+    public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
+        Task.FromResult(SourceList);
+
+    public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
+        Task.FromResult(TypeList);
+
+    public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<FeatBuff>>([]);
+}
+
+/// <summary>In-memory <see cref="IFeatService"/> for view-model tests.</summary>
+public sealed class FakeFeatService : IFeatService
+{
+    public List<Feat> Results { get; } = new();
+    public List<FeatBuff> Buffs { get; } = new();
+    public IReadOnlyList<string> SourceList { get; set; } = new List<string> { "CRB", "APG" };
+    public IReadOnlyList<string> TypeList { get; set; } = new List<string> { "战斗", "通用" };
+    public FeatQuery? LastQuery { get; private set; }
+
+    public Task<IReadOnlyList<Feat>> SearchAsync(FeatQuery query, CancellationToken ct = default)
+    {
+        LastQuery = query;
+        return Task.FromResult<IReadOnlyList<Feat>>(Results.Skip(query.Skip).Take(query.Take).ToList());
+    }
+
+    public Task<int> CountAsync(FeatQuery query, CancellationToken ct = default) =>
+        Task.FromResult(Results.Count);
+
+    public Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
+        Task.FromResult(SourceList);
+
+    public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
+        Task.FromResult(TypeList);
+
+    public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default)
+    {
+        var matched = Buffs
+            .Where(b => (!string.IsNullOrWhiteSpace(nameEn) && string.Equals(b.NameEn, nameEn, StringComparison.OrdinalIgnoreCase))
+                || (!string.IsNullOrWhiteSpace(nameZh) && string.Equals(b.NameZh, nameZh, StringComparison.Ordinal)))
+            .ToList();
+        return Task.FromResult<IReadOnlyList<FeatBuff>>(matched);
+    }
+}
+
 /// <summary>In-memory <see cref="IMonsterRepository"/> for smoke-level tests.</summary>
 public sealed class FakeMonsterRepository : IMonsterRepository
 {

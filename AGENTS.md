@@ -104,8 +104,93 @@ dotnet run --project Pathfinder1eHelper
 dotnet run --project Pathfinder1eHelper.Test
 ```
 
+## 专长（Feats）功能
+
+> 状态：**已实施 v1**（主章节 9 个出处，约 1178 条；MA 神话专长与根目录 54 个 `专长*.htm` 系列留待二期）。
+> 入口在「法术」下方（导航顺序：法术 → **专长** → 战斗 → 怪物）。
+> 数据源：`C:\Users\sea_y\OneDrive\Documents\跑团\Pathfinder v2.20 SC.chm`（34MB，GBK，Word 导出 HTML）。
+> 以下「勘察」小节为已核实的事实，其余为设计约定。
+
+### 源数据勘察（已核实）
+
+- **解包**：`hh.exe -decompile` 在当前环境不产文件；用 NanaZip/7z 可解：`7z x -o<dir> "Pathfinder v2.20 SC.chm"`（约 2100 个文件）。目录树在 `Pathfinder v2.20 SC.hhc`（GBK）。
+- **统一格式的主章节页面**（“专长”章节按书分页，v1 范围）：
+
+  | 书 | 页面 | 简表行数（勘察值） |
+  | --- | --- | --- |
+  | CRB 核心规则手册 | `page_195.html` | 180 |
+  | APG 进阶玩家手册 | `page_196.html` | 171 |
+  | ARG 进阶种族手册 | `page_197.html` | 185（表头为“种族专长”） |
+  | UM 极限魔法 | `page_198.html` | 待编脚本时核对 |
+  | UC 极限战斗 | `page_199.html` | 同上 |
+  | UCa 极限战役 | `page_200.html` | 同上 |
+  | ACG 进阶职业手册 | `page_203.html` | 同上 |
+  | UI 极限诡道 | `page_856.html` | 118（外层多包一层表，真正表头在**第 2 行**） |
+  | B1 怪物图鉴 | `page_201.html` | 同上 |
+
+- **页面结构**（上述页面一致）：① 简表 `<table>`，列 = `[专长名称(EN+ZH), 先决条件, 专长效果简述]`，英文名尾部 `*` = 战士奖励专长；② 详述段落序列：`中文名（English）〔类型〕` → 风味句 →（可选）`先决条件：…` → `专长效果：…`（可多段，或含 `特殊/普通` 段）。类型标签如 `〔战斗〕〔团队〕〔流派〕〔超魔〕〔造物〕`，无标签 = 通用。
+- **暂缓到二期**：MA 神话专长（`page_623/624.html`，嵌套表 + 纯文本详述，格式异构）；根目录 54 个 `专长*.htm`（后续书籍：惧怖冒险、恶棍志等，标记混用 `〔〕/【】/（）`、`先决条件/前置条件` 不一，出处需从“出自《…》”内联文本或 TOC 父节点取）。
+
+### 数据库设计（并入现有 `data/pathfinder1e.duckdb`）
+
+```sql
+-- feats 主表（同源专长可能多行，沿用 spells 的“按出处保留”策略）
+CREATE TABLE feats (
+  id INTEGER PRIMARY KEY,
+  source TEXT,            -- CRB/APG/...（同 spells.source 代码）
+  name_zh TEXT, name_en TEXT,
+  first_letter TEXT,      -- 由 name_en 推导 A–Z，取不到为 '#'
+  feat_type TEXT,         -- 〔类型〕标签，无标签存 '通用'
+  is_fighter_bonus BOOLEAN, -- 简表中英文名尾部 '*'
+  prerequisites TEXT,     -- 先决条件（可空）
+  summary TEXT,           -- 简表一句话效果
+  benefit TEXT,           -- 详述“专长效果”全文（含特殊/普通段）
+  flavor TEXT             -- 风味句
+);
+CREATE INDEX idx_feats_first_letter ON feats(first_letter);
+CREATE INDEX idx_feats_name_en ON feats(name_en);
+CREATE INDEX idx_feats_name_zh ON feats(name_zh);
+-- 按需求不建出处索引（同 spells/monsters 约定）
+
+-- feat_buffs：供战斗模块联动，列与 spell_buffs 完全同构
+CREATE TABLE feat_buffs (
+  id INTEGER PRIMARY KEY,
+  feat_id INTEGER,        -- 可空，由 name_en 关联 feats.id
+  name_en TEXT, name_zh TEXT,   -- 匹配键（忽略大小写 / 中文精确）
+  effect_name TEXT, bonus_type TEXT, target TEXT, value INTEGER,
+  enhancement_subject TEXT, ability TEXT,
+  scale_base INTEGER, scale_offset INTEGER, scale_step INTEGER,
+  scale_min INTEGER, scale_max INTEGER,
+  notes TEXT, sort_order INTEGER
+);
+```
+
+- `feat_buffs` 只收录**能映射到现有 `BonusType/BonusTarget/EnhancementSubject/Ability` 枚举**的专长（首版建议：闪避→AC+1 闪避、精通先攻→先攻+4 无类型、强韧加强/闪电反射/钢铁意志→对应豁免+2 等，规模类似 spell_buffs 的 20 法术/47 行起步）；不能映射的（技能加值、HP、按武器生效如武器专攻）不入表，走“未收录→手动加值”兜底，与 `spell_buffs` 行为一致。
+
+### 构建管线（`scripts/build-feat-db/`，沿用 build-monster-db 模式）
+
+`extract_feats.mjs <解包目录> <输出.jsonl>`：GBK 解码 + 命名实体解码（可复用 extract_monsters.mjs 的 `decodeEntities`）；按“页面结构”解析：简表行给 `name_en/name_zh/is_fighter_bonus/prerequisites/summary`，详述段落按 `中文名（English）〔类型〕` 分段、`先决条件：/专长效果：` 前缀切字段，两表按 `中文名` 对齐；`schema.sql` + `load.sql` 建表装载数据；`feat_buffs.sql` 手工策展行；最后把表**并入**现有 `pathfinder1e.duckdb`（应用只认这一个文件）。注意 UI 页表头在第 2 行、ARG 表头叫“种族专长”。
+
+### 应用侧改动清单
+
+- **导航（三处同步，见上文架构要点）**：`ViewLocator.Map` 加 `FeatsViewModel → FeatsView`；`AppModule` 注册 `FeatRepository/FeatService/FeatsViewModel/FeatsView`；`MainWindowViewModel` 构造注入 `Func<FeatsViewModel>` 并把 `NavItem("专长", Icon.Medal, featsFactory)` 插到法术之后（同时改无参设计时构造与 `MainWindowViewModelTests`）。
+- **Models**：`Feat`、`FeatBuff` 实体，均带 `[Table(DisableSyncStructure = true)]` 与显式 `[Column(Name=...)]`（只读三重防护）；`IBuffEffect` 为 `SpellBuff`/`FeatBuff` 的共享契约，供 `SpellBuffResolver` 统一解析。
+- **Services**：`FeatQuery(Term, Source, FirstLetter, Type, Skip, Take)` record；`IFeatRepository/FeatRepository`（`NameZh.Contains || NameEn.ToLower().Contains`，`OrderBy(NameEn)`，`DISTINCT` 下推用于出处/类型下拉）；`IFeatService/FeatService`（归一化 + 默认页大小 200）。
+- **ViewModels**：`FeatsViewModel : ViewModelBase, IPageViewModel`，完整复刻 `SpellsViewModel` 形态：搜索防抖管道（Taskpool 执行、结果回主线程）、`PageSize/HasMoreResults/LoadMoreCommand` + 总数优化、`HashSet` 去重的懒加载过滤器（出处/首字母/类型）、`DesignTime` 无参构造。
+- **Views**：`FeatsView.axaml` 复刻 `SpellsView` 布局（列表 + 详情 + “加载更多”）；详情字段：名称/类型/是否战士奖励专长/先决条件/简述/专长效果/出处。
+- **战斗联动**：`BonusOrigin` 增加 `FeatBuff` 成员（旧存档枚举为字符串序列化，不受影响）；`CombatBuffLibrary(ISpellService, IFeatService)` 把法术与专长统一为 `BuffCandidate`（标注 `Kind`）候选，`AddBuffAsync` 按 `Kind` 查 `spell_buffs` / `feat_buffs`；「清除法术 Buff」按钮已改为「清除 Buff 联动」（同时清 `SpellBuff+FeatBuff` origin）。
+- **测试**：`FeatDatabaseSmokeTests`（`TestDatabase.SkipIfUnavailable()`；行数阈值、猛力攻击/Power Attack 命中、首字母/出处/类型筛选收窄、`feat_buffs` 闪避→AC 映射）；`FeatsViewModelTests`（哨兵、管道映射、分页）；战斗联动新 origin 的增删测试。Fake 加 `FakeFeatService/FakeFeatRepository`（按 Skip/Take 切片）进 `TestDoubles.cs`。
+
+### 实施顺序建议
+
+1. 管线先行：解包 → `extract_feats.mjs` → 并入 duckdb → 冒烟测试锁行为（行数阈值防回归）。
+2. 查询页：Models/Services/VM/View + 导航三处同步 + VM 测试。
+3. 战斗联动：`feat_buffs.sql` 策展 + `BonusOrigin.FeatBuff` + 库合并与清除语义 + 测试。
+4. 二期（可选）：MA 神话专长、54 个 `专长*.htm`（异构解析器 + 出处回填）。
+
 ## 已知待办 / 暂缓项
 
+- **专长功能二期**：MA 神话专长（`page_623/624.html`，嵌套表+纯文本）、根目录 54 个 `专长*.htm`（异构标记/字段名、出处需内联或 TOC 取）；`UI` 页详述缺失（仅简表），如需补全需另解析其结构。
 - `CombatViewModel` 仍有约 20 个表单标量属性（表单 VM 固有形态）。若继续瘦身，可抽 `CombatEditorViewModel` 并同步改 `CombatView.axaml` 绑定路径（编译期绑定会校验）。
 - Buff 候选（`CombatBuffLibrary.Candidates`）仍载入完整 `Spell` 实体；改投影 DTO 需同步改 `CombatView.axaml` 与测试的 `SelectedBuffSpell` 类型。
 - 英文搜索用 `ToLower().Contains(...)`（无索引可利用）；若改 DuckDB `ILIKE` 需裸 SQL 与转义。

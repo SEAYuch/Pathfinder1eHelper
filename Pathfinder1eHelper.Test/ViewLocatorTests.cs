@@ -15,11 +15,14 @@ public class ViewLocatorTests
     public void Resolves_views_for_registered_page_view_models()
     {
         var spells = new SpellsViewModel(new FakeSpellService());
-        var combat = new CombatViewModel(new FakeCharacterRepository(), new FakeSpellService());
+        var feats = new FeatsViewModel(new FakeFeatService());
+        var combat = new CombatViewModel(new FakeCharacterRepository(), new FakeSpellService(), new FakeFeatService());
 
         Assert.IsType<SpellsView>(_locator.ResolveView(spells));
+        Assert.IsType<FeatsView>(_locator.ResolveView(feats));
         Assert.IsType<CombatView>(_locator.ResolveView(combat));
         Assert.IsType<SpellsView>(_locator.ResolveView<SpellsViewModel>());
+        Assert.IsType<FeatsView>(_locator.ResolveView<FeatsViewModel>());
         Assert.IsType<CombatView>(_locator.ResolveView<CombatViewModel>());
     }
 

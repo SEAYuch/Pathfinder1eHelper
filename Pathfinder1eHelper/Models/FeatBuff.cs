@@ -3,16 +3,15 @@ using FreeSql.DataAnnotations;
 namespace Pathfinder1eHelper.Models;
 
 /// <summary>
-/// FreeSql entity mapped to the read-only <c>spell_buffs</c> table: structured bonus effects of
-/// common buff spells, keyed by spell English/Chinese name. Populated on the DB side (see
-/// <c>spell_buffs.sql</c>), so the conversion data lives in the database rather than in code.
+/// FreeSql entity mapped to the read-only <c>feat_buffs</c> table：供战斗模块联动的专长结构化加值，
+/// 列与 <see cref="SpellBuff"/> 完全同构。由 DB 侧 <c>feat_buffs.sql</c> 手工策展。
 /// </summary>
-[Table(Name = "spell_buffs", DisableSyncStructure = true)]
-public sealed class SpellBuff : IBuffEffect
+[Table(Name = "feat_buffs", DisableSyncStructure = true)]
+public sealed class FeatBuff : IBuffEffect
 {
     [Column(Name = "id", IsPrimary = true)] public int Id { get; set; }
 
-    [Column(Name = "spell_id")] public int? SpellId { get; set; }
+    [Column(Name = "feat_id")] public int? FeatId { get; set; }
 
     [Column(Name = "name_en")] public string? NameEn { get; set; }
 

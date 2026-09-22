@@ -8,6 +8,7 @@ Pathfinder 1e 中文助手 —— 一款基于 Avalonia 的桌面法术查询工
 ## 功能
 
 - **法术浏览**:只读参考库约 3373 条法术,覆盖 101 个出处(由 pf_searcher_v1.0 数据重建,补充旧库独有法术,以英文名为准去重/补缺)
+- **专长浏览**:约 1178 条专长(9 个出处:CRB/APG/ARG/UM/UC/UCa/ACG/UI/B1),含中/英文名、类型(战斗/超魔/团队…)、战士奖励标记、先决条件、简述与详述效果;支持中/英文名搜索与出处/英文首字母/类型筛选;`feat_buffs` 表供战斗页“Buff 联动”
 - **怪物浏览**:怪物图鉴 1-3 约 838 条怪物(含中/英文名、CR、体型、类型、阵营、属性、生态与原文数据块);支持中/英文名搜索与英文首字母/生物类型筛选;概览页(如“龙类绪论”)与所属怪物互相跳转
 - **实时搜索**:按中文名/英文名模糊搜索,300ms 防抖
 - **筛选**:按出处(`source`)、英文首字母 A–Z 过滤
@@ -61,12 +62,16 @@ Pathfinder1eHelper.slnx
 | --- | --- |
 | `spells` | 法术主表(约 3373 行):出处、中/英文名、首字母,以及学派/环位/施法时间/成分/距离/效果/范围/目标/持续时间/豁免/法术抗力/描述/附加/`spell_type` 等字段 |
 | `spell_levels` | 法术按职业/领域拆分的环位:`spell_id`、`class_name`、`level`、`kind`(`class` = 主职业,`domain` = 领域/子域),供“职业 + 环位”筛选 |
-| `spell_buffs` | 常见 Buff 法术的结构化加值效果,供战斗页“法术 Buff 联动”使用 |
+| `spell_buffs` | 常见 Buff 法术的结构化加值效果,供战斗页“Buff 联动”使用 |
+| `feats` | 专长主表(约 1178 行):`source`(CRB/APG/ARG/UM/UC/UCa/ACG/UI/B1)、中/英文名、`first_letter`、`feat_type`、`is_fighter_bonus`、`prerequisites`、`summary`、`benefit`、`flavor` |
+| `feat_buffs` | 专长的结构化加值效果(列与 `spell_buffs` 同构),供战斗页“Buff 联动”使用 |
 | `monsters` | 怪物主表(约 838 行):`source`(B1/B2/B3)、`page`、中/英文名、`first_letter`、CR、体型、类型/亚种、阵营、六属性、环境/组织/宝物、描述、`stat_block`/`special_abilities`/`raw_text`(原文兜底) |
 | `monster_groups` | 概览页(“绪论/概述”,如 龙类绪论):`name_zh`/`name_en`、`description`(风味描述)、`content`(可渲染正文:规则段落 + GFM 管道表)、`raw_text` |
 | `monster_group_members` | 概览页 ↔ 怪物 的多对多关系(`group_id`、`monster_id`) |
 
 `monsters` 索引:`idx_monsters_first_letter`(首字母)、`idx_monsters_name_en`/`idx_monsters_name_zh`;概览关系索引:`idx_mgm_group`、`idx_mgm_monster`,以及 `monster_groups` 的名称索引。按需求**不建出处索引**。怪物数据由 `scripts/build-monster-db/`(extract_monsters.mjs + schema.sql + load.sql + build.sh)提取;概览页与成员的关联在 CHM 中没有显式链接,由“英文名前缀 + 龙类/发条/特里埃人工种子”生成。
+
+`feats` 索引:`idx_feats_first_letter`(首字母)、`idx_feats_name_en`/`idx_feats_name_zh`;按需求**不建出处索引**。专长数据由 `scripts/build-feat-db/`(extract_feats.mjs + schema.sql + load.sql + feat_buffs.sql + build.sh)从「Pathfinder v2.20 SC」CHM 的专长章节提取;`feat_buffs` 为手工策展的加值效果(起步 8 条,如 闪避→AC+1 闪避、精通先攻→先攻+4、强韧加强/闪电反射/钢铁意志→对应豁免+2、战斗施法→专注+4 等),其余专长走“未收录→手动加值”兜底。MA 神话专长与根目录 `专长*.htm` 系列留待二期。
 
 `spell_buffs` 列定义:
 

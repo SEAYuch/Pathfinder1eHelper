@@ -248,7 +248,7 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
         await vm.AddBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
@@ -278,7 +278,7 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
         await vm.AddBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
@@ -308,14 +308,45 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
         await vm.AddBuffAsync();
 
         Assert.Single(vm.Bonuses);
     }
 
     [Fact]
-    public async Task Clear_buffs_removes_only_spell_buff_entries()
+    public async Task Adding_a_feat_creates_entries_from_the_feat_buff_table()
+    {
+        var spells = new FakeSpellService();
+        var feats = new FakeFeatService();
+        feats.Results.Add(new Feat { Id = 1, NameZh = "闪避", NameEn = "Dodge", Source = "CRB" });
+        feats.Buffs.Add(new FeatBuff
+        {
+            Id = 1,
+            NameEn = "Dodge",
+            NameZh = "闪避",
+            EffectName = "闪避",
+            BonusType = "Dodge",
+            Target = "ArmorClass",
+            Value = 1,
+        });
+        var vm = Create(new FakeCharacterRepository(), spells, feats);
+
+        await vm.LoadBuffCandidatesAsync();
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates, c => c.Kind == BuffCandidateKind.Feat);
+        await vm.AddBuffAsync();
+
+        var bonus = Assert.Single(vm.Bonuses);
+        Assert.Equal("闪避", bonus.Name);
+        Assert.Equal(BonusType.Dodge, bonus.Type.Value);
+        Assert.Equal(BonusTarget.ArmorClass, bonus.Target.Value);
+        Assert.Equal(1, bonus.Value);
+        Assert.Equal(BonusOrigin.FeatBuff, bonus.Origin);
+        Assert.Contains("CRB", bonus.Notes);
+    }
+
+    [Fact]
+    public async Task Clear_buffs_removes_spell_and_feat_linkage_entries()
     {
         var spells = new FakeSpellService();
         spells.Results.Add(new Spell { Id = 1, NameZh = "祝福术", NameEn = "Bless", Source = "CRB" });
@@ -329,21 +360,35 @@ public class CombatViewModelTests
             Target = "MeleeAttack",
             Value = 1,
         });
-        var vm = Create(new FakeCharacterRepository(), spells);
+        var feats = new FakeFeatService();
+        feats.Results.Add(new Feat { Id = 1, NameZh = "闪避", NameEn = "Dodge", Source = "CRB" });
+        feats.Buffs.Add(new FeatBuff
+        {
+            Id = 1,
+            NameEn = "Dodge",
+            NameZh = "闪避",
+            EffectName = "闪避",
+            BonusType = "Dodge",
+            Target = "ArmorClass",
+            Value = 1,
+        });
+        var vm = Create(new FakeCharacterRepository(), spells, feats);
 
         ((ICommand)vm.AddBonusCommand).Execute(null); // 手动条目
         var charge = vm.Presets.First(p => p.Name == "冲锋");
         ((ICommand)charge.ApplyCommand).Execute(null); // 2 条预设条目
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates, c => c.Kind == BuffCandidateKind.Spell);
         await vm.AddBuffAsync(); // 1 条法术 Buff
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates, c => c.Kind == BuffCandidateKind.Feat);
+        await vm.AddBuffAsync(); // 1 条专长 Buff
 
-        Assert.Equal(4, vm.Bonuses.Count);
+        Assert.Equal(5, vm.Bonuses.Count);
 
         ((ICommand)vm.ClearBuffsCommand).Execute(null);
 
         Assert.Equal(3, vm.Bonuses.Count);
-        Assert.DoesNotContain(vm.Bonuses, b => b.Origin == BonusOrigin.SpellBuff);
+        Assert.DoesNotContain(vm.Bonuses, b => b.Origin is BonusOrigin.SpellBuff or BonusOrigin.FeatBuff);
         Assert.Contains(vm.Bonuses, b => b.Origin == BonusOrigin.Manual);
         Assert.Contains(vm.Bonuses, b => b.Origin == BonusOrigin.Preset);
     }
@@ -389,7 +434,7 @@ public class CombatViewModelTests
         vm.CasterLevel = 9;
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
         await vm.AddBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
@@ -405,7 +450,7 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuffSpell = Assert.Single(vm.BuffSpellCandidates);
+        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
         await vm.AddBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
@@ -417,11 +462,14 @@ public class CombatViewModelTests
         Create(repository, new FakeSpellService());
 
     private static CombatViewModel Create(FakeCharacterRepository repository, FakeSpellService spells) =>
-        new(repository, spells);
+        new(repository, spells, new FakeFeatService());
+
+    private static CombatViewModel Create(FakeCharacterRepository repository, FakeSpellService spells, FakeFeatService feats) =>
+        new(repository, spells, feats);
 
     private static CombatViewModel Create(FakeCharacterRepository repository, out FakeSpellService spells)
     {
         spells = new FakeSpellService();
-        return new CombatViewModel(repository, spells);
+        return new CombatViewModel(repository, spells, new FakeFeatService());
     }
 }
