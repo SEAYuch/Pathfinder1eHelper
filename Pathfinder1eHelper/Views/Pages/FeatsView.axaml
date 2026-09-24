@@ -21,7 +21,7 @@
                 <fi:FluentIcon Icon="Search" IconVariant="Regular" IconSize="Size20"
                                VerticalAlignment="Center" />
                 <TextBox Width="260"
-                         PlaceholderText="搜索专长（中/英文名）"
+                         PlaceholderText="搜索专长（名称/先决条件）"
                          Text="{Binding SearchText}" />
                 <TextBlock Text="出处" VerticalAlignment="Center" Opacity="0.7" />
                 <ComboBox MinWidth="140"

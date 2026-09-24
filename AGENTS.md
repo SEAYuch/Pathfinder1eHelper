@@ -175,7 +175,7 @@ CREATE TABLE feat_buffs (
 
 - **导航（三处同步，见上文架构要点）**：`ViewLocator.Map` 加 `FeatsViewModel → FeatsView`；`AppModule` 注册 `FeatRepository/FeatService/FeatsViewModel/FeatsView`；`MainWindowViewModel` 构造注入 `Func<FeatsViewModel>` 并把 `NavItem("专长", Icon.Medal, featsFactory)` 插到法术之后（同时改无参设计时构造与 `MainWindowViewModelTests`）。
 - **Models**：`Feat`、`FeatBuff` 实体，均带 `[Table(DisableSyncStructure = true)]` 与显式 `[Column(Name=...)]`（只读三重防护）；`IBuffEffect` 为 `SpellBuff`/`FeatBuff` 的共享契约，供 `SpellBuffResolver` 统一解析。
-- **Services**：`FeatQuery(Term, Source, FirstLetter, Type, Skip, Take)` record；`IFeatRepository/FeatRepository`（`NameZh.Contains || NameEn.ToLower().Contains`，`OrderBy(NameEn)`，`DISTINCT` 下推用于出处/类型下拉）；`IFeatService/FeatService`（归一化 + 默认页大小 200）。
+- **Services**：`FeatQuery(Term, Source, FirstLetter, Type, Skip, Take)` record；`IFeatRepository/FeatRepository`（`NameZh.Contains || NameEn.ToLower().Contains || Prerequisites.ToLower().Contains`，`OrderBy(NameEn)`，`DISTINCT` 下推用于出处/类型下拉）；`IFeatService/FeatService`（归一化 + 默认页大小 200）。
 - **ViewModels**：`FeatsViewModel : ViewModelBase, IPageViewModel`，完整复刻 `SpellsViewModel` 形态：搜索防抖管道（Taskpool 执行、结果回主线程）、`PageSize/HasMoreResults/LoadMoreCommand` + 总数优化、`HashSet` 去重的懒加载过滤器（出处/首字母/类型）、`DesignTime` 无参构造。
 - **Views**：`FeatsView.axaml` 复刻 `SpellsView` 布局（列表 + 详情 + “加载更多”）；详情字段：名称/类型/是否战士奖励专长/先决条件/简述/专长效果/出处。
 - **战斗联动**：`BonusOrigin` 增加 `FeatBuff` 成员（旧存档枚举为字符串序列化，不受影响）；`CombatBuffLibrary(ISpellService, IFeatService)` 把法术与专长统一为 `BuffCandidate`（标注 `Kind`）候选，`AddBuffAsync` 按 `Kind` 查 `spell_buffs` / `feat_buffs`；「清除法术 Buff」按钮已改为「清除 Buff 联动」（同时清 `SpellBuff+FeatBuff` origin）。
@@ -191,6 +191,7 @@ CREATE TABLE feat_buffs (
 ## 已知待办 / 暂缓项
 
 - **专长功能二期**：MA 神话专长（`page_623/624.html`，嵌套表+纯文本）、根目录 54 个 `专长*.htm`（异构标记/字段名、出处需内联或 TOC 取）；`UI` 页详述缺失（仅简表），如需补全需另解析其结构。
+- **extract_feats.mjs 待修**（脚本在 Windows 机，仓库无 scripts/）：`UI` 页 `中文名（English）〔类型〕` 标题拆分时括号不配对（全角/半角混排），曾产出“zh 尾悬 `（` + en 尾悬 `）`”共 110 行（已直接清洗参考库并加冒烟测试 `Feat_names_have_no_dangling_brackets` 锁定）；重建 `feats` 表须同步修脚本，命名规则为 en 截断/清除全角 `（）` 碎片、zh 去尾悬 `（`，`first_letter` 随之重算。
 - `CombatViewModel` 仍有约 20 个表单标量属性（表单 VM 固有形态）。若继续瘦身，可抽 `CombatEditorViewModel` 并同步改 `CombatView.axaml` 绑定路径（编译期绑定会校验）。
 - Buff 候选（`CombatBuffLibrary.Candidates`）仍载入完整 `Spell` 实体；改投影 DTO 需同步改 `CombatView.axaml` 与测试的 `SelectedBuffSpell` 类型。
 - 英文搜索用 `ToLower().Contains(...)`（无索引可利用）；若改 DuckDB `ILIKE` 需裸 SQL 与转义。

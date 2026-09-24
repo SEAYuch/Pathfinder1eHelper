@@ -3,7 +3,7 @@ namespace Pathfinder1eHelper.Services;
 /// <summary>
 /// Immutable search/filter descriptor for feat queries.
 /// </summary>
-/// <param name="Term">Free-text term matched against Chinese/English names (null/blank = no filter).</param>
+/// <param name="Term">Free-text term matched against Chinese/English names and prerequisites (null/blank = no filter).</param>
 /// <param name="Source">Exact source-book code filter, e.g. <c>CRB</c> (null/blank = all sources).</param>
 /// <param name="FirstLetter">Exact English first-letter filter A–Z (null/blank = all letters).</param>
 /// <param name="Type">Feat type filter (exact match on <c>feat_type</c>, e.g. 战斗; null/blank = all types).</param>

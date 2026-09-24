@@ -38,6 +38,30 @@ public class FeatDatabaseSmokeTests
     }
 
     [Fact]
+    public async Task Search_term_matches_prerequisites_too()
+    {
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
+        try
+        {
+            var repo = new FeatRepository(fsql);
+
+            // “基础攻击加值”只出现在先决条件文本里，不是任何专长名；应仅凭先决条件命中。
+            var byPrereq = await repo.SearchAsync(new FeatQuery("基础攻击加值", null, null, null, 0, 500));
+            Assert.NotEmpty(byPrereq);
+            Assert.DoesNotContain(byPrereq, f =>
+                f.NameZh.Contains("基础攻击加值") || (f.NameEn ?? "").Contains("基础攻击加值"));
+
+            // 命中项都确实在先决条件中包含该词。
+            Assert.All(byPrereq, f => Assert.Contains("基础攻击加值", f.Prerequisites ?? ""));
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
+    [Fact]
     public async Task Source_first_letter_and_type_filters_narrow_results()
     {
         TestDatabase.SkipIfUnavailable();
@@ -86,6 +110,38 @@ public class FeatDatabaseSmokeTests
 
             var dodgeByZh = await repo.GetBuffsForFeatAsync(null, "闪避");
             Assert.Single(dodgeByZh);
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// UI 出处的中文名/英文名在解析时残留过碎括号（zh 以悬空的 <c>（</c> 收尾、en 以 <c>）</c>
+    /// 收头/收尾，如“特技施法者（”+“Acrobatic Spellcaster）”），已在参考库中清洗；重建管线若再
+    /// 产出此类残留，在此失败。
+    /// </summary>
+    [Fact]
+    public async Task Feat_names_have_no_dangling_brackets()
+    {
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
+        try
+        {
+            var repo = new FeatRepository(fsql);
+            var all = await repo.SearchAsync(new FeatQuery(null, null, null, null, 0, 5000));
+            Assert.True(all.Count > 1000, $"expected a populated feat table, got {all.Count}");
+
+            var broken = all
+                .Where(f => f.NameZh.EndsWith('（') || f.NameZh.EndsWith('(')
+                    || f.NameEn is { } en && (en.Contains('（')
+                        || en.StartsWith('）') || en.StartsWith(')')
+                        || en.EndsWith('）') || en.EndsWith('（')))
+                .Select(f => $"{f.Source}/{f.Id}: zh=[{f.NameZh}] en=[{f.NameEn}]")
+                .ToList();
+
+            Assert.True(broken.Count == 0, "dangling/mismatched brackets still in feat names:\n" + string.Join("\n", broken));
         }
         finally
         {
