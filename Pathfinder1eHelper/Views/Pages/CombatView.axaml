@@ -296,32 +296,61 @@
                 </StackPanel>
             </Border>
 
-            <!-- 法术 Buff 联动 -->
+            <!-- 法术 Buff 联动（spell_buffs） -->
             <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
                     CornerRadius="4" Padding="12">
                 <StackPanel Spacing="8">
                     <TextBlock Text="法术 Buff 联动（来自 spell_buffs 表）" FontWeight="SemiBold" />
                     <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                         <AutoCompleteBox HorizontalAlignment="Stretch"
-                                         PlaceholderText="搜索法术/专长（中/英文名）"
-                                         ItemsSource="{Binding BuffCandidates}"
-                                         SelectedItem="{Binding SelectedBuff}"
+                                         PlaceholderText="搜索法术（中/英文名）"
+                                         ItemsSource="{Binding SpellBuffCandidates}"
+                                         SelectedItem="{Binding SelectedSpellBuff}"
                                          FilterMode="Contains"
                                          MinimumPrefixLength="1"
                                          MaxDropDownHeight="260">
                             <AutoCompleteBox.ItemTemplate>
-                                <DataTemplate x:DataType="vmc:BuffCandidate">
+                                <DataTemplate x:DataType="spells:Spell">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <TextBlock Text="{Binding NameZh}" />
                                         <TextBlock Text="{Binding NameEn}" Opacity="0.7" />
                                         <TextBlock Text="{Binding Source}" Opacity="0.5" />
-                                        <TextBlock Text="{Binding KindDisplay}" Opacity="0.5" />
                                     </StackPanel>
                                 </DataTemplate>
                             </AutoCompleteBox.ItemTemplate>
                         </AutoCompleteBox>
-                        <Button Grid.Column="1" Content="添加为 Buff" Command="{Binding AddBuffCommand}" />
-                        <TextBlock Grid.Column="2" Text="{Binding BuffHint}" VerticalAlignment="Center"
+                        <Button Grid.Column="1" Content="添加为 Buff" Command="{Binding AddSpellBuffCommand}" />
+                        <TextBlock Grid.Column="2" Text="{Binding SpellBuffHint}" VerticalAlignment="Center"
+                                   Opacity="0.7" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 专长 Buff 联动（feat_buffs） -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="专长 Buff 联动（来自 feat_buffs 表）" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <AutoCompleteBox HorizontalAlignment="Stretch"
+                                         PlaceholderText="搜索专长（中/英文名）"
+                                         ItemsSource="{Binding FeatBuffCandidates}"
+                                         SelectedItem="{Binding SelectedFeatBuff}"
+                                         FilterMode="Contains"
+                                         MinimumPrefixLength="1"
+                                         MaxDropDownHeight="260">
+                            <AutoCompleteBox.ItemTemplate>
+                                <DataTemplate x:DataType="spells:Feat">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding NameZh}" />
+                                        <TextBlock Text="{Binding NameEn}" Opacity="0.7" />
+                                        <TextBlock Text="{Binding Source}" Opacity="0.5" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </AutoCompleteBox.ItemTemplate>
+                        </AutoCompleteBox>
+                        <Button Grid.Column="1" Content="添加为 Buff" Command="{Binding AddFeatBuffCommand}" />
+                        <TextBlock Grid.Column="2" Text="{Binding FeatBuffHint}" VerticalAlignment="Center"
                                    Opacity="0.7" />
                     </Grid>
                 </StackPanel>

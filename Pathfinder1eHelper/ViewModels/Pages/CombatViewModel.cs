@@ -42,7 +42,8 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     private SizeOption _selectedSize = CombatOptions.Size(SizeCategory.Medium);
     private AbilityOption _selectedCastingAbility = CombatOptions.Ability(Ability.Intelligence);
     private ConcentrationOption _concentrationSituation = CombatOptions.Concentration(ConcentrationSituation.DefensiveCasting);
-    private BuffCandidate? _selectedBuff;
+    private Spell? _selectedSpellBuff;
+    private Feat? _selectedFeatBuff;
 
     public CombatViewModel(ICharacterRepository repository, ISpellService spells, IFeatService feats)
     {
@@ -72,7 +73,8 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         NewCharacterCommand = ReactiveCommand.Create(NewCharacter);
         DuplicateCharacterCommand = ReactiveCommand.Create(DuplicateCharacter);
         DeleteCharacterCommand = ReactiveCommand.Create(DeleteCharacter);
-        AddBuffCommand = ReactiveCommand.CreateFromTask(AddBuffAsync);
+        AddSpellBuffCommand = ReactiveCommand.CreateFromTask(AddSpellBuffAsync);
+        AddFeatBuffCommand = ReactiveCommand.CreateFromTask(AddFeatBuffAsync);
         ClearBuffsCommand = ReactiveCommand.Create(ClearBuffs);
         ClearAllBonusesCommand = ReactiveCommand.Create(ClearAllBonuses);
 
@@ -110,8 +112,11 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public IReadOnlyList<PresetViewModel> WeaponPresets { get; }
 
-    /// <summary>Buff 搜索候选（法术 + 专长；惰性载入，由 AutoCompleteBox 在本地过滤）。</summary>
-    public ObservableCollection<BuffCandidate> BuffCandidates => _buffs.Candidates;
+    /// <summary>“法术 Buff”搜索候选（惰性载入，由 AutoCompleteBox 在本地过滤）。</summary>
+    public ObservableCollection<Spell> SpellBuffCandidates => _buffs.SpellCandidates;
+
+    /// <summary>“专长 Buff”搜索候选（惰性载入，由 AutoCompleteBox 在本地过滤）。</summary>
+    public ObservableCollection<Feat> FeatBuffCandidates => _buffs.FeatCandidates;
 
     public CharacterListItemViewModel? SelectedCharacter
     {
@@ -138,7 +143,9 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public ICommand DeleteCharacterCommand { get; }
 
-    public ICommand AddBuffCommand { get; }
+    public ICommand AddSpellBuffCommand { get; }
+
+    public ICommand AddFeatBuffCommand { get; }
 
     public ICommand ClearBuffsCommand { get; }
 
@@ -406,17 +413,33 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public bool IsGrappleMode => _concentrationSituation.Value == ConcentrationSituation.Grappled;
 
-    public BuffCandidate? SelectedBuff
+    public Spell? SelectedSpellBuff
     {
-        get => _selectedBuff;
+        get => _selectedSpellBuff;
         set
         {
-            this.RaiseAndSetIfChanged(ref _selectedBuff, value);
-            UpdateBuffHint();
+            this.RaiseAndSetIfChanged(ref _selectedSpellBuff, value);
+            UpdateSpellBuffHint();
         }
     }
 
-    public string BuffHint
+    public string SpellBuffHint
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
+
+    public Feat? SelectedFeatBuff
+    {
+        get => _selectedFeatBuff;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedFeatBuff, value);
+            UpdateFeatBuffHint();
+        }
+    }
+
+    public string FeatBuffHint
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
@@ -563,21 +586,32 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         SaveError = _autoSaver.Error;
     }
 
-    private void UpdateBuffHint()
+    private void UpdateSpellBuffHint()
     {
-        if (_selectedBuff is null)
+        if (_selectedSpellBuff is null)
         {
-            BuffHint = string.Empty;
+            SpellBuffHint = string.Empty;
             return;
         }
 
-        BuffHint = $"已选择：{_selectedBuff.NameZh}（{_selectedBuff.KindDisplay}，点击“添加为 Buff”）";
+        SpellBuffHint = $"已选择：{_selectedSpellBuff.NameZh}（点击“添加为 Buff”）";
     }
 
-    /// <summary>把所选法术/专长在 <c>spell_buffs</c> / <c>feat_buffs</c> 中的效果加入加值明细（供面板与测试调用）。</summary>
-    public async Task AddBuffAsync()
+    private void UpdateFeatBuffHint()
     {
-        if (_selectedBuff is not { } candidate)
+        if (_selectedFeatBuff is null)
+        {
+            FeatBuffHint = string.Empty;
+            return;
+        }
+
+        FeatBuffHint = $"已选择：{_selectedFeatBuff.NameZh}（点击“添加为 Buff”）";
+    }
+
+    /// <summary>把所选法术在 <c>spell_buffs</c> 中的效果加入加值明细（供面板与测试调用）。</summary>
+    public async Task AddSpellBuffAsync()
+    {
+        if (_selectedSpellBuff is not { } spell)
         {
             return;
         }
@@ -585,7 +619,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         BuffResolution resolution;
         try
         {
-            resolution = await _buffs.ResolveAsync(candidate, CasterLevel ?? 0);
+            resolution = await _buffs.ResolveSpellAsync(spell, CasterLevel ?? 0);
         }
         catch (Exception ex)
         {
@@ -593,15 +627,41 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             return;
         }
 
+        ApplyBuffResolution(resolution, "spell_buffs", hint => SpellBuffHint = hint);
+    }
+
+    /// <summary>把所选专长在 <c>feat_buffs</c> 中的效果加入加值明细（供面板与测试调用）。</summary>
+    public async Task AddFeatBuffAsync()
+    {
+        if (_selectedFeatBuff is not { } feat)
+        {
+            return;
+        }
+
+        BuffResolution resolution;
+        try
+        {
+            resolution = await _buffs.ResolveFeatAsync(feat, CasterLevel ?? 0);
+        }
+        catch (Exception ex)
+        {
+            SaveError = ex.Message;
+            return;
+        }
+
+        ApplyBuffResolution(resolution, "feat_buffs", hint => FeatBuffHint = hint);
+    }
+
+    private void ApplyBuffResolution(BuffResolution resolution, string table, Action<string> setHint)
+    {
         foreach (var entry in resolution.Entries)
         {
             Bonuses.Add(new BonusEntryViewModel(entry, OnInputChanged, RemoveBonus));
         }
 
-        var table = candidate.Kind == BuffCandidateKind.Feat ? "feat_buffs" : "spell_buffs";
-        BuffHint = resolution.MatchedCount == 0
+        setHint(resolution.MatchedCount == 0
             ? $"{table} 未收录：已添加 1 条空白加值"
-            : $"已添加 {resolution.MatchedCount} 条加值（按 CL {CasterLevel ?? 0}）";
+            : $"已添加 {resolution.MatchedCount} 条加值（按 CL {CasterLevel ?? 0}）");
     }
 
     private void ApplyWeaponPreset(WeaponPreset preset)

@@ -248,8 +248,8 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
-        await vm.AddBuffAsync();
+        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
+        await vm.AddSpellBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
         Assert.Equal("祝福术·攻击", bonus.Name);
@@ -278,8 +278,8 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
-        await vm.AddBuffAsync();
+        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
+        await vm.AddSpellBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
         Assert.Equal(-1, bonus.Value);
@@ -308,8 +308,8 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
-        await vm.AddBuffAsync();
+        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
+        await vm.AddSpellBuffAsync();
 
         Assert.Single(vm.Bonuses);
     }
@@ -333,8 +333,8 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells, feats);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates, c => c.Kind == BuffCandidateKind.Feat);
-        await vm.AddBuffAsync();
+        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
+        await vm.AddFeatBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
         Assert.Equal("闪避", bonus.Name);
@@ -378,10 +378,10 @@ public class CombatViewModelTests
         var charge = vm.Presets.First(p => p.Name == "冲锋");
         ((ICommand)charge.ApplyCommand).Execute(null); // 2 条预设条目
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates, c => c.Kind == BuffCandidateKind.Spell);
-        await vm.AddBuffAsync(); // 1 条法术 Buff
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates, c => c.Kind == BuffCandidateKind.Feat);
-        await vm.AddBuffAsync(); // 1 条专长 Buff
+        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
+        await vm.AddSpellBuffAsync(); // 1 条法术 Buff
+        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
+        await vm.AddFeatBuffAsync(); // 1 条专长 Buff
 
         Assert.Equal(5, vm.Bonuses.Count);
 
@@ -434,8 +434,8 @@ public class CombatViewModelTests
         vm.CasterLevel = 9;
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
-        await vm.AddBuffAsync();
+        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
+        await vm.AddSpellBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
         Assert.Equal(4, bonus.Value); // CL9 → 2 + (9-3)/3 = 4
@@ -450,8 +450,8 @@ public class CombatViewModelTests
         var vm = Create(new FakeCharacterRepository(), spells);
 
         await vm.LoadBuffCandidatesAsync();
-        vm.SelectedBuff = Assert.Single(vm.BuffCandidates);
-        await vm.AddBuffAsync();
+        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
+        await vm.AddSpellBuffAsync();
 
         var bonus = Assert.Single(vm.Bonuses);
         Assert.Equal("火球术", bonus.Name);

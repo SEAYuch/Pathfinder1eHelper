@@ -8,7 +8,7 @@ Pathfinder 1e 中文助手 —— 一款基于 Avalonia 的桌面法术查询工
 ## 功能
 
 - **法术浏览**:只读参考库约 3373 条法术,覆盖 101 个出处(由 pf_searcher_v1.0 数据重建,补充旧库独有法术,以英文名为准去重/补缺)
-- **专长浏览**:约 1178 条专长(9 个出处:CRB/APG/ARG/UM/UC/UCa/ACG/UI/B1),含中/英文名、类型(战斗/超魔/团队…)、战士奖励标记、先决条件、简述与详述效果;支持中/英文名与先决条件搜索,以及出处/英文首字母/类型筛选;`feat_buffs` 表供战斗页“Buff 联动”
+- **专长浏览**:约 1639 条专长 / 47 个出处——核心 9 部(CRB/APG/ARG/UM/UC/UCa/ACG/UI/B1) + MA 神话专长 + 54 个后续书籍页面(极限荒野、内海种族、格拉里昂的*、战役设定等,best-effort);含中/英文名、类型(战斗/超魔/团队/神话…)、战士奖励标记、先决条件、简述与详述效果;支持中/英文名与先决条件搜索,以及出处/英文首字母/类型筛选;`feat_buffs` 表供战斗页“Buff 联动”
 - **怪物浏览**:怪物图鉴 1-3 约 838 条怪物(含中/英文名、CR、体型、类型、阵营、属性、生态与原文数据块);支持中/英文名搜索与英文首字母/生物类型筛选;概览页(如“龙类绪论”)与所属怪物互相跳转
 - **实时搜索**:按中文名/英文名模糊搜索,300ms 防抖
 - **筛选**:按出处(`source`)、英文首字母 A–Z 过滤
@@ -63,7 +63,7 @@ Pathfinder1eHelper.slnx
 | `spells` | 法术主表(约 3373 行):出处、中/英文名、首字母,以及学派/环位/施法时间/成分/距离/效果/范围/目标/持续时间/豁免/法术抗力/描述/附加/`spell_type` 等字段 |
 | `spell_levels` | 法术按职业/领域拆分的环位:`spell_id`、`class_name`、`level`、`kind`(`class` = 主职业,`domain` = 领域/子域),供“职业 + 环位”筛选。`class_name` 可含复合项(如 `术士/法师`);筛选下拉在读取时按 `/` 摊平为单个职业/领域并去重,查询时对 `class_name` 分词精确匹配 |
 | `spell_buffs` | 常见 Buff 法术的结构化加值效果,供战斗页“Buff 联动”使用 |
-| `feats` | 专长主表(约 1178 行):`source`(CRB/APG/ARG/UM/UC/UCa/ACG/UI/B1)、中/英文名、`first_letter`、`feat_type`、`is_fighter_bonus`、`prerequisites`、`summary`、`benefit`、`flavor` |
+| `feats` | 专长主表(约 1639 行):`source`(核心书代码 + `MA` + 后续书籍代码/书名)、中/英文名、`first_letter`、`feat_type`、`is_fighter_bonus`、`prerequisites`、`summary`、`benefit`、`flavor` |
 | `feat_buffs` | 专长的结构化加值效果(列与 `spell_buffs` 同构),供战斗页“Buff 联动”使用 |
 | `monsters` | 怪物主表(约 838 行):`source`(B1/B2/B3)、`page`、中/英文名、`first_letter`、CR、体型、类型/亚种、阵营、六属性、环境/组织/宝物、描述、`stat_block`/`special_abilities`/`raw_text`(原文兜底) |
 | `monster_groups` | 概览页(“绪论/概述”,如 龙类绪论):`name_zh`/`name_en`、`description`(风味描述)、`content`(可渲染正文:规则段落 + GFM 管道表)、`raw_text` |
@@ -71,7 +71,7 @@ Pathfinder1eHelper.slnx
 
 `monsters` 索引:`idx_monsters_first_letter`(首字母)、`idx_monsters_name_en`/`idx_monsters_name_zh`;概览关系索引:`idx_mgm_group`、`idx_mgm_monster`,以及 `monster_groups` 的名称索引。按需求**不建出处索引**。怪物数据由 `scripts/build-monster-db/`(extract_monsters.mjs + schema.sql + load.sql + build.sh)提取;概览页与成员的关联在 CHM 中没有显式链接,由“英文名前缀 + 龙类/发条/特里埃人工种子”生成。
 
-`feats` 索引:`idx_feats_first_letter`(首字母)、`idx_feats_name_en`/`idx_feats_name_zh`;按需求**不建出处索引**。专长数据由 `scripts/build-feat-db/`(extract_feats.mjs + schema.sql + load.sql + feat_buffs.sql + build.sh)从「Pathfinder v2.20 SC」CHM 的专长章节提取;`feat_buffs` 为手工策展的加值效果(起步 8 条,如 闪避→AC+1 闪避、精通先攻→先攻+4、强韧加强/闪电反射/钢铁意志→对应豁免+2、战斗施法→专注+4 等),其余专长走“未收录→手动加值”兜底。MA 神话专长与根目录 `专长*.htm` 系列留待二期。
+`feats` 索引:`idx_feats_first_letter`(首字母)、`idx_feats_name_en`/`idx_feats_name_zh`;按需求**不建出处索引**。专长数据由 `scripts/build-feat-db/`(extract_feats.mjs + schema.sql + load.sql + feat_buffs.sql + build.sh)从「Pathfinder v2.20 SC」CHM 提取:v1 覆盖专长章节 9 个书页;v2 追加 MA 神话专长(`page_624` 详述)与根目录 54 个 `专长*.htm` 后续书籍页面(单行化 + 全局表头扫描,兼容全角/半角括号、`〔〕/【】/(战斗专长)` 类型与 `先决条件 ：` 空格变体;出处取 CHM `.hhc` 目录父节点),解析器做名称清洗(清除悬空/全角括号碎片)并过滤异构建条目。`feat_buffs` 为手工策展的加值效果(起步 8 条,如 闪避→AC+1 闪避、精通先攻→先攻+4、强韧加强/闪电反射/钢铁意志→对应豁免+2、战斗施法→专注+4 等),其余专长走“未收录→手动加值”兜底。后续书籍页面格式差异极大,部分页面可解析条目较少或为 0,属预期(best-effort);`UI` 页(极限诡道)仅简表,详述缺失。
 
 `spell_buffs` 列定义:
 

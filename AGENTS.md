@@ -106,7 +106,7 @@ dotnet run --project Pathfinder1eHelper.Test
 
 ## 专长（Feats）功能
 
-> 状态：**已实施 v1**（主章节 9 个出处，约 1178 条；MA 神话专长与根目录 54 个 `专长*.htm` 系列留待二期）。
+> 状态：**已实施 v1 + v2**（主章节 9 个出处 + MA 神话专长 + 根目录 54 个 `专长*.htm` 后续书籍，合计约 1639 条 / 47 个出处；`UI` 页详述仍缺失，见待办）。
 > 入口在「法术」下方（导航顺序：法术 → **专长** → 战斗 → 怪物）。
 > 数据源：`C:\Users\sea_y\OneDrive\Documents\跑团\Pathfinder v2.20 SC.chm`（34MB，GBK，Word 导出 HTML）。
 > 以下「勘察」小节为已核实的事实，其余为设计约定。
@@ -129,7 +129,12 @@ dotnet run --project Pathfinder1eHelper.Test
   | B1 怪物图鉴 | `page_201.html` | 同上 |
 
 - **页面结构**（上述页面一致）：① 简表 `<table>`，列 = `[专长名称(EN+ZH), 先决条件, 专长效果简述]`，英文名尾部 `*` = 战士奖励专长；② 详述段落序列：`中文名（English）〔类型〕` → 风味句 →（可选）`先决条件：…` → `专长效果：…`（可多段，或含 `特殊/普通` 段）。类型标签如 `〔战斗〕〔团队〕〔流派〕〔超魔〕〔造物〕`，无标签 = 通用。
-- **暂缓到二期**：MA 神话专长（`page_623/624.html`，嵌套表 + 纯文本详述，格式异构）；根目录 54 个 `专长*.htm`（后续书籍：惧怖冒险、恶棍志等，标记混用 `〔〕/【】/（）`、`先决条件/前置条件` 不一，出处需从“出自《…》”内联文本或 TOC 父节点取）。
+- **二期已实施**：
+  - **MA 神话专长**：取 `page_624.html` 详述（行结构：`中文名（神话/超魔）` → `English` → `(Mythic)` → 风味 → `先决条件：` → `好处：`），source = `MA`，约 160 条。
+  - **根目录 54 个 `专长*.htm`**（后续书籍）：单行化后全局扫描表头（兼容全角/半角括号、`〔〕/【】/(战斗专长)`、`中文名 English` 空格与无空格混排）；字段标记兼容 `先决条件 ：`（冒号前有空格）等变体；出处取 CHM `.hhc` 目录父节点（有缩写代码用代码，否则用书名）。异构建条目经质量过滤（英文名首字母大写、无括号/数字/出处残留、正文须含字段标记），约 309 条、cross-source 37 个。
+  - 字段标记：先决条件兼容 `先决条件：/前置条件：/前提条件：/先决：/需求：`（部分专长在灰色描述里以 `前提条件：` 给出先决条件）；故事专长（`〔故事〕`）的 `即时收益/专长目标/完成收益` 归入 `benefit`（详述），不留在 `prerequisites`。
+  - 名称清洗：清除全角括号碎片与悬空括号（en 去全角 `（）`、去首尾半角 `)`；zh 去尾悬 `（`），`first_letter` 随之重算——冒烟测试 `Feat_names_have_no_dangling_brackets` 锁定。
+  - 后续书籍页面格式差异极大，部分页面可解析条目较少或为 0，属预期（best-effort）。
 
 ### 数据库设计（并入现有 `data/pathfinder1e.duckdb`）
 
@@ -178,7 +183,7 @@ CREATE TABLE feat_buffs (
 - **Services**：`FeatQuery(Term, Source, FirstLetter, Type, Skip, Take)` record；`IFeatRepository/FeatRepository`（`NameZh.Contains || NameEn.ToLower().Contains || Prerequisites.ToLower().Contains`，`OrderBy(NameEn)`，`DISTINCT` 下推用于出处/类型下拉）；`IFeatService/FeatService`（归一化 + 默认页大小 200）。
 - **ViewModels**：`FeatsViewModel : ViewModelBase, IPageViewModel`，完整复刻 `SpellsViewModel` 形态：搜索防抖管道（Taskpool 执行、结果回主线程）、`PageSize/HasMoreResults/LoadMoreCommand` + 总数优化、`HashSet` 去重的懒加载过滤器（出处/首字母/类型）、`DesignTime` 无参构造。
 - **Views**：`FeatsView.axaml` 复刻 `SpellsView` 布局（列表 + 详情 + “加载更多”）；详情字段：名称/类型/是否战士奖励专长/先决条件/简述/专长效果/出处。
-- **战斗联动**：`BonusOrigin` 增加 `FeatBuff` 成员（旧存档枚举为字符串序列化，不受影响）；`CombatBuffLibrary(ISpellService, IFeatService)` 把法术与专长统一为 `BuffCandidate`（标注 `Kind`）候选，`AddBuffAsync` 按 `Kind` 查 `spell_buffs` / `feat_buffs`；「清除法术 Buff」按钮已改为「清除 Buff 联动」（同时清 `SpellBuff+FeatBuff` origin）。
+- **战斗联动**：`BonusOrigin` 增加 `FeatBuff` 成员（旧存档枚举为字符串序列化，不受影响）；战斗页含**两个并列 Buff 模块**——「法术 Buff 联动」（`spell_buffs`）与「专长 Buff 联动」（`feat_buffs`），各自由 `CombatBuffLibrary.SpellCandidates` / `FeatCandidates` 提供候选，`AddSpellBuffAsync` / `AddFeatBuffAsync` 解析为加值条目；「清除 Buff 联动」同时清 `SpellBuff+FeatBuff` origin。
 - **测试**：`FeatDatabaseSmokeTests`（`TestDatabase.SkipIfUnavailable()`；行数阈值、猛力攻击/Power Attack 命中、首字母/出处/类型筛选收窄、`feat_buffs` 闪避→AC 映射）；`FeatsViewModelTests`（哨兵、管道映射、分页）；战斗联动新 origin 的增删测试。Fake 加 `FakeFeatService/FakeFeatRepository`（按 Skip/Take 切片）进 `TestDoubles.cs`。
 
 ### 实施顺序建议
@@ -186,13 +191,13 @@ CREATE TABLE feat_buffs (
 1. 管线先行：解包 → `extract_feats.mjs` → 并入 duckdb → 冒烟测试锁行为（行数阈值防回归）。
 2. 查询页：Models/Services/VM/View + 导航三处同步 + VM 测试。
 3. 战斗联动：`feat_buffs.sql` 策展 + `BonusOrigin.FeatBuff` + 库合并与清除语义 + 测试。
-4. 二期（可选）：MA 神话专长、54 个 `专长*.htm`（异构解析器 + 出处回填）。
+4. 二期（已实施）：MA 神话专长、54 个 `专长*.htm`（异构解析器 + 出处回填）。
 
 ## 已知待办 / 暂缓项
 
-- **专长功能二期**：MA 神话专长（`page_623/624.html`，嵌套表+纯文本）、根目录 54 个 `专长*.htm`（异构标记/字段名、出处需内联或 TOC 取）；`UI` 页详述缺失（仅简表），如需补全需另解析其结构。
-- **extract_feats.mjs 待修**（脚本在 Windows 机，仓库无 scripts/）：`UI` 页 `中文名（English）〔类型〕` 标题拆分时括号不配对（全角/半角混排），曾产出“zh 尾悬 `（` + en 尾悬 `）`”共 110 行（已直接清洗参考库并加冒烟测试 `Feat_names_have_no_dangling_brackets` 锁定）；重建 `feats` 表须同步修脚本，命名规则为 en 截断/清除全角 `（）` 碎片、zh 去尾悬 `（`，`first_letter` 随之重算。
+- **专长 `UI` 页详述缺失**（`page_856.html` 仅简表；其正文非标准段落结构，如需补全须另解析）。
+- **`extract_feats.mjs` 已升级 v2（本地脚本；仓库无 scripts/）**：补齐名称清洗（en 去全角 `（）` 碎片、去首尾半角 `)`；zh 去尾悬 `（`，`first_letter` 重算）、MA 神话专长解析（`page_624`）、54 个 `专长*.htm` 异构解析（出处取 `.hhc` 父节点，代码缺失时回退书名）。冒烟测试 `Feat_names_have_no_dangling_brackets` + MA/后续书籍用例锁定；重建 `feats` 表须用该版脚本。
 - `CombatViewModel` 仍有约 20 个表单标量属性（表单 VM 固有形态）。若继续瘦身，可抽 `CombatEditorViewModel` 并同步改 `CombatView.axaml` 绑定路径（编译期绑定会校验）。
-- Buff 候选（`CombatBuffLibrary.Candidates`）仍载入完整 `Spell` 实体；改投影 DTO 需同步改 `CombatView.axaml` 与测试的 `SelectedBuffSpell` 类型。
+- Buff 候选（`CombatBuffLibrary.SpellCandidates` / `FeatCandidates`）仍载入完整 `Spell`/`Feat` 实体；改投影 DTO 需同步改 `CombatView.axaml` 与测试的 `SelectedSpellBuff`/`SelectedFeatBuff` 类型。
 - 英文搜索用 `ToLower().Contains(...)`（无索引可利用）；若改 DuckDB `ILIKE` 需裸 SQL 与转义。
 - 低价值增强未做：`MonsterTextView` 表格可视化不虚拟化；`ObservableCollection` 已在筛选处改用 `HashSet` 去重。

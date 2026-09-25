@@ -17,11 +17,12 @@ public class FeatDatabaseSmokeTests
             var repo = new FeatRepository(fsql);
 
             var total = await repo.CountAsync(new FeatQuery(null, null, null, null, 0, int.MaxValue));
-            Assert.True(total > 1000, $"expected a populated feat table (>1000), got {total}");
+            Assert.True(total > 1500, $"expected a populated feat table (>1500), got {total}");
 
             var sources = await repo.GetSourcesAsync();
-            Assert.Equal(9, sources.Count);
+            Assert.True(sources.Count > 20, $"expected many sources (core + mythic + later books), got {sources.Count}");
             Assert.Contains("CRB", sources);
+            Assert.Contains("MA", sources);
 
             var powerAttacks = await repo.SearchAsync(new FeatQuery("Power Attack", null, null, null, 0, 50));
             var power = Assert.Single(powerAttacks, f => f.NameEn == "Power Attack" && f.Source == "CRB");
@@ -85,6 +86,101 @@ public class FeatDatabaseSmokeTests
             var types = await repo.GetTypesAsync();
             Assert.Contains("战斗", types);
             Assert.Contains("通用", types);
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Mythic_feats_are_present()
+    {
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
+        try
+        {
+            var repo = new FeatRepository(fsql);
+
+            var mythic = await repo.SearchAsync(new FeatQuery(null, "MA", null, null, 0, 500));
+            Assert.True(mythic.Count > 100, $"expected mythic feats (>100), got {mythic.Count}");
+
+            var accursed = Assert.Single(mythic, f => f.NameEn == "Accursed Hex");
+            Assert.Equal("诅咒巫术", accursed.NameZh);
+            Assert.Equal("神话", accursed.FeatType);
+            Assert.False(string.IsNullOrWhiteSpace(accursed.Prerequisites));
+            Assert.False(string.IsNullOrWhiteSpace(accursed.Benefit));
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Later_book_feats_are_present()
+    {
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
+        try
+        {
+            var repo = new FeatRepository(fsql);
+
+            // 极限荒野（UW）等后续书籍页面（专长*.htm）已并入。
+            var uw = await repo.SearchAsync(new FeatQuery(null, "UW", null, null, 0, 500));
+            Assert.True(uw.Count > 50, $"expected Ultimate Wilderness feats (>50), got {uw.Count}");
+
+            var ambush = Assert.Single(uw, f => f.NameEn == "Ambush Awareness");
+            Assert.Equal("突袭警惕", ambush.NameZh);
+            Assert.False(string.IsNullOrWhiteSpace(ambush.Benefit));
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Story_feats_put_goal_sections_in_benefit_not_prerequisites()
+    {
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
+        try
+        {
+            var repo = new FeatRepository(fsql);
+
+            var story = await repo.SearchAsync(new FeatQuery(null, "UCa", null, "故事", 0, 200));
+            Assert.NotEmpty(story);
+
+            var accursed = story.First(f => f.NameEn == "Accursed");
+            // 先决条件只应含真正的先决条件；即时收益/专长目标/完成收益属详述。
+            Assert.NotNull(accursed.Prerequisites);
+            Assert.DoesNotContain("即时收益", accursed.Prerequisites);
+            Assert.DoesNotContain("专长目标", accursed.Prerequisites);
+            Assert.DoesNotContain("完成收益", accursed.Prerequisites);
+            Assert.Contains("完成收益", accursed.Benefit);
+        }
+        finally
+        {
+            fsql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Prerequisite_marker_variant_is_recognized()
+    {
+        TestDatabase.SkipIfUnavailable();
+        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
+        try
+        {
+            var repo = new FeatRepository(fsql);
+
+            // 部分专长的先决条件写作“前提条件：…”（灰色描述内），须识别为 Prerequisites。
+            var rows = await repo.SearchAsync(new FeatQuery("感应传送", null, null, null, 0, 20));
+            var feat = rows.First(f => f.NameZh == "感应传送");
+            Assert.NotNull(feat.Prerequisites);
+            Assert.Contains("感知", feat.Prerequisites);
+            Assert.DoesNotContain("前提条件", feat.Flavor ?? string.Empty);
         }
         finally
         {
