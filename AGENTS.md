@@ -26,6 +26,8 @@ Pathfinder1eHelper.slnx
 ├─ .github/workflows/ci.yml     # CI：restore → Release build → 测试宿主
 ├─ data/                        # 只读参考库（.gitignore，不入库）
 ├─ scripts/                     # 数据构建管线（.gitignore，不入库）
+├─ packaging/pack.ps1           # 打包统一入口（发布用，**入库**）
+├─ dotnet-tools.json            # 仓库级工具清单（vpk，版本固定）
 ├─ Pathfinder1eHelper/
 │  ├─ Program.cs                # 入口：AppLog 兜底 + AppBuilder + Autofac 模块
 │  ├─ App.axaml(.cs)            # 主题资源；从 DI 解析主窗口
@@ -46,7 +48,7 @@ Pathfinder1eHelper.slnx
 - **导航/路由**：`MainWindowViewModel : IScreen` 持有 `RoutingState`；`NavItems`（`NavItemViewModel`）用 `Func<IPageViewModel>` **惰性创建并缓存**页面 VM；`RoutedViewHost` 渲染。页面 VM 实现 `IPageViewModel`（可写 `HostScreen`）。
 - **ViewLocator**：`Views/ViewLocator.cs` 为**显式映射**（`Type → Func<IViewFor>`，无反射，AOT/裁剪安全）。**新增可路由页面时必须同步三处**：`ViewLocator.Map` 加一行、`AppModule` 注册 VM/View、`MainWindowViewModel` 加 `NavItem`。
 - **数据访问**：`IFreeSql` 单例、线程安全且只读；Repository/Service 为 `InstancePerDependency`。
-  - **只读三重防护**：连接串 `ACCESS_MODE=READ_ONLY` + `UseAutoSyncStructure(false)` + 实体 `[Table(DisableSyncStructure = true)]`。任何新实体都要带该特性。
+  - **只读三重防护**：连接串 `ACCESS_MODE=READ_ONLY` + `UseAutoSyncStructure(false)` + 实体 `[Table(DisableSyncStructure = true)]`。任何新实体都要带该特性。唯一例外是 `DbInfo`（`db_info`），它只由 `--stamp-db` 维护模式经 `DbInfoCatalog.OpenForStamping` 写入，见「版本与参考库元数据」。
 - **持久化**：用户数据（战斗档案）与只读参考库分离，`JsonCharacterRepository` 每角色一个 JSON（`%AppData%\Pathfinder1eHelper\characters`）；历史单文件 `character.json` 首次运行自动迁移为 `.bak`。档案 `SchemaVersion` 现为 **2**（不保留 v1 兼容：旧字段无迁移代码，`bonuses`/旧武器字段会被忽略）。后台写入是 fire-and-forget（页面停用时 flush）。
 - **领域计算（已对齐《开拓者：正义之怒》DLL）**：
   - `Models/Combat/ModifierDescriptor` = 游戏 `ModifierDescriptor` 全量（去 `Difficulty`/`DLC3_Stackable`）；可叠加集合见 `ModifierDescriptorHelper`（10 项，与 DLL 一致，去 `DLC3_Stackable`）。`CombatStat` = 游戏 `StatType` 战斗子集（攻击命中统一为 `Attack`，近战/远程/接触共用，一切按描述符叠加判定）；`ModifierEntry`（Descriptor + Stat + Ability + Value + StackMode）取代旧 `BonusEntry`。
@@ -112,7 +114,119 @@ dotnet run --project Pathfinder1eHelper
 
 # 测试（MTP 宿主；缺参考库时冒烟测试自动跳过）
 dotnet run --project Pathfinder1eHelper.Test
+
+# 打印版本（打包脚本取版本号的入口）
+dotnet run --project Pathfinder1eHelper -- --version
+
+# 给参考库盖章：把当前应用版本写入 db_info（升版后必须重跑）
+dotnet run --project Pathfinder1eHelper -- --stamp-db
+
+# 校验参考库与程序集是否匹配（打包流水线的前置闸门，不匹配则退出码非 0）
+dotnet run --project Pathfinder1eHelper -- --verify-db
+
+# 打印运行期实际使用的参考库路径（单文件打包据此验证 db 是否真被打进去了）
+dotnet run --project Pathfinder1eHelper -- --print-db-path
+
+# 打包（详见「打包与分发」）
+pwsh -NoProfile -Command "& ./packaging/pack.ps1 -Target win-x64,portable -WithMsi"
 ```
+
+## 打包与分发（packaging/pack.ps1 + Velopack）
+
+统一入口 `packaging/pack.ps1`，配套仓库级工具 `vpk`（版本固定在 `dotnet-tools.json`，先 `dotnet tool restore`）。
+版本号与产品名**都从 `Directory.Build.props` 读**，脚本内不硬编码第二份。
+
+```bash
+# Windows 安装包（Setup.exe + MSI）+ 免安装单文件
+pwsh -NoProfile -Command "& ./packaging/pack.ps1 -Target win-x64,portable -WithMsi"
+# Linux（AppImage）/ macOS（.app）
+pwsh -NoProfile -Command "& ./packaging/pack.ps1 -Target linux-x64,osx-arm64"
+# 只要便携 zip，跳过 Velopack
+pwsh -NoProfile -File ./packaging/pack.ps1 -Target linux-x64 -SkipInstaller
+```
+
+⚠️ **多目标必须用 `-Command`**：`pwsh -File` 会把 `a,b` 当成单个字符串，`ValidateSet` 会直接报错。
+
+### 各平台产物（实测，版本 0.1.0）
+
+| 目标 | 产物 | 体积 |
+| --- | --- | --- |
+| `win-x64` / `win-arm64` | `*-Setup.exe`（Velopack 安装器）/ `*.msi`（`--msi`，Velopack 内置 WiX 生成，**无需自建 wixproj**） | 78 / 63 MB |
+| `linux-x64` / `linux-arm64` | `*.AppImage` | 78 / 75 MB |
+| `osx-arm64` / `osx-x64` | `Pathfinder1eHelper.app` | 259 / 253 MB |
+| 全部 rid | `Pathfinder1eHelper-<ver>-<rid>.zip`（免安装） | 63–85 MB |
+| `portable` | 单个自包含 `Pathfinder1eHelper.exe` | 68 MB |
+
+Velopack 三个平台的**命令集不同**（脚本里已分派，勿合并）：
+`win`/`linux` 用 `pack`，`osx` 用 `bundle`；`--skipVeloAppCheck` **只有 Windows 认**，Linux/macOS 传了会报
+`Unrecognized command or argument`；`--mainExe` 在 Linux/macOS 上**不带 `.exe`**；跨平台打包需要
+OS 指令前缀 `vpk [linux] pack ...`（少了会报 `the target rid must be Windows`）。
+
+### 工具能力边界（别指望 Velopack 做它做不到的事）
+
+- **`.deb` 不由 Velopack 产出**——它对 Linux 只给 AppImage。要 deb 仍得在 Linux 上用
+  `dpkg-deb --build`（或 `fpm`）自建，见下方待办。
+- **`.dmg` 不由 Velopack 产出**——它对 macOS 只给 `.app`。`.dmg` 必须用 macOS 的 `hdiutil create` 组装，
+  且要 `codesign --options runtime` + `xcrun notarytool` 公证，否则 Sonoma+ 直接拦。本项目在 Windows 上
+  无法代劳，脚本会打印警告。
+- **MSIX 不走 Velopack**：MSIX 必须把 TFM 改成 `net10.0-windows*`（连带测试工程），与当前
+  `net10.0` + Velopack 路线冲突。若确实要上 Microsoft Store，另开一条分支做，别混在一起。
+
+### publish 参数上的坑
+
+- **不要开 `PublishTrimmed`**：ReactiveUI 12 靠反射、FreeSql 靠表达式树、DuckDB 靠 P/Invoke，
+  全是 trimmer 盲区，裁剪后编译能过、运行时随机崩。靠 `DebugType=none` + 剔 `.pdb` 减体积。
+- **`.pdb` 必须剔除**：仅 `libSkiaSharp.pdb` + `libHarfBuzzSharp.pdb` 就是 **101 MB**（占 win-x64 产物
+  280MB 的三分之一强）。脚本在 publish 后统一删除，Velopack 的默认 `--exclude .*\.pdb` 是第二道保险。
+- **单文件发布必须 `IncludeAllContentForSelfExtract=true`**，否则 28MB 的 `pathfinder1e.duckdb`
+  不会进 bundle，程序启动即因找不到参考库而失败。该模式下产物里**看不到** `data/` 目录（DB 被打进
+  exe、运行时解压到 `%TEMP%\.net\<app>\<hash>\`），所以校验方式不同：跑一次 exe 的 `--print-db-path`，
+  看它解析到的路径是否存在——这才是「包对了」的判据。
+- **自包含是必须的**（macOS 更是无 .NET 运行时可选）。
+
+### 待办
+
+- **代码签名**：Setup.exe / MSI 目前都未签名（Velopack 会警告 `N file(s) will not be signed`），
+  分发给用户会触发 SmartScreen。需 `--signParams`（signtool）或 `--azureTrustedSignFile`。
+- **正式图标缺失**：`Assets/avalonia-logo.ico` 是 Avalonia 占位图，脚本检测不到
+  `Assets/Pathfinder1eHelper.ico` 时会警告并回退默认图标。补一套多尺寸 ico + 256/512 PNG
+  （deb/AppImage 要 PNG）后再删掉该警告分支。`ApplicationIcon` 也尚未设置。
+- **`.deb` 打包脚本**待写（Linux 上 `dpkg-deb`，注意 Avalonia X11 依赖：
+  `libx11-6 libxext6 libxrandr2 libxcursor1 libxi6 libsm6 libice6 libfontconfig1 libglib2.0-0 libdbus-1-3`）。
+- **自动更新未启用**：故意跳过 `VelopackApp.Build().Run()` 检查。要启用需给 csproj 加 `Velopack`
+  包引用、在 `Program.Main` 里包一层，并删掉脚本里的 `--skipVeloAppCheck`（记得它是 Windows-only）。
+- **CI 未接**：`artifacts/` 已 gitignore；可在 `windows-latest` / `ubuntu-latest` / `macos-latest`
+  分别跑同一条 `pack.ps1` 产出对应平台安装包。
+
+## 版本与参考库元数据（db_info）
+
+- **单一版本源**：`Directory.Build.props` 的 `<Version>`（当前 `0.1.0`）。SDK 由它派生
+  `AssemblyVersion`/`FileVersion`（`0.1.0.0`）与 `InformationalVersion`（`0.1.0`，会被 SourceLink
+  追加 `+<commit>` 后缀）。**改版本号只改这一处**，勿在 csproj 另写 `<Version>`。
+  `<Product>` 同在此处，`AppInfo.ProductName` 从程序集 `Product` 属性读取，与 exe「属性 → 详细信息」同源。
+- **运行期读取**：`AppInfo.Version`（三段 SemVer，剥掉 `+meta`/`-pre` 后缀）、`AppInfo.DisplayVersion`
+  （`v0.1.0`）。打包工具（Velopack/WiX/后续 MSIX）读 `FileVersion`，UI 与 DB 读 `InformationalVersion`，
+  `AppInfoTests` 钉死三者一致。
+- **参考库盖章**：参考库有单行表 `db_info`（实体 `Models/DbInfo`，DDL 与写入在 `Services/DbInfoCatalog`），
+  记录 `app_version` / `schema_version`（`AppInfo.ReferenceSchemaVersion`，表/列契约变更时 +1）/
+  `content_version`（数据批次，重建数据时递增）/ `data_built_at` / `row_counts`（各主表行数快照，缺表记 `missing`）。
+  盖章由 **`--stamp-db` 维护模式**执行（`MaintenanceMode`，在 `BuildAvaloniaApp` 之前短路，不初始化 UI/DI），
+  默认定位**仓库根**的 `data/pathfinder1e.duckdb`（用 `.slnx` 判定仓库根，**不要**用「找到第一个 data/ 就返回」——
+  输出目录里有 csproj 复制的同名副本，盖在那里会被下次构建的 `PreserveNewest` 覆盖回去）。
+  可选参数：`--db <path>`、`--content <n>`、`--notes <text>`；不传 `--content` 时沿用库中原值（幂等）。
+- **写库的唯一入口**：`DbInfoCatalog.OpenForStamping` 是全应用唯一可写连接，**只**在 `--stamp-db` 下使用；
+  UI 启动路径仍走 `FreeSqlFactory.CreateReadOnly` 的只读三重防护。`StampAsync` 用实体 API
+  （`Delete` + `Insert` 包在 `fsql.Transaction`）而非裸 SQL 绑参——本版本 FreeSql+DuckDB 下
+  `Ado` 的 `object`/`DbParameter[]` 重载不会把占位符绑到 DuckDB 的 `$n` 语法上。
+- **`--verify-db` 是打包闸门**：校验 `db_info` 的应用版本/结构版本与程序集一致、且无残留 `.wal`，
+  不通过则退出码非 0。`packaging/pack.ps1` 第一步就调它，防止「升了版忘了盖章」把不配套的库打进安装包。
+  `--print-db-path` 则按 `DbPathProvider` 的**运行期**规则解析路径，用于验证单文件发布是否真把 DB 打进包。
+- ⚠️ **`--stamp-db` 必须 Dispose 连接**（`MaintenanceMode` 用 try/finally 保证）：不释放则连接池不 checkpoint，
+  会留下 `pathfinder1e.duckdb.wal`。残留的 `.wal` 有三重危害：不进包、**下次只读打开直接失败**
+  （`Failure while replaying WAL file`）、且会在数据目录里堆垃圾。命令在 Dispose 后仍发现 `.wal` 会打印警告。
+- **升版流程**：改 `Directory.Build.props` 的 `<Version>` → `dotnet build` → 跑 `--stamp-db` → 跑测试。
+  漏掉盖章时 `DbInfoDatabaseSmokeTests.Stamped_db_info_matches_the_running_assembly_version` 会失败
+  （已验证：源 0.2.0 + 库 0.1.0 即报 `Actual: "0.1.0"`），这正是该测试的用途。
 
 ## 专长（Feats）功能
 

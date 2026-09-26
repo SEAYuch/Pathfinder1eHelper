@@ -5,5 +5,7 @@ obj/
 /data/
 /scripts/
 /packages/
+/artifacts/
+/Releases/
 riderModule.iml
 /_ReSharper.Caches/

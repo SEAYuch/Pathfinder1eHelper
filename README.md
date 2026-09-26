@@ -112,6 +112,43 @@ dotnet run --project Pathfinder1eHelper.Test
 
 测试包含三类:服务/领域单元测试(Fake 仓储)、连真实 DuckDB 的集成冒烟测试(`*DatabaseSmokeTests`)、视图模型数据流测试。**冒烟测试需要 `data/pathfinder1e.duckdb`**;缺失时会自动跳过(Skipped),不阻塞其余测试。
 
+## 版本与参考库元数据
+
+版本号只在 `Directory.Build.props` 的 `<Version>` 处定义(当前 `0.1.0`),SDK 由此派生程序集版本、
+文件版本与产品名;代码里通过 `AppInfo.Version` 读取,不另存第二份。
+
+参考库内置单行表 `db_info`,记录生成它的应用版本、表结构版本、数据批次与各表行数快照,由应用自身的
+维护模式写入:
+
+```bash
+# 升版后重新盖章(幂等;不传 --content 时沿用库中原值)
+dotnet run --project Pathfinder1eHelper -- --stamp-db
+
+# 校验参考库与程序集是否匹配(升完版忘了盖章会返回非 0)
+dotnet run --project Pathfinder1eHelper -- --verify-db
+```
+
+## 打包
+
+```bash
+dotnet tool restore   # 拉取 vpk(仓库级工具,版本固定在 dotnet-tools.json)
+
+# Windows:安装包(Setup.exe)+ 免安装单文件
+pwsh -NoProfile -Command "& ./packaging/pack.ps1 -Target win-x64,portable -WithMsi"
+
+# Linux(AppImage)/ macOS(.app)
+pwsh -NoProfile -Command "& ./packaging/pack.ps1 -Target linux-x64,osx-arm64"
+
+# 只要便携 zip
+pwsh -NoProfile -File ./packaging/pack.ps1 -Target win-x64 -SkipInstaller
+```
+
+产物写入 `artifacts/`。打包前会自动跑 `--verify-db` 闸门,防止把与程序集版本不匹配的参考库打进安装包。
+注意多目标要用 `-Command`:`pwsh -File` 会把 `a,b` 当成单个字符串。
+
+`.deb` 与 `.dmg` 不由打包工具产出——`.deb` 需在 Linux 上用 `dpkg-deb --build` 自建,`.dmg` 需在 macOS 上用
+`hdiutil` 组装并做 Apple 签名与公证。详见 `AGENTS.md` 的「打包与分发」。
+
 ## 许可证
 
 [MIT](LICENSE) © 红色海鱼(SEA_Yuch)

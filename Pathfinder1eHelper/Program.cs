@@ -15,6 +15,15 @@ sealed class Program
     public static void Main(string[] args)
     {
         AppLog.InstallGlobalHandlers();
+
+        // 维护模式：--stamp-db / --version 在启动 UI 前短路返回。
+        // 这是全应用唯一会对参考库写入的入口（详见 DbInfoCatalog 的说明）。
+        if (MaintenanceMode.TryHandle(args, out var exitCode))
+        {
+            Environment.ExitCode = exitCode;
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

@@ -36,6 +36,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- 把 Directory.Build.props 的单一版本源以程序集元数据带进测试程序集：
+             AppInfoTests 据此断言「程序集里读到的版本 == 版本源」，无需在测试里再写一份
+             字面量，也无需在运行时回溯文件系统去找 props 文件。 -->
+        <AssemblyMetadata Include="RepositoryVersion" Value="$(Version)" />
+    </ItemGroup>
+
+    <ItemGroup>
         <!-- Copy the reference DB so the smoke test resolves it at AppContext.BaseDirectory\data (same as the app). -->
         <None Include="..\data\pathfinder1e.duckdb" Link="data\pathfinder1e.duckdb">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
