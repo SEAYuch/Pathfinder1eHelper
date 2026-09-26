@@ -11,34 +11,57 @@ public sealed class WeaponViewModel : ReactiveObject
 {
     private readonly Action _changed;
     private string _name;
-    private WeaponAbilityOption _attackAbility;
-    private string _damageDice;
-    private StrengthMultiplierOption _strengthMultiplier;
-    private WeaponAbilityOption _damageAbility;
+    private WeaponAttackTypeOption _attackType;
+    private WeaponHandOption _hand;
+    private bool _isSecondary;
+    private AbilityOption? _attackBonusStat;
+    private AbilityOption? _damageBonusStat;
+    private string _baseDamage;
+    private SizeOption _weaponSize;
+    private int? _damageDiceSizeShift;
+    private int? _criticalThreatLow;
+    private int? _criticalMultiplier;
     private int? _enhancement;
-    private string _critical;
     private WeaponResult? _result;
 
-    public WeaponViewModel(WeaponProfile model, Action changed, Action<WeaponViewModel> remove)
+    public WeaponViewModel(
+        WeaponProfile model,
+        Action changed,
+        Action<WeaponViewModel> remove,
+        Action<WeaponViewModel>? addFocus = null,
+        Action<WeaponViewModel>? addSpecialization = null)
     {
         ArgumentNullException.ThrowIfNull(model);
 
         _changed = changed;
         Id = model.Id;
         _name = model.Name;
-        _attackAbility = CombatOptions.WeaponChoice(model.AttackAbility);
-        _damageDice = model.DamageDice;
-        _strengthMultiplier = CombatOptions.Multiplier(model.StrengthMultiplier);
-        _damageAbility = CombatOptions.WeaponChoice(model.DamageAbility);
+        _attackType = CombatOptions.AttackType(model.AttackType);
+        _hand = CombatOptions.Hand(model.Hand);
+        _isSecondary = model.IsSecondary;
+        _attackBonusStat = CombatOptions.AbilityOrNull(model.AttackBonusStat);
+        _damageBonusStat = CombatOptions.AbilityOrNull(model.DamageBonusStat);
+        _baseDamage = model.BaseDamage;
+        _weaponSize = CombatOptions.Size(model.WeaponSize);
+        _damageDiceSizeShift = model.DamageDiceSizeShift;
+        _criticalThreatLow = model.CriticalThreatLow;
+        _criticalMultiplier = model.CriticalMultiplier;
         _enhancement = model.Enhancement;
-        _critical = model.Critical;
 
         RemoveCommand = ReactiveCommand.Create(() => remove(this));
+        AddWeaponFocusCommand = ReactiveCommand.Create(() => addFocus?.Invoke(this));
+        AddWeaponSpecializationCommand = ReactiveCommand.Create(() => addSpecialization?.Invoke(this));
     }
 
     public Guid Id { get; }
 
     public ICommand RemoveCommand { get; }
+
+    /// <summary>快捷添加「武器专攻」（+1 攻击，仅本武器）。</summary>
+    public ICommand AddWeaponFocusCommand { get; }
+
+    /// <summary>快捷添加「武器专精」（+2 伤害，仅本武器）。</summary>
+    public ICommand AddWeaponSpecializationCommand { get; }
 
     public string Name
     {
@@ -50,44 +73,106 @@ public sealed class WeaponViewModel : ReactiveObject
         }
     }
 
-    /// <summary>命中属性：力量 / 敏捷。</summary>
-    public WeaponAbilityOption AttackAbility
+    public WeaponAttackTypeOption AttackType
     {
-        get => _attackAbility;
+        get => _attackType;
         set
         {
-            this.RaiseAndSetIfChanged(ref _attackAbility, value);
+            this.RaiseAndSetIfChanged(ref _attackType, value);
             _changed();
         }
     }
 
-    public string DamageDice
+    public WeaponHandOption Hand
     {
-        get => _damageDice;
+        get => _hand;
         set
         {
-            this.RaiseAndSetIfChanged(ref _damageDice, value);
+            this.RaiseAndSetIfChanged(ref _hand, value);
             _changed();
         }
     }
 
-    public StrengthMultiplierOption StrengthMultiplier
+    public bool IsSecondary
     {
-        get => _strengthMultiplier;
+        get => _isSecondary;
         set
         {
-            this.RaiseAndSetIfChanged(ref _strengthMultiplier, value);
+            this.RaiseAndSetIfChanged(ref _isSecondary, value);
             _changed();
         }
     }
 
-    /// <summary>伤害属性：力量 / 敏捷。</summary>
-    public WeaponAbilityOption DamageAbility
+    /// <summary>命中属性；null 表示自动（近战力量 / 远程敏捷）。</summary>
+    public AbilityOption? AttackBonusStat
     {
-        get => _damageAbility;
+        get => _attackBonusStat;
         set
         {
-            this.RaiseAndSetIfChanged(ref _damageAbility, value);
+            this.RaiseAndSetIfChanged(ref _attackBonusStat, value);
+            _changed();
+        }
+    }
+
+    /// <summary>伤害属性；null 表示自动（近战力量 / 远程无）。</summary>
+    public AbilityOption? DamageBonusStat
+    {
+        get => _damageBonusStat;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _damageBonusStat, value);
+            _changed();
+        }
+    }
+
+    public string BaseDamage
+    {
+        get => _baseDamage;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _baseDamage, value);
+            _changed();
+        }
+    }
+
+    /// <summary>武器体型（伤害骰缩放基准）。</summary>
+    public SizeOption WeaponSize
+    {
+        get => _weaponSize;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _weaponSize, value);
+            _changed();
+        }
+    }
+
+    /// <summary>武器体型偏移（+1 增大一档，如变巨/缩小）。</summary>
+    public int? DamageDiceSizeShift
+    {
+        get => _damageDiceSizeShift;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _damageDiceSizeShift, value);
+            _changed();
+        }
+    }
+
+    public int? CriticalThreatLow
+    {
+        get => _criticalThreatLow;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _criticalThreatLow, value);
+            _changed();
+        }
+    }
+
+    public int? CriticalMultiplier
+    {
+        get => _criticalMultiplier;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _criticalMultiplier, value);
             _changed();
         }
     }
@@ -102,19 +187,13 @@ public sealed class WeaponViewModel : ReactiveObject
         }
     }
 
-    public string Critical
-    {
-        get => _critical;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _critical, value);
-            _changed();
-        }
-    }
-
     public string AttackDisplay => _result?.AttackDisplay ?? string.Empty;
 
+    public string FullAttackDisplay => _result?.FullAttackDisplay ?? string.Empty;
+
     public string DamageDisplay => _result?.DamageDisplay ?? string.Empty;
+
+    public string CriticalDisplay => _result?.CriticalDisplay ?? string.Empty;
 
     public IReadOnlyList<Contribution> AttackContributions => _result?.Attack.Contributions ?? [];
 
@@ -124,7 +203,9 @@ public sealed class WeaponViewModel : ReactiveObject
     {
         _result = result;
         this.RaisePropertyChanged(nameof(AttackDisplay));
+        this.RaisePropertyChanged(nameof(FullAttackDisplay));
         this.RaisePropertyChanged(nameof(DamageDisplay));
+        this.RaisePropertyChanged(nameof(CriticalDisplay));
         this.RaisePropertyChanged(nameof(AttackContributions));
         this.RaisePropertyChanged(nameof(DamageContributions));
     }
@@ -133,11 +214,16 @@ public sealed class WeaponViewModel : ReactiveObject
     {
         Id = Id,
         Name = Name,
-        AttackAbility = _attackAbility.Value,
-        DamageDice = DamageDice,
-        StrengthMultiplier = _strengthMultiplier.Value,
-        DamageAbility = _damageAbility.Value,
+        AttackType = _attackType.Value,
+        Hand = _hand.Value,
+        IsSecondary = IsSecondary,
+        AttackBonusStat = _attackBonusStat?.Value,
+        DamageBonusStat = _damageBonusStat?.Value,
+        BaseDamage = string.IsNullOrWhiteSpace(BaseDamage) ? "1d4" : BaseDamage.Trim(),
+        WeaponSize = _weaponSize.Value,
+        DamageDiceSizeShift = DamageDiceSizeShift ?? 0,
+        CriticalThreatLow = CriticalThreatLow ?? 20,
+        CriticalMultiplier = CriticalMultiplier ?? 2,
         Enhancement = Enhancement ?? 0,
-        Critical = Critical,
     };
 }

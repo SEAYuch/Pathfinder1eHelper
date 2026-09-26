@@ -47,10 +47,15 @@ Pathfinder1eHelper.slnx
 - **ViewLocator**：`Views/ViewLocator.cs` 为**显式映射**（`Type → Func<IViewFor>`，无反射，AOT/裁剪安全）。**新增可路由页面时必须同步三处**：`ViewLocator.Map` 加一行、`AppModule` 注册 VM/View、`MainWindowViewModel` 加 `NavItem`。
 - **数据访问**：`IFreeSql` 单例、线程安全且只读；Repository/Service 为 `InstancePerDependency`。
   - **只读三重防护**：连接串 `ACCESS_MODE=READ_ONLY` + `UseAutoSyncStructure(false)` + 实体 `[Table(DisableSyncStructure = true)]`。任何新实体都要带该特性。
-- **持久化**：用户数据（战斗档案）与只读参考库分离，`JsonCharacterRepository` 每角色一个 JSON（`%AppData%\Pathfinder1eHelper\characters`）；历史单文件 `character.json` 首次运行自动迁移为 `.bak`。
-- **领域计算**：`CombatCalculator`（纯静态）依赖 `BonusEngine`（叠加规则）、`AbilityResolver`（属性加值）、`SpellBuffResolver`（`spell_buffs` → 加值）、`ConcentrationCalculator`（专注 DC）。均为无状态、可单测。
-- **战斗页协作类**（`ViewModels/Combat/`）：`CharacterRoster`（列表增删改+命名）、`CombatBuffLibrary`（法术 Buff 候选惰性载入与解析）、`CharacterAutoSaver`（后台写回）、`BonusEntryViewModel`/`WeaponViewModel` 等编辑项 VM。
-
+- **持久化**：用户数据（战斗档案）与只读参考库分离，`JsonCharacterRepository` 每角色一个 JSON（`%AppData%\Pathfinder1eHelper\characters`）；历史单文件 `character.json` 首次运行自动迁移为 `.bak`。档案 `SchemaVersion` 现为 **2**（不保留 v1 兼容：旧字段无迁移代码，`bonuses`/旧武器字段会被忽略）。后台写入是 fire-and-forget（页面停用时 flush）。
+- **领域计算（已对齐《开拓者：正义之怒》DLL）**：
+  - `Models/Combat/ModifierDescriptor` = 游戏 `ModifierDescriptor` 全量（去 `Difficulty`/`DLC3_Stackable`）；可叠加集合见 `ModifierDescriptorHelper`（10 项，与 DLL 一致，去 `DLC3_Stackable`）。`CombatStat` = 游戏 `StatType` 战斗子集（攻击命中统一为 `Attack`，近战/远程/接触共用，一切按描述符叠加判定）；`ModifierEntry`（Descriptor + Stat + Ability + Value + StackMode）取代旧 `BonusEntry`。
+  - `Services/ModifierEngine.Evaluate` 复刻 `ModifiableValue.ApplyModifiersFiltered`：按描述符分组，可叠加求和、非叠加「最大正值 + 最小负值」同时生效，护甲/负重负值全局只取一次 `min`，`StackMode` 可强制覆盖。`ModifiableValue`/`AttributeValue`（`Bonus=值/2-5`）为可叠加数值基类。
+  - `Services/Rules/RuleCalculate*`（攻击/AC/豁免/先攻/CMB/CMD/武器/猛力攻击）、`RuleCheckConcentration` 复刻游戏同名规则；`CombatCalculator` 按 `ModifierEntry.Stat` 路由修饰后调用之。均无状态、可单测。武器伤害骰经 `WeaponDamageScaleTable`（逐行照搬 DLL）按 `WeaponProfile.WeaponSize`（可 `DamageDiceSizeShift` 偏移）缩放。
+  - **武器专属修饰**：`ModifierEntry.WeaponId`（null=全部武器）用于武器专攻/专精等；`CombatCalculator` 按「全局 + 该武器专属」拆分后送给武器规则。⚠️ 构造 `WeaponViewModel` 的**每一处**都必须传 `addFocus`/`addSpecialization` 回调（`AddWeapon`、预设、`LoadProfile`）——少传则快捷按钮变空操作，表现为「重启后点不动，删掉武器再加才恢复」，回归测试 `Weapon_focus_buttons_work_on_weapons_loaded_from_disk`。**猛力攻击**以 buff 条目（`ModifierKind.PowerAttack`，走 `RuleCalculatePowerAttack`）存在，启用时按 DLL 的 `WeaponParametersAttackBonus/DamageBonus` 复刻：攻击 `-(1+BAB/4)`、伤害 `2×(1+BAB/4)`（副手 ÷2、双手 ×3/2、描述符 `UntypedStackable`），**仅近战攻击检定、不入 CMB**；神话版暂未实现。
+  - 专注 DC：`ConcentrationCalculator`/`RuleCheckConcentration`——防御式 `15+2×环位`、受伤 `10+环位+伤害/2`、施法困难（含擒抱）`15+环位`、施法极难（含被压制）`15+2×环位`（对应 DLL `UnitCondition.SpellCastingIsDifficult/VeryDifficult`；游戏无「擒抱者 CMB」项）。
+  - `SpellBuffResolver` 把 `bonus_type`/`target` 字符串直接解析为 `ModifierDescriptor`/`CombatStat`（数据表已用规范命名，解析失败回退 `None`/`ArmorClass`）。
+- **战斗页协作类**（`ViewModels/Combat/`）：`CharacterRoster`（列表增删改+命名）、`CombatBuffLibrary`（法术 Buff 候选惰性载入与解析）、`CharacterAutoSaver`（后台写回）、`BonusEntryViewModel`/`WeaponViewModel` 等编辑项 VM。页面（`Views/Pages/CombatView.axaml`）按分区排布：角色档案 / 基础数值 / 战斗数值卡 / 状态预设 / 修饰明细 / 武器 / Buff 联动 / 专注；修饰与武器为带字段标签的紧凑编辑器，武器卡内含攻击/伤害组成明细与「＋武器专攻/＋武器专精」快捷按钮（生成带 `WeaponId` 的 scoped 条目）；「猛力攻击」作为状态预设的 buff 条目（`ModifierKind.PowerAttack`）加入修饰明细，勾选启用/取消即失效；其卡片沿用普通卡样式，仅把描述符/通道/叠加/数值几栏置为只读并加一行自动计算说明。`spell_buffs`/`feat_buffs` 的 `kind` 列（`ModifierKind`）可让专长/法术 Buff 直接产出该类型条目（如 `feat_buffs` 的猛力攻击行）。战斗数值卡不含通用攻击卡（攻击按武器单独计算）。
 ## 施工约定（Key Conventions）
 
 ### 线程与调度
@@ -170,7 +175,7 @@ CREATE TABLE feat_buffs (
 );
 ```
 
-- `feat_buffs` 只收录**能映射到现有 `BonusType/BonusTarget/EnhancementSubject/Ability` 枚举**的专长（首版建议：闪避→AC+1 闪避、精通先攻→先攻+4 无类型、强韧加强/闪电反射/钢铁意志→对应豁免+2 等，规模类似 spell_buffs 的 20 法术/47 行起步）；不能映射的（技能加值、HP、按武器生效如武器专攻）不入表，走“未收录→手动加值”兜底，与 `spell_buffs` 行为一致。
+- `feat_buffs` 只收录**能映射到现有 `ModifierDescriptor/CombatStat/Ability` 枚举**的专长（首版建议：闪避→AC+1 闪避、精通先攻→先攻+4 无类型、强韧加强/闪电反射/钢铁意志→对应豁免+2 等，规模类似 spell_buffs 的 20 法术/47 行起步）；不能映射的（技能加值、HP、按武器生效如武器专攻）不入表，走“未收录→手动加值”兜底，与 `spell_buffs` 行为一致。
 
 ### 构建管线（`scripts/build-feat-db/`，沿用 build-monster-db 模式）
 
@@ -179,11 +184,11 @@ CREATE TABLE feat_buffs (
 ### 应用侧改动清单
 
 - **导航（三处同步，见上文架构要点）**：`ViewLocator.Map` 加 `FeatsViewModel → FeatsView`；`AppModule` 注册 `FeatRepository/FeatService/FeatsViewModel/FeatsView`；`MainWindowViewModel` 构造注入 `Func<FeatsViewModel>` 并把 `NavItem("专长", Icon.Medal, featsFactory)` 插到法术之后（同时改无参设计时构造与 `MainWindowViewModelTests`）。
-- **Models**：`Feat`、`FeatBuff` 实体，均带 `[Table(DisableSyncStructure = true)]` 与显式 `[Column(Name=...)]`（只读三重防护）；`IBuffEffect` 为 `SpellBuff`/`FeatBuff` 的共享契约，供 `SpellBuffResolver` 统一解析。
+- **Models**：`Feat`、`FeatBuff` 实体，均带 `[Table(DisableSyncStructure = true)]` 与显式 `[Column(Name=...)]`（只读三重防护）；`IBuffEffect` 为 `SpellBuff`/`FeatBuff` 的共享契约，供 `SpellBuffResolver` 统一解析为 `ModifierEntry`。
 - **Services**：`FeatQuery(Term, Source, FirstLetter, Type, Skip, Take)` record；`IFeatRepository/FeatRepository`（`NameZh.Contains || NameEn.ToLower().Contains || Prerequisites.ToLower().Contains`，`OrderBy(NameEn)`，`DISTINCT` 下推用于出处/类型下拉）；`IFeatService/FeatService`（归一化 + 默认页大小 200）。
 - **ViewModels**：`FeatsViewModel : ViewModelBase, IPageViewModel`，完整复刻 `SpellsViewModel` 形态：搜索防抖管道（Taskpool 执行、结果回主线程）、`PageSize/HasMoreResults/LoadMoreCommand` + 总数优化、`HashSet` 去重的懒加载过滤器（出处/首字母/类型）、`DesignTime` 无参构造。
 - **Views**：`FeatsView.axaml` 复刻 `SpellsView` 布局（列表 + 详情 + “加载更多”）；详情字段：名称/类型/是否战士奖励专长/先决条件/简述/专长效果/出处。
-- **战斗联动**：`BonusOrigin` 增加 `FeatBuff` 成员（旧存档枚举为字符串序列化，不受影响）；战斗页含**两个并列 Buff 模块**——「法术 Buff 联动」（`spell_buffs`）与「专长 Buff 联动」（`feat_buffs`），各自由 `CombatBuffLibrary.SpellCandidates` / `FeatCandidates` 提供候选，`AddSpellBuffAsync` / `AddFeatBuffAsync` 解析为加值条目；「清除 Buff 联动」同时清 `SpellBuff+FeatBuff` origin。
+- **战斗联动**：`BonusOrigin` 增加 `FeatBuff` 成员（旧存档枚举为字符串序列化，不受影响）；战斗页含**两个并列 Buff 模块**——「法术 Buff 联动」（`spell_buffs`）与「专长 Buff 联动」（`feat_buffs`），各自由 `CombatBuffLibrary.SpellCandidates` / `FeatCandidates` 提供候选，`AddSpellBuffAsync` / `AddFeatBuffAsync` 解析为修饰条目（可逐条 ✕ 删除；不再提供「清除 Buff 联动」批量按钮）。
 - **测试**：`FeatDatabaseSmokeTests`（`TestDatabase.SkipIfUnavailable()`；行数阈值、猛力攻击/Power Attack 命中、首字母/出处/类型筛选收窄、`feat_buffs` 闪避→AC 映射）；`FeatsViewModelTests`（哨兵、管道映射、分页）；战斗联动新 origin 的增删测试。Fake 加 `FakeFeatService/FakeFeatRepository`（按 Skip/Take 切片）进 `TestDoubles.cs`。
 
 ### 实施顺序建议
@@ -195,9 +200,11 @@ CREATE TABLE feat_buffs (
 
 ## 已知待办 / 暂缓项
 
+- **神话武器专攻/专精、神话（高等）猛力攻击未实现**：现只做 CRB 三个（武器专攻/专精/猛力攻击）；神话版需额外字段（神话阶层、伤害翻倍/取整规则）与 `MythicPowerAttack`/`GreaterPowerAttack` 分支。
 - **专长 `UI` 页详述缺失**（`page_856.html` 仅简表；其正文非标准段落结构，如需补全须另解析）。
 - **`extract_feats.mjs` 已升级 v2（本地脚本；仓库无 scripts/）**：补齐名称清洗（en 去全角 `（）` 碎片、去首尾半角 `)`；zh 去尾悬 `（`，`first_letter` 重算）、MA 神话专长解析（`page_624`）、54 个 `专长*.htm` 异构解析（出处取 `.hhc` 父节点，代码缺失时回退书名）。冒烟测试 `Feat_names_have_no_dangling_brackets` + MA/后续书籍用例锁定；重建 `feats` 表须用该版脚本。
 - `CombatViewModel` 仍有约 20 个表单标量属性（表单 VM 固有形态）。若继续瘦身，可抽 `CombatEditorViewModel` 并同步改 `CombatView.axaml` 绑定路径（编译期绑定会校验）。
 - Buff 候选（`CombatBuffLibrary.SpellCandidates` / `FeatCandidates`）仍载入完整 `Spell`/`Feat` 实体；改投影 DTO 需同步改 `CombatView.axaml` 与测试的 `SelectedSpellBuff`/`SelectedFeatBuff` 类型。
+- `spell_buffs`/`feat_buffs` 的 `bonus_type`/`target` 已改用 `ModifierDescriptor`/`CombatStat` 命名（含攻击统一为 `Attack`、同源 Melee/Ranged 行已合并；`scripts/*/*_buffs.sql` 与本地 `data/pathfinder1e.duckdb` 已同步）。
 - 英文搜索用 `ToLower().Contains(...)`（无索引可利用）；若改 DuckDB `ILIKE` 需裸 SQL 与转义。
 - 低价值增强未做：`MonsterTextView` 表格可视化不虚拟化；`ObservableCollection` 已在筛选处改用 `HashSet` 去重。

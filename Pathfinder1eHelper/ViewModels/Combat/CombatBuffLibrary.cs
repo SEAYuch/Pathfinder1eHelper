@@ -9,8 +9,8 @@ using Pathfinder1eHelper.Services;
 
 namespace Pathfinder1eHelper.ViewModels.Combat;
 
-/// <summary>一次 Buff 解析结果：加值条目，以及命中的效果表行数（0 表示未收录）。</summary>
-public sealed record BuffResolution(IReadOnlyList<BonusEntry> Entries, int MatchedCount);
+/// <summary>一次 Buff 解析结果：修饰条目，以及命中的效果表行数（0 表示未收录）。</summary>
+public sealed record BuffResolution(IReadOnlyList<ModifierEntry> Entries, int MatchedCount);
 
 /// <summary>
 /// Buff 候选库：惰性、一次性（并缓存）载入法术与专长目录，分别供战斗页的“法术 Buff”“专长 Buff”
@@ -105,12 +105,12 @@ public sealed class CombatBuffLibrary(ISpellService spells, IFeatService feats)
         var display = string.IsNullOrWhiteSpace(name) ? "未命名" : name;
         return new BuffResolution(
             [
-                new BonusEntry
+                new ModifierEntry
                 {
                     Origin = origin,
                     Name = display,
-                    Type = BonusType.Untyped,
-                    Target = BonusTarget.ArmorClass,
+                    Descriptor = ModifierDescriptor.None,
+                    Stat = CombatStat.ArmorClass,
                     Value = 1,
                     Notes = $"{sourceLabel}：{reason}，请手动设置类型/目标/数值",
                 },

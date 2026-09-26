@@ -31,20 +31,27 @@ public class JsonCharacterRepositoryTests : IDisposable
             MaxDexBonus = 3,
             CastingAbility = Ability.Wisdom,
             UseDexForManeuvers = true,
-            Bonuses =
+            Modifiers =
             [
-                new BonusEntry
+                new ModifierEntry
                 {
                     Name = "树皮术",
-                    Type = BonusType.Enhancement,
-                    Enhancement = EnhancementSubject.NaturalArmor,
-                    Target = BonusTarget.ArmorClass,
+                    Descriptor = ModifierDescriptor.NaturalArmorEnhancement,
+                    Stat = CombatStat.ArmorClass,
                     Value = 3,
                 },
             ],
             Weapons =
             [
-                new WeaponProfile { Name = "巨剑", DamageDice = "2d6", StrengthMultiplier = 1.5, Enhancement = 2, Critical = "19–20/×2" },
+                new WeaponProfile
+                {
+                    Name = "巨剑",
+                    BaseDamage = "2d6",
+                    Hand = WeaponHand.TwoHanded,
+                    Enhancement = 2,
+                    CriticalThreatLow = 19,
+                    CriticalMultiplier = 2,
+                },
             ],
         };
         var second = new CharacterProfile { Name = "贝拉", Level = 3 };
@@ -63,9 +70,42 @@ public class JsonCharacterRepositoryTests : IDisposable
         Assert.Equal(3, roundTripped.MaxDexBonus);
         Assert.Equal(Ability.Wisdom, roundTripped.CastingAbility);
         Assert.True(roundTripped.UseDexForManeuvers);
-        Assert.Single(roundTripped.Bonuses);
+        Assert.Single(roundTripped.Modifiers);
         var weapon = Assert.Single(roundTripped.Weapons);
-        Assert.Equal("19–20/×2", weapon.Critical);
+        Assert.Equal("2d6", weapon.BaseDamage);
+        Assert.Equal(WeaponHand.TwoHanded, weapon.Hand);
+        Assert.Equal(19, weapon.CriticalThreatLow);
+        Assert.Equal(2, weapon.CriticalMultiplier);
+    }
+
+    [Fact]
+    public void Weapon_scoped_modifier_survives_restart()
+    {
+        var repository = new JsonCharacterRepository(_directory);
+        var weapon = new WeaponProfile { Name = "长剑", BaseDamage = "1d8" };
+        var profile = new CharacterProfile
+        {
+            Name = "专攻",
+            Weapons = [weapon],
+            Modifiers =
+            [
+                new ModifierEntry
+                {
+                    Name = "武器专攻（长剑）",
+                    Descriptor = ModifierDescriptor.UntypedStackable,
+                    Stat = CombatStat.Attack,
+                    Value = 1,
+                    WeaponId = weapon.Id,
+                },
+            ],
+        };
+
+        repository.Save(profile);
+
+        var loaded = Assert.Single(repository.LoadAll());
+        var sheet = CombatCalculator.Calculate(loaded);
+
+        Assert.Equal(1, sheet.Weapons[0].Attack.Total);
     }
 
     [Fact]
@@ -101,29 +141,6 @@ public class JsonCharacterRepositoryTests : IDisposable
         Assert.Equal(5, profile.Level);
         Assert.True(File.Exists(Path.Combine(_directory, "character.json.bak")));
         Assert.True(File.Exists(repository.FilePathFor(profile.Id)));
-    }
-
-    [Fact]
-    public void Legacy_isRanged_flag_migrates_to_dexterity_attack_ability()
-    {
-        Directory.CreateDirectory(_directory);
-        var id = Guid.NewGuid();
-        var json = $$"""
-        {
-          "id": "{{id}}",
-          "name": "旧弓手",
-          "weapons": [
-            { "name": "长弓", "isRanged": true, "damageDice": "1d8", "strengthMultiplier": 0 }
-          ]
-        }
-        """;
-        File.WriteAllText(Path.Combine(_directory, $"{id:N}.json"), json);
-
-        var repository = new JsonCharacterRepository(_directory);
-        var profile = Assert.Single(repository.LoadAll());
-
-        var weapon = Assert.Single(profile.Weapons);
-        Assert.Equal(WeaponAbility.Dexterity, weapon.AttackAbility);
     }
 
     public void Dispose()

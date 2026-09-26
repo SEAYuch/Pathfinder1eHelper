@@ -15,14 +15,9 @@ using ReactiveUI.Primitives;
 namespace Pathfinder1eHelper.ViewModels.Pages;
 
 /// <summary>
-/// 战斗页：管理多个角色档案，编辑基础数据与手动加值/武器，实时用
+/// 战斗页：管理多个角色档案，编辑基础数据与修饰/武器，实时用
 /// <see cref="CombatCalculator"/> 汇总，并保存到 <see cref="ICharacterRepository"/>。
 /// </summary>
-/// <remarks>
-/// 具体职责已拆分到协作类：角色列表与增删改见 <see cref="CharacterRoster"/>，
-/// 后台写回见 <see cref="CharacterAutoSaver"/>，法术 Buff 见 <see cref="CombatBuffLibrary"/>，
-/// 专注 DC 见 <see cref="ConcentrationCalculator"/>。
-/// </remarks>
 public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 {
     /// <summary>ReactiveUI 路由：宿主屏幕（由 shell 在导航前赋值）。</summary>
@@ -75,14 +70,13 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         DeleteCharacterCommand = ReactiveCommand.Create(DeleteCharacter);
         AddSpellBuffCommand = ReactiveCommand.CreateFromTask(AddSpellBuffAsync);
         AddFeatBuffCommand = ReactiveCommand.CreateFromTask(AddFeatBuffAsync);
-        ClearBuffsCommand = ReactiveCommand.Create(ClearBuffs);
         ClearAllBonusesCommand = ReactiveCommand.Create(ClearAllBonuses);
 
         _roster.Load();
         _selectedCharacter = _roster.EnsureAtLeastOne();
         LoadProfile(_selectedCharacter.Profile);
 
-        // 法术目录按需载入（首次激活时才拉取），并随页面停用取消。
+        // 法术/专长目录按需载入（首次激活时才拉取），并随页面停用取消。
         this.WhenActivated(disposables =>
         {
             var loadCts = new CancellationTokenSource();
@@ -146,8 +140,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     public ICommand AddSpellBuffCommand { get; }
 
     public ICommand AddFeatBuffCommand { get; }
-
-    public ICommand ClearBuffsCommand { get; }
 
     public ICommand ClearAllBonusesCommand { get; }
 
@@ -374,16 +366,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         }
     }
 
-    public int? GrapplerCmb
-    {
-        get;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            OnInputChanged();
-        }
-    }
-
     public int? CustomDc
     {
         get;
@@ -402,7 +384,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             this.RaiseAndSetIfChanged(ref _concentrationSituation, value);
             this.RaisePropertyChanged(nameof(IsCustomDc));
             this.RaisePropertyChanged(nameof(IsDamageMode));
-            this.RaisePropertyChanged(nameof(IsGrappleMode));
             OnInputChanged();
         }
     }
@@ -410,8 +391,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     public bool IsCustomDc => _concentrationSituation.Value == ConcentrationSituation.Custom;
 
     public bool IsDamageMode => _concentrationSituation.Value == ConcentrationSituation.DamageWhileCasting;
-
-    public bool IsGrappleMode => _concentrationSituation.Value == ConcentrationSituation.Grappled;
 
     public Spell? SelectedSpellBuff
     {
@@ -464,33 +443,50 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     }
 
     private void AddBonus() => Bonuses.Add(new BonusEntryViewModel(
-        new BonusEntry { Name = "新加值", Target = BonusTarget.ArmorClass, Value = 1 },
+        new ModifierEntry { Name = "新加值", Stat = CombatStat.ArmorClass, Descriptor = ModifierDescriptor.None, Value = 1 },
         OnInputChanged,
         RemoveBonus));
 
     private void RemoveBonus(BonusEntryViewModel entry) => Bonuses.Remove(entry);
 
-    /// <summary>只清除由“Buff 联动”添加的条目（法术 spell_buffs + 专长 feat_buffs），保留手动与状态预设条目。</summary>
-    private void ClearBuffs()
-    {
-        for (var i = Bonuses.Count - 1; i >= 0; i--)
-        {
-            if (Bonuses[i].Origin is BonusOrigin.SpellBuff or BonusOrigin.FeatBuff)
-            {
-                Bonuses.RemoveAt(i);
-            }
-        }
-    }
-
-    /// <summary>清空全部加值条目（含手动条目）。</summary>
+    /// <summary>清空全部修饰条目（含手动条目）。</summary>
     private void ClearAllBonuses() => Bonuses.Clear();
 
     private void AddWeapon() => Weapons.Add(new WeaponViewModel(
         new WeaponProfile { Name = "新武器" },
         OnInputChanged,
-        RemoveWeapon));
+        RemoveWeapon,
+        AddWeaponFocus,
+        AddWeaponSpecialization));
 
     private void RemoveWeapon(WeaponViewModel weapon) => Weapons.Remove(weapon);
+
+    /// <summary>武器卡快捷：为本武器添加「武器专攻」（+1 攻击，描述符 UntypedStackable）。</summary>
+    private void AddWeaponFocus(WeaponViewModel weapon) =>
+        AddScopedWeaponModifier(weapon, "武器专攻", ModifierDescriptor.UntypedStackable, CombatStat.Attack, 1);
+
+    /// <summary>武器卡快捷：为本武器添加「武器专精」（+2 伤害，描述符 UntypedStackable）。</summary>
+    private void AddWeaponSpecialization(WeaponViewModel weapon) =>
+        AddScopedWeaponModifier(weapon, "武器专精", ModifierDescriptor.UntypedStackable, CombatStat.Damage, 2);
+
+    private void AddScopedWeaponModifier(
+        WeaponViewModel weapon,
+        string feat,
+        ModifierDescriptor descriptor,
+        CombatStat stat,
+        int value) =>
+        Bonuses.Add(new BonusEntryViewModel(
+            new ModifierEntry
+            {
+                Origin = BonusOrigin.Preset,
+                Name = $"{feat}（{weapon.Name}）",
+                Descriptor = descriptor,
+                Stat = stat,
+                Value = value,
+                WeaponId = weapon.Id,
+            },
+            OnInputChanged,
+            RemoveBonus));
 
     private void NewCharacter() => SelectedCharacter = _roster.Create();
 
@@ -540,18 +536,23 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             LimitDex = profile.MaxDexBonus is not null;
             MaxDexBonus = profile.MaxDexBonus ?? 99;
             CasterLevel = profile.CasterLevel;
+            SpellLevel = profile.SpellLevel;
             UseDexForManeuvers = profile.UseDexForManeuvers;
 
             Bonuses.Clear();
-            foreach (var bonus in profile.Bonuses)
+            foreach (var modifier in profile.Modifiers)
             {
-                Bonuses.Add(new BonusEntryViewModel(bonus, OnInputChanged, RemoveBonus));
+                Bonuses.Add(new BonusEntryViewModel(modifier, OnInputChanged, RemoveBonus));
             }
 
             Weapons.Clear();
             foreach (var weapon in profile.Weapons)
             {
-                Weapons.Add(new WeaponViewModel(weapon, OnInputChanged, RemoveWeapon));
+                // 快捷按钮（＋武器专攻/专精）必须在这里也挂上回调：
+                // 启动/切档都走 LoadProfile，少传则 addFocus/addSpecialization 为 null，
+                // 按钮变成空操作（表现为「重启后点不动，删掉武器再加才恢复」）。
+                Weapons.Add(new WeaponViewModel(
+                    weapon, OnInputChanged, RemoveWeapon, AddWeaponFocus, AddWeaponSpecialization));
             }
         }
         finally
@@ -562,7 +563,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         Refresh(save: false);
     }
 
-    /// <summary>惰性载入全部法术作为 Buff 搜索候选（首次激活时触发；失败不影响其余功能）。</summary>
+    /// <summary>惰性载入全部法术/专长作为 Buff 搜索候选（首次激活时触发；失败不影响其余功能）。</summary>
     public async Task LoadBuffCandidatesAsync(CancellationToken ct = default)
     {
         try
@@ -608,7 +609,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         FeatBuffHint = $"已选择：{_selectedFeatBuff.NameZh}（点击“添加为 Buff”）";
     }
 
-    /// <summary>把所选法术在 <c>spell_buffs</c> 中的效果加入加值明细（供面板与测试调用）。</summary>
+    /// <summary>把所选法术在 <c>spell_buffs</c> 中的效果加入修饰明细（供面板与测试调用）。</summary>
     public async Task AddSpellBuffAsync()
     {
         if (_selectedSpellBuff is not { } spell)
@@ -630,7 +631,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         ApplyBuffResolution(resolution, "spell_buffs", hint => SpellBuffHint = hint);
     }
 
-    /// <summary>把所选专长在 <c>feat_buffs</c> 中的效果加入加值明细（供面板与测试调用）。</summary>
+    /// <summary>把所选专长在 <c>feat_buffs</c> 中的效果加入修饰明细（供面板与测试调用）。</summary>
     public async Task AddFeatBuffAsync()
     {
         if (_selectedFeatBuff is not { } feat)
@@ -670,15 +671,22 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             new WeaponProfile
             {
                 Name = preset.Weapon.Name,
-                AttackAbility = preset.Weapon.AttackAbility,
-                DamageDice = preset.Weapon.DamageDice,
-                StrengthMultiplier = preset.Weapon.StrengthMultiplier,
-                DamageAbility = preset.Weapon.DamageAbility,
+                AttackType = preset.Weapon.AttackType,
+                Hand = preset.Weapon.Hand,
+                IsSecondary = preset.Weapon.IsSecondary,
+                AttackBonusStat = preset.Weapon.AttackBonusStat,
+                DamageBonusStat = preset.Weapon.DamageBonusStat,
+                BaseDamage = preset.Weapon.BaseDamage,
+                WeaponSize = preset.Weapon.WeaponSize,
+                DamageDiceSizeShift = preset.Weapon.DamageDiceSizeShift,
+                CriticalThreatLow = preset.Weapon.CriticalThreatLow,
+                CriticalMultiplier = preset.Weapon.CriticalMultiplier,
                 Enhancement = preset.Weapon.Enhancement,
-                Critical = preset.Weapon.Critical,
             },
             OnInputChanged,
-            RemoveWeapon));
+            RemoveWeapon,
+            AddWeaponFocus,
+            AddWeaponSpecialization));
     }
 
     private void Refresh(bool save)
@@ -699,7 +707,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             _concentrationSituation.Value,
             SpellLevel ?? 0,
             DamageTaken,
-            GrapplerCmb,
             CustomDc);
         this.RaisePropertyChanged(nameof(ConcentrationCheckDisplay));
     }
@@ -709,16 +716,17 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         foreach (var template in preset.Entries)
         {
             Bonuses.Add(new BonusEntryViewModel(
-                new BonusEntry
+                new ModifierEntry
                 {
                     Origin = BonusOrigin.Preset,
                     Name = template.Name,
-                    Type = template.Type,
-                    Enhancement = template.Enhancement,
-                    Target = template.Target,
+                    Kind = template.Kind,
+                    Descriptor = template.Descriptor,
+                    Stat = template.Stat,
+                    Ability = template.Ability,
                     Value = template.Value,
+                    StackMode = template.StackMode,
                     IsEnabled = template.IsEnabled,
-                    SourceGroup = template.SourceGroup,
                     Notes = template.Notes,
                 },
                 OnInputChanged,
@@ -760,20 +768,19 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         BaseWill = BaseWill ?? 0,
         MaxDexBonus = LimitDex ? MaxDexBonus ?? 0 : null,
         CasterLevel = CasterLevel ?? 0,
+        SpellLevel = SpellLevel ?? 0,
         CastingAbility = _selectedCastingAbility.Value,
         UseDexForManeuvers = UseDexForManeuvers,
-        Bonuses = Bonuses.Select(b => b.ToModel()).ToList(),
+        Modifiers = Bonuses.Select(b => b.ToModel()).ToList(),
         Weapons = Weapons.Select(w => w.ToModel()).ToList(),
     };
 
     private static IReadOnlyList<StatCard> BuildCards(CombatSheet sheet) =>
     [
-        new StatCard("力上命中", sheet.MeleeAttack),
-        new StatCard("敏上命中", sheet.RangedAttack),
-        new StatCard("远程接触攻击", sheet.RangedTouchAttack),
         new StatCard("防御等级 AC", sheet.ArmorClass, signed: false),
         new StatCard("接触 AC", sheet.TouchArmorClass, signed: false),
         new StatCard("措手不及 AC", sheet.FlatFootedArmorClass, signed: false),
+        new StatCard("措手不及接触 AC", sheet.FlatFootedTouchArmorClass, signed: false),
         new StatCard("强韧", sheet.Fortitude),
         new StatCard("反射", sheet.Reflex),
         new StatCard("意志", sheet.Will),
@@ -781,5 +788,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         new StatCard("CMD", sheet.Cmd, signed: false),
         new StatCard("专注", sheet.Concentration),
         new StatCard("先攻", sheet.Initiative),
+        new StatCard("法术 DC", new StatResult(sheet.SpellDc, []), signed: false),
     ];
 }

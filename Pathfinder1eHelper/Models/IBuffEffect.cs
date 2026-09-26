@@ -14,9 +14,12 @@ public interface IBuffEffect
     /// <summary>作用目标（<c>BonusTarget</c> 枚举名）。</summary>
     string Target { get; }
 
+    /// <summary>条目类型（<c>ModifierKind</c> 枚举名，可空；空=Normal）。用于「猛力攻击」这类按 BAB/握法计算的 buff。</summary>
+    string? Kind { get; }
+
     int? Value { get; }
 
-    /// <summary>增强对象（<c>EnhancementSubject</c> 枚举名，可空）。</summary>
+    /// <summary>旧「增强对象」列（<c>enhancement_subject</c>）；新模型已折叠进 <see cref="BonusType"/>，运行时不使用。</summary>
     string? EnhancementSubject { get; }
 
     /// <summary>属性（<c>Ability</c> 枚举名，可空）。</summary>

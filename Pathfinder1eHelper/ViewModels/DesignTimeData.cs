@@ -78,31 +78,31 @@ internal sealed class DesignTimeCharacterRepository : ICharacterRepository
             BaseWill = 3,
             CasterLevel = 10,
             CastingAbility = Ability.Intelligence,
-            Bonuses =
+            Modifiers =
             [
-                new BonusEntry { Name = "武器专攻", Type = BonusType.Untyped, Target = BonusTarget.MeleeAttack, Value = 1 },
-                new BonusEntry { Name = "天生护甲", Type = BonusType.NaturalArmor, Target = BonusTarget.ArmorClass, Value = 1 },
-                new BonusEntry
+                new ModifierEntry { Name = "武器专攻", Descriptor = ModifierDescriptor.None, Stat = CombatStat.Attack, Value = 1 },
+                new ModifierEntry { Name = "天生护甲", Descriptor = ModifierDescriptor.NaturalArmor, Stat = CombatStat.ArmorClass, Value = 1 },
+                new ModifierEntry
                 {
                     Name = "树皮术",
-                    Type = BonusType.Enhancement,
-                    Enhancement = EnhancementSubject.NaturalArmor,
-                    Target = BonusTarget.ArmorClass,
+                    Descriptor = ModifierDescriptor.NaturalArmorEnhancement,
+                    Stat = CombatStat.ArmorClass,
                     Value = 3,
                 },
-                new BonusEntry { Name = "掩护", Type = BonusType.Circumstance, Target = BonusTarget.ArmorClass, Value = 4 },
-                new BonusEntry { Name = "勇气激励", Type = BonusType.Competence, Target = BonusTarget.MeleeAttack, Value = 2 },
-                new BonusEntry { Name = "勇气激励", Type = BonusType.Competence, Target = BonusTarget.Damage, Value = 2 },
+                new ModifierEntry { Name = "掩护", Descriptor = ModifierDescriptor.Circumstance, Stat = CombatStat.ArmorClass, Value = 4 },
+                new ModifierEntry { Name = "勇气激励", Descriptor = ModifierDescriptor.Competence, Stat = CombatStat.Attack, Value = 2 },
+                new ModifierEntry { Name = "勇气激励", Descriptor = ModifierDescriptor.Competence, Stat = CombatStat.Damage, Value = 2 },
             ],
             Weapons =
             [
-                new WeaponProfile { Name = "长剑", DamageDice = "1d8", StrengthMultiplier = 1, Enhancement = 1 },
+                new WeaponProfile { Name = "长剑", BaseDamage = "1d8", Hand = WeaponHand.Primary, Enhancement = 1 },
                 new WeaponProfile
                 {
                     Name = "复合长弓",
-                    AttackAbility = WeaponAbility.Dexterity,
-                    DamageDice = "1d8",
-                    StrengthMultiplier = 0,
+                    AttackType = WeaponAttackType.Ranged,
+                    DamageBonusStat = Ability.Strength,
+                    BaseDamage = "1d8",
+                    CriticalMultiplier = 3,
                     Enhancement = 2,
                 },
             ],

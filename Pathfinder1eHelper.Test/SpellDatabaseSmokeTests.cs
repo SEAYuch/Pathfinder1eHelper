@@ -83,13 +83,13 @@ public class SpellDatabaseSmokeTests
 
             var bless = await repo.GetBuffsForSpellAsync("Bless", "祝福术");
             Assert.NotEmpty(bless);
-            Assert.Contains(bless, b => b.BonusType == "Morale" && b.Target == "MeleeAttack");
+            Assert.Contains(bless, b => b.BonusType == "Morale" && b.Target == "Attack");
 
             // 大小写不敏感 + 中文别名均可命中。
             var barkskin = await repo.GetBuffsForSpellAsync("barkskin", null);
             var naturalArmor = Assert.Single(barkskin);
-            Assert.Equal("Enhancement", naturalArmor.BonusType);
-            Assert.Equal("NaturalArmor", naturalArmor.EnhancementSubject);
+            Assert.Equal("NaturalArmorEnhancement", naturalArmor.BonusType);
+            Assert.Null(naturalArmor.EnhancementSubject);
             Assert.Equal(3, naturalArmor.ScaleStep);
         }
         finally

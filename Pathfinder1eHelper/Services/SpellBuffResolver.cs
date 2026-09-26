@@ -6,18 +6,18 @@ using Pathfinder1eHelper.Models.Combat;
 namespace Pathfinder1eHelper.Services;
 
 /// <summary>
-/// 把 <c>spell_buffs</c> / <c>feat_buffs</c> 表中的一行转成战斗页的加值条目；<c>scale_*</c> 非空时按施法者等级缩放：
+/// 把 <c>spell_buffs</c> / <c>feat_buffs</c> 表中的一行转成战斗修饰条目；<c>scale_*</c> 非空时按施法者等级缩放：
 /// value = clamp(scale_base + floor((CL - scale_offset) / scale_step), scale_min, scale_max)。
 /// </summary>
 internal static class SpellBuffResolver
 {
-    public static BonusEntry ToEntry(IBuffEffect buff, int casterLevel, string sourceLabel, BonusOrigin origin) => new()
+    public static ModifierEntry ToEntry(IBuffEffect buff, int casterLevel, string sourceLabel, BonusOrigin origin) => new()
     {
         Origin = origin,
         Name = buff.EffectName,
-        Type = Parse(buff.BonusType, BonusType.Untyped),
-        Target = Parse(buff.Target, BonusTarget.ArmorClass),
-        Enhancement = Parse(buff.EnhancementSubject, EnhancementSubject.None),
+        Kind = Parse(buff.Kind, ModifierKind.Normal),
+        Descriptor = Parse(buff.BonusType, ModifierDescriptor.None),
+        Stat = Parse(buff.Target, CombatStat.ArmorClass),
         Ability = ParseNullable<Ability>(buff.Ability),
         Value = ResolveValue(buff, casterLevel),
         Notes = Compose(sourceLabel, buff.Notes),

@@ -25,9 +25,12 @@ public sealed class FeatBuff : IBuffEffect
     /// <summary>作用目标（<c>BonusTarget</c> 枚举名）。</summary>
     [Column(Name = "target")] public string Target { get; set; } = string.Empty;
 
+    /// <summary>条目类型（<c>ModifierKind</c> 枚举名，可空）。</summary>
+    [Column(Name = "kind")] public string? Kind { get; set; }
+
     [Column(Name = "value")] public int? Value { get; set; }
 
-    /// <summary>增强对象（<c>EnhancementSubject</c> 枚举名，可空）。</summary>
+    /// <summary>旧「增强对象」列（保留，运行时不使用；新模型折叠进 <see cref="BonusType"/>）。</summary>
     [Column(Name = "enhancement_subject")] public string? EnhancementSubject { get; set; }
 
     /// <summary>属性（<c>Ability</c> 枚举名，可空）。</summary>

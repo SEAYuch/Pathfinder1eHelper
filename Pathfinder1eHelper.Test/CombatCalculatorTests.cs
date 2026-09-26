@@ -3,45 +3,68 @@ using Pathfinder1eHelper.Services;
 
 namespace Pathfinder1eHelper.Test;
 
-/// <summary>战斗数值与加值叠加规则的单元测试（纯内存，不依赖数据库）。</summary>
+/// <summary>战斗数值与 DLL 叠加规则的单元测试（纯内存，不依赖数据库）。</summary>
 public class CombatCalculatorTests
 {
+    private static ModifierEntry Bonus(
+        ModifierDescriptor descriptor,
+        CombatStat stat,
+        int value,
+        Ability? ability = null,
+        bool enabled = true,
+        string name = "加值") =>
+        new()
+        {
+            Name = name,
+            Descriptor = descriptor,
+            Stat = stat,
+            Ability = ability,
+            Value = value,
+            IsEnabled = enabled,
+        };
+
     [Fact]
-    public void Attack_uses_bab_strength_and_size()
+    public void Weapon_attack_uses_bab_strength_and_size()
     {
         var profile = Profile();
         profile.Abilities.Strength = 20; // +5
         profile.BaseAttackBonus = 5;
         profile.Size = SizeCategory.Small; // +1
+        profile.Weapons.Add(new WeaponProfile { BaseDamage = "1d8" });
 
         var sheet = CombatCalculator.Calculate(profile);
+        var weapon = Assert.Single(sheet.Weapons);
 
-        Assert.Equal(11, sheet.MeleeAttack.Total);
+        Assert.Equal(11, weapon.Attack.Total);
     }
 
     [Fact]
-    public void Ranged_touch_shares_ranged_bonuses_but_excludes_weapon_enhancement()
+    public void Attack_channel_modifier_applies_to_melee_and_ranged_weapons()
     {
         var profile = Profile();
         profile.Abilities.Dexterity = 16; // +3
         profile.BaseAttackBonus = 4;
-        profile.Bonuses.Add(new BonusEntry { Name = "远程幸运", Type = BonusType.Luck, Target = BonusTarget.RangedAttack, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry { Name = "魔化武器", Type = BonusType.Enhancement, Target = BonusTarget.RangedAttack, Value = 2 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Luck, CombatStat.Attack, 1, name: "幸运"));
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "长弓",
+            AttackType = WeaponAttackType.Ranged,
+            BaseDamage = "1d8",
+        });
 
         var sheet = CombatCalculator.Calculate(profile);
 
-        Assert.Equal(10, sheet.RangedAttack.Total); // 4 + 3 + 1 + 2
-        Assert.Equal(8, sheet.RangedTouchAttack.Total); // 4 + 3 + 1（不含增强）
-        Assert.Contains(sheet.RangedTouchAttack.Contributions, c => c.Included && c.Label == "远程幸运");
-        Assert.DoesNotContain(sheet.RangedTouchAttack.Contributions, c => c.Included && c.Label == "魔化武器");
+        Assert.Equal(5, sheet.Weapons[0].Attack.Total); // BAB4 + 力量0 + 1
+        Assert.Equal(8, sheet.Weapons[1].Attack.Total); // BAB4 + 敏捷3 + 1
     }
 
     [Fact]
-    public void Same_type_bonuses_take_the_highest_and_suppress_the_rest()
+    public void Same_descriptor_takes_highest_positive_and_suppresses_the_rest()
     {
         var profile = Profile();
-        profile.Bonuses.Add(new BonusEntry { Name = "勇气", Type = BonusType.Morale, Target = BonusTarget.ArmorClass, Value = 2 });
-        profile.Bonuses.Add(new BonusEntry { Name = "英雄气概", Type = BonusType.Morale, Target = BonusTarget.ArmorClass, Value = 3 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Morale, CombatStat.ArmorClass, 2, name: "勇气"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Morale, CombatStat.ArmorClass, 3, name: "英雄气概"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
@@ -51,12 +74,12 @@ public class CombatCalculatorTests
     }
 
     [Fact]
-    public void Dodge_and_untyped_bonuses_stack()
+    public void Dodge_and_none_bonuses_stack()
     {
         var profile = Profile();
-        profile.Bonuses.Add(new BonusEntry { Name = "闪避1", Type = BonusType.Dodge, Target = BonusTarget.ArmorClass, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry { Name = "闪避2", Type = BonusType.Dodge, Target = BonusTarget.ArmorClass, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry { Name = "无名", Type = BonusType.Untyped, Target = BonusTarget.ArmorClass, Value = 2 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Dodge, CombatStat.ArmorClass, 1, name: "闪避1"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Dodge, CombatStat.ArmorClass, 1, name: "闪避2"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.None, CombatStat.ArmorClass, 2, name: "无名"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
@@ -64,11 +87,23 @@ public class CombatCalculatorTests
     }
 
     [Fact]
-    public void Penalties_always_stack_and_subtract()
+    public void Same_descriptor_keeps_best_positive_and_worst_negative()
     {
         var profile = Profile();
-        profile.Bonuses.Add(new BonusEntry { Name = "目眩", Type = BonusType.Penalty, Target = BonusTarget.ArmorClass, Value = 2 });
-        profile.Bonuses.Add(new BonusEntry { Name = "俯卧", Type = BonusType.Penalty, Target = BonusTarget.ArmorClass, Value = 3 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Morale, CombatStat.ArmorClass, 3, name: "士气"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Morale, CombatStat.ArmorClass, -2, name: "士气减值"));
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(11, sheet.ArmorClass.Total); // 10 + 3 - 2
+    }
+
+    [Fact]
+    public void Penalty_descriptor_sums_signed_values()
+    {
+        var profile = Profile();
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Penalty, CombatStat.ArmorClass, -2, name: "目眩"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Penalty, CombatStat.ArmorClass, -3, name: "俯卧"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
@@ -79,15 +114,8 @@ public class CombatCalculatorTests
     public void Enhancement_to_natural_armor_layers_on_top_of_natural_armor()
     {
         var profile = Profile();
-        profile.Bonuses.Add(new BonusEntry { Name = "天生护甲", Type = BonusType.NaturalArmor, Target = BonusTarget.ArmorClass, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry
-        {
-            Name = "树皮术",
-            Type = BonusType.Enhancement,
-            Enhancement = EnhancementSubject.NaturalArmor,
-            Target = BonusTarget.ArmorClass,
-            Value = 3,
-        });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.NaturalArmor, CombatStat.ArmorClass, 1, name: "天生护甲"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.NaturalArmorEnhancement, CombatStat.ArmorClass, 3, name: "树皮术"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
@@ -100,25 +128,19 @@ public class CombatCalculatorTests
     {
         var profile = Profile();
         profile.Abilities.Dexterity = 14; // +2
-        profile.Bonuses.Add(new BonusEntry { Name = "链甲", Type = BonusType.Armor, Target = BonusTarget.ArmorClass, Value = 5 });
-        profile.Bonuses.Add(new BonusEntry { Name = "重盾", Type = BonusType.Shield, Target = BonusTarget.ArmorClass, Value = 2 });
-        profile.Bonuses.Add(new BonusEntry { Name = "天生护甲", Type = BonusType.NaturalArmor, Target = BonusTarget.ArmorClass, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry
-        {
-            Name = "树皮术",
-            Type = BonusType.Enhancement,
-            Enhancement = EnhancementSubject.NaturalArmor,
-            Target = BonusTarget.ArmorClass,
-            Value = 3,
-        });
-        profile.Bonuses.Add(new BonusEntry { Name = "防护戒指", Type = BonusType.Deflection, Target = BonusTarget.ArmorClass, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry { Name = "闪避", Type = BonusType.Dodge, Target = BonusTarget.ArmorClass, Value = 1 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Armor, CombatStat.ArmorClass, 5, name: "链甲"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Shield, CombatStat.ArmorClass, 2, name: "重盾"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.NaturalArmor, CombatStat.ArmorClass, 1, name: "天生护甲"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.NaturalArmorEnhancement, CombatStat.ArmorClass, 3, name: "树皮术"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Deflection, CombatStat.ArmorClass, 1, name: "防护戒指"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Dodge, CombatStat.ArmorClass, 1, name: "闪避"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
         Assert.Equal(25, sheet.ArmorClass.Total);
         Assert.Equal(14, sheet.TouchArmorClass.Total);
         Assert.Equal(22, sheet.FlatFootedArmorClass.Total);
+        Assert.Equal(11, sheet.FlatFootedTouchArmorClass.Total);
     }
 
     [Fact]
@@ -128,10 +150,10 @@ public class CombatCalculatorTests
         profile.Abilities.Strength = 12; // +1
         profile.Abilities.Dexterity = 12; // +1
         profile.BaseAttackBonus = 3;
-        profile.Bonuses.Add(new BonusEntry { Name = "全身甲", Type = BonusType.Armor, Target = BonusTarget.ArmorClass, Value = 5 });
-        profile.Bonuses.Add(new BonusEntry { Name = "天生护甲", Type = BonusType.NaturalArmor, Target = BonusTarget.ArmorClass, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry { Name = "偏斜", Type = BonusType.Deflection, Target = BonusTarget.ArmorClass, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry { Name = "士气", Type = BonusType.Morale, Target = BonusTarget.ArmorClass, Value = 2 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Armor, CombatStat.ArmorClass, 5, name: "全身甲"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.NaturalArmor, CombatStat.ArmorClass, 1, name: "天生护甲"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Deflection, CombatStat.ArmorClass, 1, name: "偏斜"));
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Morale, CombatStat.ArmorClass, 2, name: "士气"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
@@ -159,7 +181,7 @@ public class CombatCalculatorTests
         profile.CasterLevel = 7;
         profile.CastingAbility = Ability.Intelligence;
         profile.Abilities.Intelligence = 16; // +3
-        profile.Bonuses.Add(new BonusEntry { Name = "专攻", Type = BonusType.Untyped, Target = BonusTarget.Concentration, Value = 2 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Feat, CombatStat.Concentration, 2, name: "战斗施法"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
@@ -167,17 +189,30 @@ public class CombatCalculatorTests
     }
 
     [Fact]
-    public void Weapon_applies_strength_multiplier_enhancement_and_damage_bonus()
+    public void Ability_score_bonus_is_applied_before_deriving_modifiers()
+    {
+        var profile = Profile();
+        profile.Abilities.Strength = 14;
+        profile.Modifiers.Add(Bonus(
+            ModifierDescriptor.Enhancement, CombatStat.AbilityScore, 4, Ability.Strength, name: "公牛之力"));
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(4, sheet.Cmb.Total); // (14+4) → +4
+    }
+
+    [Fact]
+    public void Weapon_applies_two_handed_multiplier_and_enhancement()
     {
         var profile = Profile();
         profile.Abilities.Strength = 18; // +4
         profile.BaseAttackBonus = 5;
-        profile.Bonuses.Add(new BonusEntry { Name = "勇气", Type = BonusType.Competence, Target = BonusTarget.Damage, Value = 2 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Competence, CombatStat.Damage, 2, name: "勇气"));
         profile.Weapons.Add(new WeaponProfile
         {
             Name = "巨剑",
-            DamageDice = "2d6",
-            StrengthMultiplier = 1.5,
+            BaseDamage = "2d6",
+            Hand = WeaponHand.TwoHanded,
             Enhancement = 1,
         });
 
@@ -185,7 +220,7 @@ public class CombatCalculatorTests
         var weapon = Assert.Single(sheet.Weapons);
 
         Assert.Equal("+10", weapon.AttackDisplay);
-        Assert.Equal("2d6+9", weapon.DamageDisplay);
+        Assert.Equal("2d6+9", weapon.DamageDisplay); // floor(4*1.5)=6 + 1 + 2
     }
 
     [Fact]
@@ -196,8 +231,8 @@ public class CombatCalculatorTests
         profile.Weapons.Add(new WeaponProfile
         {
             Name = "短剑",
-            DamageDice = "1d6",
-            StrengthMultiplier = 0.5,
+            BaseDamage = "1d6",
+            Hand = WeaponHand.OffHand,
         });
 
         var sheet = CombatCalculator.Calculate(profile);
@@ -215,9 +250,8 @@ public class CombatCalculatorTests
         profile.Weapons.Add(new WeaponProfile
         {
             Name = "细剑",
-            DamageDice = "1d6",
-            StrengthMultiplier = 1,
-            DamageAbility = WeaponAbility.Dexterity,
+            BaseDamage = "1d6",
+            DamageBonusStat = Ability.Dexterity,
             Enhancement = 1,
         });
 
@@ -229,47 +263,146 @@ public class CombatCalculatorTests
     }
 
     [Fact]
-    public void Weapon_attack_ability_selects_ability_and_bonus_target()
+    public void Ranged_weapon_uses_dexterity_attack_and_attack_channel()
     {
         var profile = Profile();
         profile.Abilities.Dexterity = 16; // +3
         profile.BaseAttackBonus = 4;
-        profile.Bonuses.Add(new BonusEntry { Name = "远程幸运", Type = BonusType.Luck, Target = BonusTarget.RangedAttack, Value = 1 });
-        profile.Bonuses.Add(new BonusEntry { Name = "武器专攻", Type = BonusType.Untyped, Target = BonusTarget.MeleeAttack, Value = 2 });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.Luck, CombatStat.Attack, 1, name: "幸运"));
         profile.Weapons.Add(new WeaponProfile
         {
             Name = "长弓",
-            AttackAbility = WeaponAbility.Dexterity,
-            DamageDice = "1d8",
-            StrengthMultiplier = 0,
+            AttackType = WeaponAttackType.Ranged,
+            BaseDamage = "1d8",
         });
 
         var sheet = CombatCalculator.Calculate(profile);
         var weapon = Assert.Single(sheet.Weapons);
 
-        Assert.Equal(8, weapon.Attack.Total); // BAB4 + 敏捷3 + 远程幸运1
-        Assert.Contains(weapon.Attack.Contributions, c => c.Included && c.Label == "远程幸运");
-        Assert.DoesNotContain(weapon.Attack.Contributions, c => c.Included && c.Label == "武器专攻");
-        Assert.Equal("1d8", weapon.DamageDisplay); // 倍率 0 → 无属性伤害
+        Assert.Equal(8, weapon.Attack.Total); // BAB4 + 敏捷3 + 幸运1
+        Assert.Equal("1d8", weapon.DamageDisplay);
+    }
+
+    [Fact]
+    public void Weapon_reports_iterative_attack_count_from_bab()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 16;
+        profile.Weapons.Add(new WeaponProfile { BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+        var weapon = Assert.Single(sheet.Weapons);
+
+        Assert.Equal(4, weapon.AttacksCount);
+        Assert.Equal("20/×2", weapon.CriticalDisplay);
+    }
+
+    [Fact]
+    public void Large_weapon_scales_damage_dice()
+    {
+        var profile = Profile();
+        profile.Weapons.Add(new WeaponProfile { BaseDamage = "1d8", WeaponSize = SizeCategory.Large });
+
+        var sheet = CombatCalculator.Calculate(profile);
+        var weapon = Assert.Single(sheet.Weapons);
+
+        Assert.StartsWith("2d6", weapon.DamageDisplay);
     }
 
     [Fact]
     public void Disabled_entries_are_ignored()
     {
         var profile = Profile();
-        profile.Bonuses.Add(new BonusEntry
-        {
-            Name = "未启用",
-            Type = BonusType.Untyped,
-            Target = BonusTarget.ArmorClass,
-            Value = 5,
-            IsEnabled = false,
-        });
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.None, CombatStat.ArmorClass, 5, enabled: false, name: "未启用"));
 
         var sheet = CombatCalculator.Calculate(profile);
 
         Assert.Equal(10, sheet.ArmorClass.Total);
     }
+
+    [Fact]
+    public void Scoped_modifier_only_affects_its_weapon()
+    {
+        var profile = Profile();
+        var first = new WeaponProfile { Name = "甲", BaseDamage = "1d8" };
+        var second = new WeaponProfile { Name = "乙", BaseDamage = "1d8" };
+        profile.Weapons.Add(first);
+        profile.Weapons.Add(second);
+        profile.Modifiers.Add(new ModifierEntry
+        {
+            Name = "武器专攻（甲）",
+            Descriptor = ModifierDescriptor.UntypedStackable,
+            Stat = CombatStat.Attack,
+            Value = 1,
+            WeaponId = first.Id,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(1, sheet.Weapons[0].Attack.Total);
+        Assert.Equal(0, sheet.Weapons[1].Attack.Total);
+    }
+
+    [Fact]
+    public void Power_attack_applies_to_melee_weapon_only()
+    {
+        var profile = Profile();
+        profile.Abilities.Strength = 16; // +3
+        profile.BaseAttackBonus = 4;
+        profile.Modifiers.Add(PowerAttackBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "长弓",
+            AttackType = WeaponAttackType.Ranged,
+            BaseDamage = "1d8",
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(5, sheet.Weapons[0].Attack.Total); // 4 + 3 - 2
+        Assert.Equal("1d8+7", sheet.Weapons[0].DamageDisplay); // 3 + 4
+        Assert.Equal(4, sheet.Weapons[1].Attack.Total); // 不受猛力攻击
+        Assert.Equal("1d8", sheet.Weapons[1].DamageDisplay);
+    }
+
+    [Fact]
+    public void Power_attack_penalty_does_not_apply_to_cmb()
+    {
+        var profile = Profile();
+        profile.Abilities.Strength = 16; // +3
+        profile.BaseAttackBonus = 4;
+        profile.Modifiers.Add(PowerAttackBuff());
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(7, sheet.Cmb.Total); // 4 + 3（无猛力攻击减值）
+    }
+
+    [Fact]
+    public void Disabled_power_attack_entry_is_ignored()
+    {
+        var profile = Profile();
+        profile.Abilities.Strength = 16; // +3
+        profile.BaseAttackBonus = 4;
+        var entry = PowerAttackBuff();
+        entry.IsEnabled = false;
+        profile.Modifiers.Add(entry);
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(7, sheet.Weapons[0].Attack.Total); // 4 + 3
+        Assert.Equal("1d8+3", sheet.Weapons[0].DamageDisplay);
+    }
+
+    private static ModifierEntry PowerAttackBuff() => new()
+    {
+        Name = "猛力攻击",
+        Kind = ModifierKind.PowerAttack,
+        Descriptor = ModifierDescriptor.UntypedStackable,
+        Stat = CombatStat.Attack,
+    };
 
     private static CharacterProfile Profile() => new();
 }
