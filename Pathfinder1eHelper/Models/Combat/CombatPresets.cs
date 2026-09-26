@@ -1,9 +1,34 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Pathfinder1eHelper.Models.Combat;
 
 /// <summary>一组常用状态/战术加值，一键加入修饰明细（同描述符自会按规则叠加）。</summary>
-public sealed record CombatPreset(string Name, IReadOnlyList<ModifierEntry> Entries);
+public sealed record CombatPreset(string Name, IReadOnlyList<ModifierEntry> Entries)
+{
+    /// <summary>
+    /// 产出一份可安全改动的条目副本。<see cref="Entries"/> 是全局共享的实例
+    /// （<see cref="ModifierEntry"/> 可变），直接改动会污染所有预设与已保存的档案，
+    /// 因此应用预设时必须走这里复制。
+    /// </summary>
+    public ModifierEntry[] CreateEntries() =>
+        [.. Entries.Select(e => new ModifierEntry
+        {
+            Id = e.Id,
+            Origin = BonusOrigin.Preset,
+            Name = e.Name,
+            Kind = e.Kind,
+            Descriptor = e.Descriptor,
+            Stat = e.Stat,
+            Ability = e.Ability,
+            WeaponId = e.WeaponId,
+            Value = e.Value,
+            StackMode = e.StackMode,
+            IsEnabled = e.IsEnabled,
+            Stance = e.Stance,
+            Notes = e.Notes,
+        })];
+}
 
 public static class CombatPresets
 {
@@ -46,6 +71,35 @@ public static class CombatPresets
             Bonus("俯卧（攻击）", ModifierDescriptor.Penalty, CombatStat.Attack, -4),
             Bonus("俯卧（AC 对近战）", ModifierDescriptor.Penalty, CombatStat.ArmorClass, -4, "对远程 AC +4 需手动处理"),
         ]),
+        new("防御式战斗", [
+            new ModifierEntry
+            {
+                Name = "防御式战斗（AC）",
+                Descriptor = ModifierDescriptor.Dodge,
+                Stat = CombatStat.ArmorClass,
+                Value = 2,
+                Stance = CombatStance.DefensiveFighting,
+            },
+            new ModifierEntry
+            {
+                Name = "防御式战斗（攻击）",
+                Descriptor = ModifierDescriptor.Penalty,
+                Stat = CombatStat.Attack,
+                Value = -4,
+                Stance = CombatStance.DefensiveFighting,
+            },
+        ]),
+        new("全防御", [
+            new ModifierEntry
+            {
+                Name = "全防御（AC）",
+                Descriptor = ModifierDescriptor.Dodge,
+                Stat = CombatStat.ArmorClass,
+                Value = 4,
+                Stance = CombatStance.TotalDefense,
+                Notes = "CHM：标准动作、1 轮内 AC +4 闪避；无法同时进行防御式攻击、借机攻击，也无法从「寓守于攻」获益",
+            },
+        ]),
         new("勇气激励", [
             Bonus("勇气激励（攻击）", ModifierDescriptor.Competence, CombatStat.Attack, 2, "数值随等级变化，请自行调整"),
             Bonus("勇气激励（伤害）", ModifierDescriptor.Competence, CombatStat.Damage, 2, "数值随等级变化，请自行调整"),
@@ -65,6 +119,28 @@ public static class CombatPresets
                 Stat = CombatStat.Attack,
                 Value = 0,
                 Notes = "按 BAB 与握法自动计算（近战攻击减值换伤害）；停用/删除即取消",
+            },
+        ]),
+        new("寓守于攻", [
+            new ModifierEntry
+            {
+                Name = "寓守于攻",
+                Kind = ModifierKind.CombatExpertise,
+                Descriptor = ModifierDescriptor.Dodge,
+                Stat = CombatStat.ArmorClass,
+                Value = 0,
+                Notes = "近战攻击与战技 −1 换 AC +1 闪避，两者随 BAB 每 +4 同步放大；停用/删除即取消",
+            },
+        ]),
+        new("双武器格斗", [
+            new ModifierEntry
+            {
+                Name = "双武器格斗",
+                Kind = ModifierKind.TwoWeaponFighting,
+                Descriptor = ModifierDescriptor.UntypedStackable,
+                Stat = CombatStat.Attack,
+                Value = 0,
+                Notes = "双持（存在副手武器）时主手 −4 / 副手 −8，副手非轻型武器再 −2；额外攻击未建模",
             },
         ]),
     ];

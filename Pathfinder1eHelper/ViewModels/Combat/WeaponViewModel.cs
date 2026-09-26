@@ -14,6 +14,8 @@ public sealed class WeaponViewModel : ReactiveObject
     private WeaponAttackTypeOption _attackType;
     private WeaponHandOption _hand;
     private bool _isSecondary;
+    private WeaponCategoryOption _category;
+    private bool _isDouble;
     private AbilityOption? _attackBonusStat;
     private AbilityOption? _damageBonusStat;
     private string _baseDamage;
@@ -39,6 +41,8 @@ public sealed class WeaponViewModel : ReactiveObject
         _attackType = CombatOptions.AttackType(model.AttackType);
         _hand = CombatOptions.Hand(model.Hand);
         _isSecondary = model.IsSecondary;
+        _category = CombatOptions.Category(model.Category);
+        _isDouble = model.IsDouble;
         _attackBonusStat = CombatOptions.AbilityOrNull(model.AttackBonusStat);
         _damageBonusStat = CombatOptions.AbilityOrNull(model.DamageBonusStat);
         _baseDamage = model.BaseDamage;
@@ -99,6 +103,28 @@ public sealed class WeaponViewModel : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref _isSecondary, value);
+            _changed();
+        }
+    }
+
+    /// <summary>武器分类（轻型/中型/重型）；「双武器格斗」据此判定副手是否轻型。</summary>
+    public WeaponCategoryOption Category
+    {
+        get => _category;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _category, value);
+            _changed();
+        }
+    }
+
+    /// <summary>是否双头武器（主手持双头时副手不再因非轻型追加减值）。</summary>
+    public bool IsDouble
+    {
+        get => _isDouble;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isDouble, value);
             _changed();
         }
     }
@@ -217,6 +243,8 @@ public sealed class WeaponViewModel : ReactiveObject
         AttackType = _attackType.Value,
         Hand = _hand.Value,
         IsSecondary = IsSecondary,
+        Category = _category.Value,
+        IsDouble = IsDouble,
         AttackBonusStat = _attackBonusStat?.Value,
         DamageBonusStat = _damageBonusStat?.Value,
         BaseDamage = string.IsNullOrWhiteSpace(BaseDamage) ? "1d4" : BaseDamage.Trim(),

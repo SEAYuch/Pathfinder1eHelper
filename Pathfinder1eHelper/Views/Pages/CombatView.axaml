@@ -256,7 +256,7 @@
                                         </Grid>
 
                                         <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6"
-                                                  IsEnabled="{Binding !IsPowerAttack}">
+                                                  IsEnabled="{Binding !IsRuleComputed}">
                                             <StackPanel Spacing="2">
                                                 <TextBlock Classes="field" Text="描述符" />
                                                 <controls:OptionPicker MinWidth="116" Placeholder="描述符"
@@ -308,16 +308,16 @@
                                             </StackPanel>
                                         </WrapPanel>
 
-                                        <TextBlock Text="猛力攻击：按 BAB 与握法自动计算（近战攻击 −(1+BAB/4)、伤害 +2×(1+BAB/4)；副手减半 / 双手 ×1.5），描述符与数值锁定为「无类型 / 0」"
+                                        <TextBlock Text="{Binding RuleHint}"
                                                    FontSize="11" Opacity="0.7" TextWrapping="Wrap"
-                                                   IsVisible="{Binding IsPowerAttack}" />
+                                                   IsVisible="{Binding IsRuleComputed}" />
 
                                         <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6">
                                             <StackPanel Spacing="2">
                                                 <TextBlock Classes="field" Text="数值（带符号）" />
                                                 <NumericUpDown Width="120" Value="{Binding Value}"
                                                                Minimum="-99" Maximum="99"
-                                                               IsEnabled="{Binding !IsPowerAttack}"
+                                                               IsEnabled="{Binding !IsRuleComputed}"
                                                                ShowButtonSpinner="False" />
                                             </StackPanel>
                                             <StackPanel Spacing="2">
@@ -455,6 +455,22 @@
                                             <StackPanel Spacing="2">
                                                 <TextBlock Classes="field" Text="副手" />
                                                 <CheckBox Content="副手" IsChecked="{Binding IsSecondary}" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Classes="field" Text="武器分类" />
+                                                <controls:OptionPicker MinWidth="96" Placeholder="分类"
+                                                                       ItemsSource="{x:Static vmc:CombatOptions.WeaponCategories}"
+                                                                       SelectedItem="{Binding Category}">
+                                                    <controls:OptionPicker.ItemTemplate>
+                                                        <DataTemplate x:DataType="vmc:WeaponCategoryOption">
+                                                            <TextBlock Text="{Binding Display}" />
+                                                        </DataTemplate>
+                                                    </controls:OptionPicker.ItemTemplate>
+                                                </controls:OptionPicker>
+                                            </StackPanel>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Classes="field" Text="双头" />
+                                                <CheckBox Content="双头" IsChecked="{Binding IsDouble}" />
                                             </StackPanel>
                                         </WrapPanel>
 

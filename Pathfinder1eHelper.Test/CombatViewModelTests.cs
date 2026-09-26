@@ -438,6 +438,126 @@ public class CombatViewModelTests
     }
 
     [Fact]
+    public async Task Feat_buff_combat_expertise_resolves_to_computed_kind()
+    {
+        var spells = new FakeSpellService();
+        var feats = new FakeFeatService();
+        feats.Results.Add(new Feat { Id = 1, NameZh = "寓守于攻", NameEn = "Combat Expertise", Source = "CRB" });
+        feats.Buffs.Add(new FeatBuff
+        {
+            Id = 10,
+            NameEn = "Combat Expertise",
+            NameZh = "寓守于攻",
+            EffectName = "寓守于攻",
+            BonusType = "Dodge",
+            Target = "ArmorClass",
+            Kind = "CombatExpertise",
+            Value = 0,
+        });
+        var vm = Create(new FakeCharacterRepository(), spells, feats);
+        vm.BaseAttackBonus = 4; // 档位 2
+        ((ICommand)vm.AddWeaponCommand).Execute(null);
+
+        await vm.LoadBuffCandidatesAsync();
+        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
+        await vm.AddFeatBuffAsync();
+
+        var entry = Assert.Single(vm.Bonuses);
+        Assert.Equal(ModifierKind.CombatExpertise, entry.Kind);
+        Assert.True(entry.IsRuleComputed);
+        Assert.Equal(BonusOrigin.FeatBuff, entry.Origin);
+        Assert.Equal(12, vm.Sheet.ArmorClass.Total);     // 10 + 2(寓守于攻)
+        Assert.Equal(2, vm.Sheet.Weapons[0].Attack.Total); // 4(BAB) − 2(寓守于攻)
+    }
+
+    [Fact]
+    public void Preset_apply_preserves_the_stance_tag()
+    {
+        var vm = Create(new FakeCharacterRepository());
+
+        vm.Presets.Single(p => p.Name == "全防御").ApplyCommand.Execute(null);
+        vm.Presets.Single(p => p.Name == "防御式战斗").ApplyCommand.Execute(null);
+
+        Assert.All(vm.Bonuses, b => Assert.NotNull(b.Stance));
+        Assert.Single(vm.Bonuses, b => b.Stance == CombatStance.TotalDefense);
+        Assert.Equal(2, vm.Bonuses.Count(b => b.Stance == CombatStance.DefensiveFighting));
+    }
+
+    [Fact]
+    public void Applying_a_preset_does_not_mutate_the_shared_preset_entries()
+    {
+        var before = CombatPresets.All
+            .SelectMany(p => p.Entries.Select(e => (e.Name, e.IsEnabled, e.Stance)))
+            .ToList();
+
+        var vm = Create(new FakeCharacterRepository());
+        vm.Presets.Single(p => p.Name == "全防御").ApplyCommand.Execute(null);
+        vm.Bonuses[0].IsEnabled = false;
+
+        var after = CombatPresets.All
+            .SelectMany(p => p.Entries.Select(e => (e.Name, e.IsEnabled, e.Stance)))
+            .ToList();
+        Assert.Equal(before, after);
+    }
+
+    [Fact]
+    public async Task Crane_style_feat_buff_relaxes_an_applied_defensive_fighting_preset()
+    {
+        // 端到端：战斗页「添加防御式战斗」预设 + 专长 Buff 联动「白鹤拳」
+        var spells = new FakeSpellService();
+        var feats = new FakeFeatService();
+        feats.Results.Add(new Feat { Id = 1, NameZh = "白鹤拳", NameEn = "Crane Style", Source = "UC" });
+        feats.Buffs.Add(new FeatBuff
+        {
+            Id = 20, NameEn = "Crane Style", NameZh = "白鹤拳",
+            EffectName = "白鹤拳（减值放宽）", BonusType = "None", Target = "Attack", Kind = "CraneStyle",
+        });
+        feats.Buffs.Add(new FeatBuff
+        {
+            Id = 21, NameEn = "Crane Style", NameZh = "白鹤拳",
+            EffectName = "白鹤拳（AC 闪避）", BonusType = "Dodge", Target = "ArmorClass", Value = 1,
+        });
+        var vm = Create(new FakeCharacterRepository(), spells, feats);
+        vm.BaseAttackBonus = 6;
+        ((ICommand)vm.AddWeaponCommand).Execute(null);
+
+        vm.Presets.Single(p => p.Name == "防御式战斗").ApplyCommand.Execute(null);
+        await vm.LoadBuffCandidatesAsync();
+        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
+        await vm.AddFeatBuffAsync();
+
+        // 预设 2 条 + 专长 2 条
+        Assert.Equal(4, vm.Bonuses.Count);
+        Assert.Equal(4, vm.Sheet.Weapons[0].Attack.Total);  // 6 − 2（防御式战斗 −4 被白鹤拳放宽）
+        Assert.Equal(13, vm.Sheet.ArmorClass.Total);        // 10 + 2(预设) + 1(白鹤拳 AC 行)
+    }
+
+    [Theory]
+    [InlineData("防御式战斗", 2)]
+    [InlineData("全防御", 1)]
+    public void Defensive_stance_presets_add_ac_and_attack_entries(string name, int expectedEntries)
+    {
+        var vm = Create(new FakeCharacterRepository());
+
+        vm.Presets.Single(p => p.Name == name).ApplyCommand.Execute(null);
+
+        Assert.Equal(expectedEntries, vm.Bonuses.Count);
+        Assert.Contains(vm.Bonuses, b => b.Stat.Value == CombatStat.ArmorClass && b.Descriptor.Value == ModifierDescriptor.Dodge);
+    }
+
+    [Fact]
+    public void Combat_expertise_preset_adds_a_rule_computed_entry()
+    {
+        var vm = Create(new FakeCharacterRepository());
+
+        vm.Presets.Single(p => p.Name == "寓守于攻").ApplyCommand.Execute(null);
+
+        var entry = Assert.Single(vm.Bonuses);
+        Assert.Equal(ModifierKind.CombatExpertise, entry.Kind);
+        Assert.True(entry.IsRuleComputed);
+    }
+
+    [Fact]
     public void Weapon_focus_buttons_work_on_weapons_loaded_from_disk()
     {
         // 复现：重启后武器来自磁盘 LoadProfile 路径，按钮必须仍然可用

@@ -713,24 +713,9 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     private void ApplyPreset(CombatPreset preset)
     {
-        foreach (var template in preset.Entries)
+        foreach (var entry in preset.CreateEntries())
         {
-            Bonuses.Add(new BonusEntryViewModel(
-                new ModifierEntry
-                {
-                    Origin = BonusOrigin.Preset,
-                    Name = template.Name,
-                    Kind = template.Kind,
-                    Descriptor = template.Descriptor,
-                    Stat = template.Stat,
-                    Ability = template.Ability,
-                    Value = template.Value,
-                    StackMode = template.StackMode,
-                    IsEnabled = template.IsEnabled,
-                    Notes = template.Notes,
-                },
-                OnInputChanged,
-                RemoveBonus));
+            Bonuses.Add(new BonusEntryViewModel(entry, OnInputChanged, RemoveBonus));
         }
     }
 

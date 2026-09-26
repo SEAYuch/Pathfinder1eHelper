@@ -38,6 +38,12 @@ public sealed class ModifierEntry
 
     public bool IsEnabled { get; set; } = true;
 
+    /// <summary>
+    /// 战斗机动标记：非空表示本条是姿态条目（防御式战斗/全防御），
+    /// 计算层据此处理姿态互斥（CHM：全防御时无法从「寓守于攻」获益）。普通条目为 null。
+    /// </summary>
+    public CombatStance? Stance { get; set; }
+
     public string? Notes { get; set; }
 
     /// <summary>转换为计算层修饰。</summary>

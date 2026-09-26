@@ -25,6 +25,13 @@ public sealed record WeaponStatsRequest
 
     public bool AttackIsMelee { get; init; }
 
+    /// <summary>
+    /// 伤害加值减半（复刻 WotR <c>RuleCalculateWeaponStats.HalfDamageBonus</c>，由
+    /// <c>TwoWeaponFightingDamagePenalty</c> 在用副手武器攻击时置位）。
+    /// 只减半「加值」部分（属性×倍率 + 武器增强 + 各修饰），基础伤害骰不变。
+    /// </summary>
+    public bool HalfDamageBonus { get; init; }
+
     /// <summary>基础伤害骰文本（未缩放），如 <c>2d6</c>。</summary>
     public string BaseDamageDice { get; init; } = "1d4";
 
@@ -106,14 +113,45 @@ public static class RuleCalculateWeaponStats
         var damageDice = WeaponDamageScaleTable.ScaleToText(
             request.BaseDamageDice, effectiveSize, SizeCategory.Medium, request.DoNotScaleDamage);
 
+        var damage = RuleMath.Stat(contributions);
+        if (request.HalfDamageBonus)
+        {
+            damage = HalveDamageBonus(damage);
+        }
+
         return new WeaponStatsResult(
             attack,
-            RuleMath.Stat(contributions),
+            damage,
             AttacksCount(request.BaseAttackBonus),
             request.CriticalThreatLow,
             request.CriticalMultiplier,
             request.DamageAbilityMultiplier,
             damageDice);
+    }
+
+    /// <summary>
+    /// 双武器战斗：副手伤害加值减半（游戏 <c>TwoWeaponFightingDamagePenalty</c>）。
+    /// 加值合计向下取整减半，并补一行差额使明细仍能对上总数；基础伤害骰不减半。
+    /// </summary>
+    private static StatResult HalveDamageBonus(StatResult damage)
+    {
+        if (damage.Total == 0)
+        {
+            return damage;
+        }
+
+        var halved = (int)Math.Floor(damage.Total / 2.0);
+        var delta = halved - damage.Total;
+        if (delta == 0)
+        {
+            return damage;
+        }
+
+        var list = new List<Contribution>(damage.Contributions)
+        {
+            new("副手伤害加值减半", delta, Note: $"{damage.Total} → {halved}"),
+        };
+        return new StatResult(halved, list);
     }
 
     /// <summary>BAB 带来的额外减益攻击数：<c>max(0, BAB/5 − (BAB%5==0 ? 1 : 0))</c>，上限 3。</summary>

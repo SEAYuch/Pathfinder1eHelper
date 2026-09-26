@@ -109,6 +109,45 @@ public class JsonCharacterRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void Weapon_category_and_double_flag_survive_restart()
+    {
+        var repository = new JsonCharacterRepository(_directory);
+        repository.Save(new CharacterProfile
+        {
+            Name = "双持",
+            Modifiers =
+            [
+                new ModifierEntry
+                {
+                    Name = "双武器格斗",
+                    Kind = ModifierKind.TwoWeaponFighting,
+                    Descriptor = ModifierDescriptor.UntypedStackable,
+                    Stat = CombatStat.Attack,
+                },
+            ],
+            Weapons =
+            [
+                new WeaponProfile { Name = "长剑", BaseDamage = "1d8", IsDouble = true },
+                new WeaponProfile
+                {
+                    Name = "巨剑",
+                    BaseDamage = "1d6",
+                    IsSecondary = true,
+                    Category = WeaponCategory.Medium,
+                },
+            ],
+        });
+
+        var loaded = Assert.Single(repository.LoadAll());
+        var sheet = CombatCalculator.Calculate(loaded);
+
+        Assert.True(loaded.Weapons[0].IsDouble);
+        Assert.Equal(WeaponCategory.Medium, loaded.Weapons[1].Category);
+        // 重启后双武器格斗仍生效：主手双头 → 副手 −8
+        Assert.Equal(-8, sheet.Weapons[1].Attack.Total);
+    }
+
+    [Fact]
     public void Delete_removes_only_the_requested_character()
     {
         var repository = new JsonCharacterRepository(_directory);

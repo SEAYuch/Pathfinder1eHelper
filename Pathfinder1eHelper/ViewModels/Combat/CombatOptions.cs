@@ -20,6 +20,8 @@ public sealed record WeaponHandOption(WeaponHand Value, string Display);
 
 public sealed record WeaponAttackTypeOption(WeaponAttackType Value, string Display);
 
+public sealed record WeaponCategoryOption(WeaponCategory Value, string Display);
+
 /// <summary>专注检定的常见情境（对应 WotR 的施法困难条件）。</summary>
 public enum ConcentrationSituation
 {
@@ -63,6 +65,9 @@ public static class CombatOptions
     public static IReadOnlyList<WeaponAttackTypeOption> WeaponAttackTypes { get; } =
         Enum.GetValues<WeaponAttackType>().Select(v => new WeaponAttackTypeOption(v, CombatText.WeaponAttackType(v))).ToList();
 
+    public static IReadOnlyList<WeaponCategoryOption> WeaponCategories { get; } =
+        Enum.GetValues<WeaponCategory>().Select(v => new WeaponCategoryOption(v, CombatText.WeaponCategory(v))).ToList();
+
     public static IReadOnlyList<ConcentrationOption> ConcentrationSituations { get; } =
     [
         new(ConcentrationSituation.Custom, "自定义 DC"),
@@ -91,6 +96,9 @@ public static class CombatOptions
 
     public static WeaponAttackTypeOption AttackType(WeaponAttackType value) =>
         WeaponAttackTypes.First(o => o.Value == value);
+
+    public static WeaponCategoryOption Category(WeaponCategory value) =>
+        WeaponCategories.First(o => o.Value == value);
 
     public static ConcentrationOption Concentration(ConcentrationSituation value) =>
         ConcentrationSituations.First(o => o.Value == value);

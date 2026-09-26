@@ -55,8 +55,15 @@ public static class CombatText
         _ => hand.ToString(),
     };
 
-    public static string WeaponAttackType(Models.Combat.WeaponAttackType type) => type switch
+    public static string WeaponCategory(Models.Combat.WeaponCategory category) => category switch
     {
+        Models.Combat.WeaponCategory.Light => "轻型",
+        Models.Combat.WeaponCategory.Medium => "中型",
+        Models.Combat.WeaponCategory.Heavy => "重型",
+        _ => category.ToString(),
+    };
+
+    public static string WeaponAttackType(Models.Combat.WeaponAttackType type) => type switch    {
         Models.Combat.WeaponAttackType.Melee => "近战",
         Models.Combat.WeaponAttackType.Touch => "近战接触",
         Models.Combat.WeaponAttackType.Ranged => "远程",

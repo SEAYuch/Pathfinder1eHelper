@@ -404,5 +404,387 @@ public class CombatCalculatorTests
         Stat = CombatStat.Attack,
     };
 
+    [Fact]
+    public void Combat_expertise_trades_melee_attack_for_ac()
+    {
+        var profile = Profile();
+        profile.Abilities.Dexterity = 14; // +2
+        profile.BaseAttackBonus = 4;      // 档位 1 + 4/4 = 2
+        profile.Modifiers.Add(CombatExpertiseBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "长弓",
+            AttackType = WeaponAttackType.Ranged,
+            BaseDamage = "1d8",
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // AC = 10 + 2(敏捷) + 2(寓守于攻闪避)
+        Assert.Equal(14, sheet.ArmorClass.Total);
+        // 近战 = 4(BAB) + 0(力量10) − 2(寓守于攻)
+        Assert.Equal(2, sheet.Weapons[0].Attack.Total);
+        // 远程不吃近战减值：4 + 2(敏捷)
+        Assert.Equal(6, sheet.Weapons[1].Attack.Total);
+    }
+
+    [Fact]
+    public void Combat_expertise_penalty_does_apply_to_cmb()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 4; // 档位 2 → 战技 −2
+        profile.Modifiers.Add(CombatExpertiseBuff());
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(2, sheet.Cmb.Total); // 4 + 0 − 2
+    }
+
+    [Fact]
+    public void Disabled_combat_expertise_entry_is_ignored()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 4;
+        var entry = CombatExpertiseBuff();
+        entry.IsEnabled = false;
+        profile.Modifiers.Add(entry);
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(4, sheet.Weapons[0].Attack.Total);
+        Assert.Equal(10, sheet.ArmorClass.Total);
+    }
+
+    [Fact]
+    public void Combat_expertise_ac_bonus_stacks_with_the_dodge_feat()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 4; // 档位 2
+        profile.Modifiers.Add(CombatExpertiseBuff());
+        profile.Modifiers.Add(new ModifierEntry
+        {
+            Name = "闪避",
+            Descriptor = ModifierDescriptor.Dodge,
+            Stat = CombatStat.ArmorClass,
+            Value = 1,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 10 + 2(寓守于攻) + 1(闪避专长)，同为 Dodge 描述符故求和
+        Assert.Equal(13, sheet.ArmorClass.Total);
+    }
+
+    [Theory]
+    [InlineData("防御式战斗", 12, -4)]
+    [InlineData("全防御", 14, 0)]
+    public void Defensive_stance_preset_trades_attack_for_dodge_ac(string presetName, int expectedAc, int expectedAttack)
+    {
+        var profile = Profile();
+        var preset = CombatPresets.All.Single(p => p.Name == presetName);
+        foreach (var entry in preset.CreateEntries())
+        {
+            profile.Modifiers.Add(entry);
+        }
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // CHM 战斗机动：防御式战斗 = AC +2 闪避 / 攻击 −4；全防御 = AC +4 闪避、无攻击减值
+        Assert.Equal(expectedAc, sheet.ArmorClass.Total);
+        Assert.Equal(expectedAttack, sheet.Weapons[0].Attack.Total);
+    }
+
+    [Fact]
+    public void Crane_style_and_wing_stack_as_dodge_ac()
+    {
+        var profile = Profile();
+        profile.Modifiers.Add(new ModifierEntry
+        {
+            Name = "白鹤拳", Descriptor = ModifierDescriptor.Dodge, Stat = CombatStat.ArmorClass, Value = 1,
+        });
+        profile.Modifiers.Add(new ModifierEntry
+        {
+            Name = "白鹤亮翅", Descriptor = ModifierDescriptor.Dodge, Stat = CombatStat.ArmorClass, Value = 4,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(15, sheet.ArmorClass.Total); // 10 + 1 + 4
+    }
+
+    [Fact]
+    public void Total_defense_suppresses_combat_expertise()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 4; // 档位 2
+        profile.Modifiers.Add(CombatExpertiseBuff());
+        foreach (var entry in CombatPresets.All.Single(p => p.Name == "全防御").CreateEntries())
+        {
+            profile.Modifiers.Add(entry);
+        }
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // CHM：全防御期间无法从「寓守于攻」获益 → 只剩全防御的 AC +4 闪避，攻击无减值
+        Assert.Equal(14, sheet.ArmorClass.Total);
+        Assert.Equal(4, sheet.Weapons[0].Attack.Total);
+        Assert.Equal(4, sheet.Cmb.Total);
+    }
+
+    [Fact]
+    public void Defensive_fighting_does_not_suppress_combat_expertise()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 4; // 档位 2
+        profile.Modifiers.Add(CombatExpertiseBuff());
+        foreach (var entry in CombatPresets.All.Single(p => p.Name == "防御式战斗").CreateEntries())
+        {
+            profile.Modifiers.Add(entry);
+        }
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // CHM 只禁止「全防御」，防御式战斗下寓守于攻照常生效：AC 10+2(姿态)+2(专长)，攻击 4−4−2
+        Assert.Equal(14, sheet.ArmorClass.Total);
+        Assert.Equal(-2, sheet.Weapons[0].Attack.Total);
+    }
+
+    [Fact]
+    public void Disabled_total_defense_entry_does_not_suppress_combat_expertise()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 4;
+        profile.Modifiers.Add(CombatExpertiseBuff());
+        // 预设条目是共享实例，改动前必须复制，否则会污染其它用例
+        var template = CombatPresets.All.Single(p => p.Name == "全防御").Entries[0];
+        var totalDefense = new ModifierEntry
+        {
+            Name = template.Name,
+            Descriptor = template.Descriptor,
+            Stat = template.Stat,
+            Value = template.Value,
+            Stance = template.Stance,
+            IsEnabled = false,
+        };
+        profile.Modifiers.Add(totalDefense);
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 停用的全防御既不提供 AC，也不压制寓守于攻
+        Assert.Equal(12, sheet.ArmorClass.Total);
+        Assert.Equal(2, sheet.Weapons[0].Attack.Total);
+    }
+
+    [Fact]
+    public void Total_defense_entry_does_not_suppress_combat_expertise()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 4; // 档位 2
+        profile.Modifiers.Add(CombatExpertiseBuff());
+        // 清掉 Stance 标记：这只应退化为普通 +4 闪避加值
+        foreach (var entry in CombatPresets.All.Single(p => p.Name == "全防御").CreateEntries())
+        {
+            entry.Stance = null;
+            profile.Modifiers.Add(entry);
+        }
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 未打标记 ⇒ 不压制寓守于攻：AC 10+4+2，攻击 4−2
+        Assert.Equal(16, sheet.ArmorClass.Total);
+        Assert.Equal(2, sheet.Weapons[0].Attack.Total);
+    }
+
+    [Fact]
+    public void Crane_style_relaxes_defensive_fighting_penalty_to_minus_two()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        foreach (var entry in CombatPresets.All.Single(p => p.Name == "防御式战斗").CreateEntries())
+        {
+            profile.Modifiers.Add(entry);
+        }
+        profile.Modifiers.Add(CraneStyleBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 防御式战斗 −4，被白鹤拳放宽到 −2：6 − 2 = 4；AC 仍是 10 + 2（防御式战斗）
+        Assert.Equal(4, sheet.Weapons[0].Attack.Total);
+        Assert.Equal(12, sheet.ArmorClass.Total);
+        // 走同一条 Attack 通道，战技一致抵消：6 − 2 = 4
+        Assert.Equal(4, sheet.Cmb.Total);
+    }
+
+    [Fact]
+    public void Crane_style_without_defensive_fighting_grants_nothing()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        profile.Modifiers.Add(CraneStyleBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(6, sheet.Weapons[0].Attack.Total);
+        Assert.Equal(10, sheet.ArmorClass.Total);
+    }
+
+    [Fact]
+    public void Defensive_fighting_alone_keeps_the_full_minus_four()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        foreach (var entry in CombatPresets.All.Single(p => p.Name == "防御式战斗").CreateEntries())
+        {
+            profile.Modifiers.Add(entry);
+        }
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(2, sheet.Weapons[0].Attack.Total); // 6 − 4
+    }
+
+    [Fact]
+    public void Two_weapon_fighting_halves_the_off_hand_damage_bonus_only()
+    {
+        var profile = Profile();
+        profile.Abilities.Strength = 16; // +3
+        profile.BaseAttackBonus = 6;
+        profile.Modifiers.Add(TwoWeaponFightingBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "短剑",
+            BaseDamage = "1d6",
+            IsSecondary = true,
+            Category = WeaponCategory.Light,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 主手伤害 +3（力量全取）；副手力量×0.5 → 1，再减半 → 0
+        Assert.Equal(3, sheet.Weapons[0].Damage.Total);
+        Assert.Equal(0, sheet.Weapons[1].Damage.Total);
+    }
+
+    [Fact]
+    public void A_double_weapon_in_the_main_hand_waives_the_extra_off_hand_penalty()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        profile.Abilities.Strength = 16; // +3
+        profile.Modifiers.Add(TwoWeaponFightingBuff());
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "双头剑",
+            BaseDamage = "1d8",
+            IsDouble = true,
+        });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "巨剑",
+            BaseDamage = "1d6",
+            IsSecondary = true,
+            Category = WeaponCategory.Medium,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 主手是双头武器 → 副手不再追加 −2，仍为 −8
+        Assert.Equal(1, sheet.Weapons[1].Attack.Total);
+    }
+
+    private static ModifierEntry TwoWeaponFightingBuff() => new()
+    {
+        Name = "双武器格斗",
+        Kind = ModifierKind.TwoWeaponFighting,
+        Descriptor = ModifierDescriptor.UntypedStackable,
+        Stat = CombatStat.Attack,
+    };
+
+    [Fact]
+    public void Two_weapon_fighting_applies_the_per_hand_penalties()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        profile.Abilities.Strength = 16; // +3
+        profile.Modifiers.Add(TwoWeaponFightingBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "短剑",
+            BaseDamage = "1d6",
+            IsSecondary = true,
+            Category = WeaponCategory.Light,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 主手 6 + 3 − 4；副手 6 + 3 − 8（轻型，豁免追加 −2）
+        Assert.Equal(5, sheet.Weapons[0].Attack.Total);
+        Assert.Equal(1, sheet.Weapons[1].Attack.Total);
+    }
+
+    [Fact]
+    public void Two_weapon_fighting_penalises_a_non_light_off_hand()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        profile.Abilities.Strength = 16; // +3
+        profile.Modifiers.Add(TwoWeaponFightingBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+        profile.Weapons.Add(new WeaponProfile
+        {
+            Name = "巨剑",
+            BaseDamage = "1d6",
+            IsSecondary = true,
+            Category = WeaponCategory.Medium,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        // 副手非轻型 → −8 − 2 = −10
+        Assert.Equal(-1, sheet.Weapons[1].Attack.Total);
+    }
+
+    [Fact]
+    public void Two_weapon_fighting_does_nothing_without_a_secondary_weapon()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        profile.Abilities.Strength = 16; // +3
+        profile.Modifiers.Add(TwoWeaponFightingBuff());
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(9, sheet.Weapons[0].Attack.Total);
+    }
+
+    private static ModifierEntry CraneStyleBuff() => new()
+    {
+        Name = "白鹤拳",
+        Kind = ModifierKind.CraneStyle,
+        Descriptor = ModifierDescriptor.None,
+        Stat = CombatStat.Attack,
+    };
+
+    private static ModifierEntry CombatExpertiseBuff() => new()
+    {
+        Name = "寓守于攻",
+        Kind = ModifierKind.CombatExpertise,
+        Descriptor = ModifierDescriptor.Dodge,
+        Stat = CombatStat.ArmorClass,
+    };
+
     private static CharacterProfile Profile() => new();
 }

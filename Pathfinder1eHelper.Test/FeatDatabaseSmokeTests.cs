@@ -31,6 +31,13 @@ public class FeatDatabaseSmokeTests
             Assert.Equal("战斗", power.FeatType);
             Assert.True(power.IsFighterBonus);
             Assert.False(string.IsNullOrWhiteSpace(power.Benefit));
+
+            // 「寓守于攻」同样需要规则代码，CHM 原文应含 BAB 缩放描述
+            var expertises = await repo.SearchAsync(new FeatQuery("Combat Expertise", null, null, null, 0, 50));
+            var expertise = Assert.Single(expertises, f => f.NameEn == "Combat Expertise" && f.Source == "CRB");
+            Assert.Equal("寓守于攻", expertise.NameZh);
+            Assert.Equal("战斗", expertise.FeatType);
+            Assert.Contains("BAB", expertise.Benefit);
         }
         finally
         {
@@ -206,6 +213,40 @@ public class FeatDatabaseSmokeTests
 
             var dodgeByZh = await repo.GetBuffsForFeatAsync(null, "闪避");
             Assert.Single(dodgeByZh);
+
+            // 「寓守于攻」与「猛力攻击」一样是规则计算型条目：数值留空，由计算层按 BAB 展开。
+            var expertise = await repo.GetBuffsForFeatAsync("Combat Expertise", "寓守于攻");
+            var expertiseRow = Assert.Single(expertise);
+            Assert.Equal("CombatExpertise", expertiseRow.Kind);
+            Assert.Equal("ArmorClass", expertiseRow.Target);
+            Assert.Equal(0, expertiseRow.Value);
+            Assert.NotNull(expertiseRow.FeatId);
+
+            var powerAttack = await repo.GetBuffsForFeatAsync("Power Attack", "猛力攻击");
+            Assert.Equal("PowerAttack", Assert.Single(powerAttack).Kind);
+
+            // 白鹤流派：白鹤拳拆成「规则行 + AC 行」两行（见 feat_buffs.sql 注释）
+            var craneStyle = await repo.GetBuffsForFeatAsync("Crane Style", "白鹤拳");
+            Assert.Equal(2, craneStyle.Count);
+            var craneStyleRule = Assert.Single(craneStyle, b => b.Kind == "CraneStyle");
+            Assert.Equal("Attack", craneStyleRule.Target);
+            Assert.Equal(0, craneStyleRule.Value);
+            Assert.NotNull(craneStyleRule.FeatId);
+            var craneStyleAc = Assert.Single(craneStyle, b => b.Kind is null);
+            Assert.Equal("Dodge", craneStyleAc.BonusType);
+            Assert.Equal("ArmorClass", craneStyleAc.Target);
+            Assert.Equal(1, craneStyleAc.Value);
+
+            var craneWing = await repo.GetBuffsForFeatAsync("Crane Wing", "白鹤亮翅");
+            Assert.Equal(4, Assert.Single(craneWing).Value);
+
+            // 双武器格斗：规则行，数值留空
+            var twf = await repo.GetBuffsForFeatAsync("Two-Weapon Fighting", "双武器格斗");
+            var twfRow = Assert.Single(twf);
+            Assert.Equal("TwoWeaponFighting", twfRow.Kind);
+            Assert.Equal("Attack", twfRow.Target);
+            Assert.Equal(0, twfRow.Value);
+            Assert.NotNull(twfRow.FeatId);
         }
         finally
         {
