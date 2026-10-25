@@ -30,10 +30,8 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
     /// <summary>Sentinel shown in the first-letter filter that means "all letters".</summary>
     public const string AllLetters = "全部";
 
-    /// <summary>默认每页条数；“加载更多”按 <see cref="PageSizeStep"/> 递增。</summary>
-    public const int DefaultPageSize = 200;
-
-    private const int PageSizeStep = 200;
+    /// <summary>默认每页条数；“加载更多”按 <see cref="Pagination.PageSizeStep"/> 递增。</summary>
+    public const int DefaultPageSize = Pagination.DefaultPageSize;
 
     private readonly IMonsterService _monsters;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
@@ -108,17 +106,18 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
 
     private async Task<MonsterPage> SearchAsync(MonsterQuery query, CancellationToken ct)
     {
-        var items = await _monsters.SearchAsync(query, ct);
-        // 结果不足一页即说明已到末尾，无需再查总数；否则查询真实总数用于提示与“加载更多”。
-        var total = items.Count < query.Take ? items.Count : await _monsters.CountAsync(query, ct);
-        return new MonsterPage(items, total);
+        var page = await Pagination.FetchAsync(
+            () => _monsters.SearchAsync(query, ct),
+            () => _monsters.CountAsync(query, ct),
+            query.Take);
+        return new MonsterPage(page.Items, page.Total);
     }
 
     private async Task LoadMoreAsync(CancellationToken ct)
     {
         try
         {
-            PageSize += PageSizeStep;
+            PageSize += Pagination.PageSizeStep;
             var page = await Task.Run(() => SearchAsync(BuildQuery(), ct), ct);
             ct.ThrowIfCancellationRequested();
             ApplyPage(page);
@@ -135,17 +134,11 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
 
     private void ApplyPage(MonsterPage page)
     {
-        Monsters.Clear();
-        foreach (var monster in page.Items)
-        {
-            Monsters.Add(monster);
-        }
+        Pagination.Replace(Monsters, page.Items);
 
         SelectedMonster = Monsters.Count > 0 ? Monsters[0] : null;
         HasMoreResults = Monsters.Count < page.Total;
-        ResultSummary = HasMoreResults
-            ? $"共 {page.Total} 条怪物，已显示前 {Monsters.Count} 条"
-            : $"共 {page.Total} 条怪物";
+        ResultSummary = Pagination.Summarize("怪物", page.Total, Monsters.Count);
     }
 
     /// <summary>Design-time constructor: sample data so the XAML previewer renders without DI.</summary>
@@ -184,10 +177,10 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
 
     public ReactiveCommand<MonsterQuery, MonsterPage> SearchCommand { get; }
 
-    /// <summary>“加载更多”：按 <see cref="PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
+    /// <summary>“加载更多”：按 <see cref="Pagination.PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
     public ICommand LoadMoreCommand { get; }
 
-    /// <summary>当前页大小；“加载更多”每次递增 <see cref="PageSizeStep"/>。</summary>
+    /// <summary>当前页大小；“加载更多”每次递增 <see cref="Pagination.PageSizeStep"/>。</summary>
     public int PageSize { get; private set; } = DefaultPageSize;
 
     /// <summary>是否还有未显示的匹配结果（由 <see cref="ApplyPage"/> 更新）。</summary>

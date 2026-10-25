@@ -81,8 +81,12 @@ public class FeatsViewModelTests
         Assert.True(vm.HasMoreResults);
         Assert.Contains("共 3 条", vm.ResultSummary);
 
+        var loaded = TestSignals.WaitForPropertyAsync(
+            vm,
+            nameof(FeatsViewModel.HasMoreResults),
+            () => !vm.HasMoreResults && vm.Feats.Count == 3);
         ((ICommand)vm.LoadMoreCommand).Execute(null);
-        await Task.Delay(100);
+        await loaded;
 
         Assert.Equal(3, vm.Feats.Count);
         Assert.False(vm.HasMoreResults);

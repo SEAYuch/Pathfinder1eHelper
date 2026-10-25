@@ -26,13 +26,13 @@ public sealed class MonsterService(IMonsterRepository repository) : IMonsterServ
     public Task<IReadOnlyList<Monster>> GetGroupMembersAsync(int groupId, CancellationToken ct = default) =>
         repository.GetGroupMembersAsync(groupId, ct);
 
-    internal static MonsterQuery Normalize(MonsterQuery query)
-    {
-        var term = string.IsNullOrWhiteSpace(query.Term) ? null : query.Term.Trim();
-        var letter = string.IsNullOrWhiteSpace(query.FirstLetter) ? null : query.FirstLetter.Trim();
-        var type = string.IsNullOrWhiteSpace(query.CreatureType) ? null : query.CreatureType.Trim();
-        var skip = query.Skip < 0 ? 0 : query.Skip;
-        var take = query.Take <= 0 ? DefaultPageSize : query.Take;
-        return query with { Term = term, FirstLetter = letter, CreatureType = type, Skip = skip, Take = take };
-    }
+    internal static MonsterQuery Normalize(MonsterQuery query) =>
+        query with
+        {
+            Term = QueryNormalization.Optional(query.Term),
+            FirstLetter = QueryNormalization.Optional(query.FirstLetter),
+            CreatureType = QueryNormalization.Optional(query.CreatureType),
+            Skip = QueryNormalization.Skip(query.Skip),
+            Take = QueryNormalization.Take(query.Take, DefaultPageSize),
+        };
 }

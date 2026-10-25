@@ -29,16 +29,16 @@ public sealed class SpellService(ISpellRepository repository) : ISpellService
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         repository.GetByIdAsync(id, ct);
 
-    public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-        repository.GetBuffsForSpellAsync(nameEn, nameZh, ct);
-
-    internal static SpellQuery Normalize(SpellQuery query)
-    {
-        var term = string.IsNullOrWhiteSpace(query.Term) ? null : query.Term.Trim();
-        var skip = query.Skip < 0 ? 0 : query.Skip;
-        var take = query.Take <= 0 ? DefaultPageSize : query.Take;
-        var className = string.IsNullOrWhiteSpace(query.ClassName) ? null : query.ClassName.Trim();
-        var level = query.ClassLevel is >= 0 and <= 9 ? query.ClassLevel : null;
-        return query with { Term = term, Skip = skip, Take = take, ClassName = className, ClassLevel = level };
-    }
+    internal static SpellQuery Normalize(SpellQuery query) =>
+        query with
+        {
+            Term = QueryNormalization.Optional(query.Term),
+            Source = QueryNormalization.Optional(query.Source),
+            FirstLetter = QueryNormalization.Optional(query.FirstLetter),
+            Skip = QueryNormalization.Skip(query.Skip),
+            Take = QueryNormalization.Take(query.Take, DefaultPageSize),
+            ClassName = QueryNormalization.Optional(query.ClassName),
+            // 环位只接受 0–9（PF 1e 戏法~九环），越界视为不筛选。
+            ClassLevel = query.ClassLevel is >= 0 and <= 9 ? query.ClassLevel : null,
+        };
 }

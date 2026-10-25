@@ -164,6 +164,47 @@ public class JsonCharacterRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void Save_leaves_no_temporary_files_behind()
+    {
+        var repository = new JsonCharacterRepository(_directory);
+
+        repository.Save(new CharacterProfile { Name = "甲" });
+        repository.Save(new CharacterProfile { Name = "乙" });
+
+        Assert.Empty(Directory.EnumerateFiles(_directory, "*.tmp"));
+        Assert.Equal(2, repository.LoadAll().Count);
+    }
+
+    [Fact]
+    public void Corrupt_file_is_skipped_without_losing_the_others()
+    {
+        var repository = new JsonCharacterRepository(_directory);
+        repository.Save(new CharacterProfile { Name = "完好" });
+        File.WriteAllText(Path.Combine(_directory, "broken.json"), "{ 半截的 JSON");
+
+        var loaded = repository.LoadAll();
+
+        var profile = Assert.Single(loaded);
+        Assert.Equal("完好", profile.Name);
+    }
+
+    [Fact]
+    public void Save_overwrites_the_previous_content_of_the_same_character()
+    {
+        var repository = new JsonCharacterRepository(_directory);
+        var profile = new CharacterProfile { Name = "改名前", Level = 3 };
+        repository.Save(profile);
+
+        profile.Name = "改名后";
+        profile.Level = 11;
+        repository.Save(profile);
+
+        var loaded = Assert.Single(repository.LoadAll());
+        Assert.Equal("改名后", loaded.Name);
+        Assert.Equal(11, loaded.Level);
+    }
+
+    [Fact]
     public void Legacy_single_file_is_migrated_and_renamed()
     {
         Directory.CreateDirectory(_directory);

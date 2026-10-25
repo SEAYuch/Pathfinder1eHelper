@@ -51,6 +51,7 @@ public sealed class FakeSpellRepository : ISpellRepository
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         Task.FromResult(Data.FirstOrDefault(s => s.Id == id));
 
+    // 战斗页不再消费 spell_buffs；仓储层保留该成员供冒烟测试校验数据，替身返回空。
     public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<SpellBuff>>([]);
 }
@@ -59,7 +60,6 @@ public sealed class FakeSpellRepository : ISpellRepository
 public sealed class FakeSpellService : ISpellService
 {
     public List<Spell> Results { get; } = new();
-    public List<SpellBuff> Buffs { get; } = new();
     public IReadOnlyList<string> SourceList { get; set; } = new List<string> { "CRB", "APG" };
     public IReadOnlyList<string> ClassList { get; set; } = new List<string>();
     public SpellQuery? LastQuery { get; private set; }
@@ -82,15 +82,6 @@ public sealed class FakeSpellService : ISpellService
 
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         Task.FromResult(Results.FirstOrDefault(s => s.Id == id));
-
-    public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default)
-    {
-        var matched = Buffs
-            .Where(b => (!string.IsNullOrWhiteSpace(nameEn) && string.Equals(b.NameEn, nameEn, StringComparison.OrdinalIgnoreCase))
-                || (!string.IsNullOrWhiteSpace(nameZh) && string.Equals(b.NameZh, nameZh, StringComparison.Ordinal)))
-            .ToList();
-        return Task.FromResult<IReadOnlyList<SpellBuff>>(matched);
-    }
 }
 
 /// <summary>In-memory <see cref="IFeatRepository"/> that records the last query it received.</summary>
@@ -119,6 +110,7 @@ public sealed class FakeFeatRepository : IFeatRepository
     public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
         Task.FromResult(TypeList);
 
+    // 战斗页不再消费 feat_buffs；仓储层保留该成员供冒烟测试校验数据，替身返回空。
     public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<FeatBuff>>([]);
 }
@@ -127,7 +119,6 @@ public sealed class FakeFeatRepository : IFeatRepository
 public sealed class FakeFeatService : IFeatService
 {
     public List<Feat> Results { get; } = new();
-    public List<FeatBuff> Buffs { get; } = new();
     public IReadOnlyList<string> SourceList { get; set; } = new List<string> { "CRB", "APG" };
     public IReadOnlyList<string> TypeList { get; set; } = new List<string> { "战斗", "通用" };
     public FeatQuery? LastQuery { get; private set; }
@@ -146,15 +137,6 @@ public sealed class FakeFeatService : IFeatService
 
     public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
         Task.FromResult(TypeList);
-
-    public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default)
-    {
-        var matched = Buffs
-            .Where(b => (!string.IsNullOrWhiteSpace(nameEn) && string.Equals(b.NameEn, nameEn, StringComparison.OrdinalIgnoreCase))
-                || (!string.IsNullOrWhiteSpace(nameZh) && string.Equals(b.NameZh, nameZh, StringComparison.Ordinal)))
-            .ToList();
-        return Task.FromResult<IReadOnlyList<FeatBuff>>(matched);
-    }
 }
 
 /// <summary>In-memory <see cref="IMonsterRepository"/> for smoke-level tests.</summary>

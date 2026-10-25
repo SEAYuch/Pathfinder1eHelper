@@ -2,10 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Pathfinder1eHelper.Models;
 using Pathfinder1eHelper.Models.Combat;
 using Pathfinder1eHelper.Services;
 using Pathfinder1eHelper.ViewModels.Combat;
@@ -28,8 +26,9 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     private readonly CharacterRoster _roster;
     private readonly CharacterAutoSaver _autoSaver;
-    private readonly CombatBuffLibrary _buffs;
     private bool _loading;
+    private int _batchDepth;
+    private bool _batchDirty;
     private CharacterListItemViewModel? _selectedCharacter;
     private Guid _profileId;
     private int _schemaVersion;
@@ -37,18 +36,18 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     private SizeOption _selectedSize = CombatOptions.Size(SizeCategory.Medium);
     private AbilityOption _selectedCastingAbility = CombatOptions.Ability(Ability.Intelligence);
     private ConcentrationOption _concentrationSituation = CombatOptions.Concentration(ConcentrationSituation.DefensiveCasting);
-    private Spell? _selectedSpellBuff;
-    private Feat? _selectedFeatBuff;
+    private PenaltySourceOption _selectedPenaltySource = CombatOptions.PenaltySources[1];
+    private BonusDestinationOption _selectedBonusDestination = CombatOptions.BonusDestinations[0];
+    private string _bonusMultiplierText = "1.0";
+    private string? _exchangeValidationError;
+    private string _exchangeEntryName = "减值换加值";
 
-    public CombatViewModel(ICharacterRepository repository, ISpellService spells, IFeatService feats)
+    public CombatViewModel(ICharacterRepository repository)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        ArgumentNullException.ThrowIfNull(spells);
-        ArgumentNullException.ThrowIfNull(feats);
 
         _roster = new CharacterRoster(repository);
         _autoSaver = new CharacterAutoSaver(repository);
-        _buffs = new CombatBuffLibrary(spells, feats);
 
         Characters = _roster.Characters;
         Bonuses = [];
@@ -68,31 +67,19 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         NewCharacterCommand = ReactiveCommand.Create(NewCharacter);
         DuplicateCharacterCommand = ReactiveCommand.Create(DuplicateCharacter);
         DeleteCharacterCommand = ReactiveCommand.Create(DeleteCharacter);
-        AddSpellBuffCommand = ReactiveCommand.CreateFromTask(AddSpellBuffAsync);
-        AddFeatBuffCommand = ReactiveCommand.CreateFromTask(AddFeatBuffAsync);
         ClearAllBonusesCommand = ReactiveCommand.Create(ClearAllBonuses);
+        AddPenaltyBonusCommand = ReactiveCommand.Create(AddPenaltyBonus);
 
         _roster.Load();
         _selectedCharacter = _roster.EnsureAtLeastOne();
         LoadProfile(_selectedCharacter.Profile);
 
-        // 法术/专长目录按需载入（首次激活时才拉取），并随页面停用取消。
-        this.WhenActivated(disposables =>
-        {
-            var loadCts = new CancellationTokenSource();
-            disposables.Add(ActionDisposable.Create(() =>
-            {
-                loadCts.Cancel();
-                loadCts.Dispose();
-                _ = _autoSaver.FlushAsync();
-            }));
-
-            _ = LoadBuffCandidatesAsync(loadCts.Token);
-        });
+        this.WhenActivated(disposables => disposables.Add(ActionDisposable.Create(() =>
+            _ = _autoSaver.FlushAsync())));
     }
 
     /// <summary>设计时构造：示例数据，供 XAML 预览器使用。</summary>
-    public CombatViewModel() : this(new DesignTimeCharacterRepository(), DesignTimeSpellService.Instance, DesignTimeFeatService.Instance)
+    public CombatViewModel() : this(new DesignTimeCharacterRepository())
     {
     }
 
@@ -105,12 +92,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     public IReadOnlyList<PresetViewModel> Presets { get; }
 
     public IReadOnlyList<PresetViewModel> WeaponPresets { get; }
-
-    /// <summary>“法术 Buff”搜索候选（惰性载入，由 AutoCompleteBox 在本地过滤）。</summary>
-    public ObservableCollection<Spell> SpellBuffCandidates => _buffs.SpellCandidates;
-
-    /// <summary>“专长 Buff”搜索候选（惰性载入，由 AutoCompleteBox 在本地过滤）。</summary>
-    public ObservableCollection<Feat> FeatBuffCandidates => _buffs.FeatCandidates;
 
     public CharacterListItemViewModel? SelectedCharacter
     {
@@ -137,11 +118,78 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public ICommand DeleteCharacterCommand { get; }
 
-    public ICommand AddSpellBuffCommand { get; }
-
-    public ICommand AddFeatBuffCommand { get; }
-
     public ICommand ClearAllBonusesCommand { get; }
+
+    public ICommand AddPenaltyBonusCommand { get; }
+
+    public IReadOnlyList<PenaltySourceOption> PenaltySources => CombatOptions.PenaltySources;
+
+    public IReadOnlyList<BonusDestinationOption> BonusDestinations => CombatOptions.BonusDestinations;
+
+    public IReadOnlyList<string> BonusMultiplierOptions => CombatOptions.Multipliers;
+
+    public int ExchangePenalty
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanAddExchange));
+            ExchangeValidationError = null;
+        }
+    } = 1;
+
+    public PenaltySourceOption SelectedPenaltySource
+    {
+        get => _selectedPenaltySource;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedPenaltySource, value);
+            this.RaisePropertyChanged(nameof(CanAddExchange));
+            ExchangeValidationError = null;
+        }
+    }
+
+    public string BonusMultiplierText
+    {
+        get => _bonusMultiplierText;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _bonusMultiplierText, value);
+            this.RaisePropertyChanged(nameof(CanAddExchange));
+            ExchangeValidationError = null;
+        }
+    }
+
+    public string ExchangeEntryName
+    {
+        get => _exchangeEntryName;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _exchangeEntryName, value);
+            ExchangeValidationError = null;
+        }
+    }
+
+    public BonusDestinationOption SelectedBonusDestination
+    {
+        get => _selectedBonusDestination;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedBonusDestination, value);
+            this.RaisePropertyChanged(nameof(CanAddExchange));
+            ExchangeValidationError = null;
+        }
+    }
+
+    public string? ExchangeValidationError
+    {
+        get => _exchangeValidationError;
+        private set => this.RaiseAndSetIfChanged(ref _exchangeValidationError, value);
+    }
+
+    public bool CanAddExchange => ExchangePenalty is >= 0 and <= 11
+        && TryGetMultiplierHalfSteps(BonusMultiplierText, out _);
 
     public CombatSheet Sheet
     {
@@ -392,38 +440,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public bool IsDamageMode => _concentrationSituation.Value == ConcentrationSituation.DamageWhileCasting;
 
-    public Spell? SelectedSpellBuff
-    {
-        get => _selectedSpellBuff;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedSpellBuff, value);
-            UpdateSpellBuffHint();
-        }
-    }
-
-    public string SpellBuffHint
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
-    public Feat? SelectedFeatBuff
-    {
-        get => _selectedFeatBuff;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedFeatBuff, value);
-            UpdateFeatBuffHint();
-        }
-    }
-
-    public string FeatBuffHint
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
     public int ConcentrationDc
     {
         get;
@@ -439,7 +455,42 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             return;
         }
 
+        // 批量添加（预设/Buff 多行）期间只记脏标记，退出批量时统一重算一次并调度一次保存。
+        if (_batchDepth > 0)
+        {
+            _batchDirty = true;
+            return;
+        }
+
         Refresh(save: true);
+    }
+
+    /// <summary>
+    /// 把多项修改合并成一次完整重算与一次保存调度。集合仍逐项通知 UI，只是中间态不再触发
+    /// <see cref="Refresh"/>；即使范围正常结束时抛异常（由调用方负责捕获），也在 finally 里补算一次，
+    /// 保证界面不停留在过期数值上。
+    /// </summary>
+    private void RunBatch(Action mutate)
+    {
+        ArgumentNullException.ThrowIfNull(mutate);
+
+        _batchDepth++;
+        try
+        {
+            mutate();
+        }
+        finally
+        {
+            _batchDepth--;
+            if (_batchDepth == 0 && _batchDirty)
+            {
+                _batchDirty = false;
+                if (!_loading)
+                {
+                    Refresh(save: true);
+                }
+            }
+        }
     }
 
     private void AddBonus() => Bonuses.Add(new BonusEntryViewModel(
@@ -448,6 +499,87 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         RemoveBonus));
 
     private void RemoveBonus(BonusEntryViewModel entry) => Bonuses.Remove(entry);
+
+    private void AddPenaltyBonus()
+    {
+        var entryName = ExchangeEntryName.Trim();
+        if (ExchangePenalty is < 0 or > 11 || !TryGetMultiplierHalfSteps(BonusMultiplierText, out var halfSteps))
+        {
+            ExchangeValidationError = "减值需为 0–11，倍率需为 0.5–10 且按 0.5 递增。";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(entryName))
+        {
+            ExchangeValidationError = "请输入词条名称。";
+            return;
+        }
+
+        var penaltyStat = SelectedPenaltySource.Value switch
+        {
+            PenaltySource.ArmorClass => CombatStat.ArmorClass,
+            PenaltySource.WeaponAttack => CombatStat.WeaponAttack,
+            _ => throw new ArgumentOutOfRangeException(nameof(SelectedPenaltySource)),
+        };
+        var bonusStat = SelectedBonusDestination.Value switch
+        {
+            BonusDestination.ArmorClass => CombatStat.ArmorClass,
+            BonusDestination.Damage => CombatStat.Damage,
+            _ => throw new ArgumentOutOfRangeException(nameof(SelectedBonusDestination)),
+        };
+        var bonusValue = ExchangePenalty * halfSteps / 2;
+        var multiplier = (halfSteps / 2m).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+
+        RunBatch(() =>
+        {
+            Bonuses.Add(CreateExchangeEntry(
+                $"{entryName}：{SelectedPenaltySource.Display} −{ExchangePenalty}", penaltyStat, -ExchangePenalty,
+                ModifierDescriptor.Penalty));
+            Bonuses.Add(CreateExchangeEntry(
+                $"{entryName}：{SelectedBonusDestination.Display} +{bonusValue}（倍率 ×{multiplier}）", bonusStat,
+                bonusValue, ModifierDescriptor.UntypedStackable));
+        });
+        ExchangeValidationError = null;
+    }
+
+    private BonusEntryViewModel CreateExchangeEntry(
+        string name,
+        CombatStat stat,
+        int value,
+        ModifierDescriptor descriptor) =>
+        new(
+            new ModifierEntry
+            {
+                Name = name,
+                Kind = ModifierKind.Normal,
+                Descriptor = descriptor,
+                Stat = stat,
+                Value = value,
+                StackMode = StackMode.Default,
+                IsEnabled = true,
+                Origin = BonusOrigin.Manual,
+            },
+            OnInputChanged,
+            RemoveBonus);
+
+    private static bool TryGetMultiplierHalfSteps(string? text, out int halfSteps)
+    {
+        halfSteps = 0;
+        if (!decimal.TryParse(text, System.Globalization.NumberStyles.AllowDecimalPoint,
+                System.Globalization.CultureInfo.InvariantCulture, out var multiplier))
+        {
+            return false;
+        }
+
+        var scaled = multiplier * 2m;
+        if (scaled is < 1m or > 20m || scaled != decimal.Truncate(scaled))
+        {
+            return false;
+        }
+
+        halfSteps = (int)scaled;
+        return true;
+    }
 
     /// <summary>清空全部修饰条目（含手动条目）。</summary>
     private void ClearAllBonuses() => Bonuses.Clear();
@@ -519,6 +651,12 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         {
             _profileId = profile.Id;
             _schemaVersion = profile.SchemaVersion;
+            ExchangePenalty = 1;
+            SelectedPenaltySource = CombatOptions.PenaltySourceOption(PenaltySource.WeaponAttack);
+            BonusMultiplierText = "1.0";
+            SelectedBonusDestination = CombatOptions.BonusDestinationOption(BonusDestination.Damage);
+            ExchangeValidationError = null;
+            this.RaisePropertyChanged(nameof(CanAddExchange));
             Name = profile.Name;
             Level = profile.Level;
             SelectedSize = CombatOptions.Size(profile.Size);
@@ -563,106 +701,11 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         Refresh(save: false);
     }
 
-    /// <summary>惰性载入全部法术/专长作为 Buff 搜索候选（首次激活时触发；失败不影响其余功能）。</summary>
-    public async Task LoadBuffCandidatesAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            await _buffs.EnsureLoadedAsync(ct);
-        }
-        catch (OperationCanceledException)
-        {
-            // 页面停用/切换时取消，属正常路径。
-        }
-        catch (Exception ex)
-        {
-            SaveError = ex.Message;
-        }
-    }
-
     /// <summary>等待后台挂起的档案保存完成（测试与退出前使用）。</summary>
     public async Task FlushPendingSavesAsync()
     {
         await _autoSaver.FlushAsync();
         SaveError = _autoSaver.Error;
-    }
-
-    private void UpdateSpellBuffHint()
-    {
-        if (_selectedSpellBuff is null)
-        {
-            SpellBuffHint = string.Empty;
-            return;
-        }
-
-        SpellBuffHint = $"已选择：{_selectedSpellBuff.NameZh}（点击“添加为 Buff”）";
-    }
-
-    private void UpdateFeatBuffHint()
-    {
-        if (_selectedFeatBuff is null)
-        {
-            FeatBuffHint = string.Empty;
-            return;
-        }
-
-        FeatBuffHint = $"已选择：{_selectedFeatBuff.NameZh}（点击“添加为 Buff”）";
-    }
-
-    /// <summary>把所选法术在 <c>spell_buffs</c> 中的效果加入修饰明细（供面板与测试调用）。</summary>
-    public async Task AddSpellBuffAsync()
-    {
-        if (_selectedSpellBuff is not { } spell)
-        {
-            return;
-        }
-
-        BuffResolution resolution;
-        try
-        {
-            resolution = await _buffs.ResolveSpellAsync(spell, CasterLevel ?? 0);
-        }
-        catch (Exception ex)
-        {
-            SaveError = ex.Message;
-            return;
-        }
-
-        ApplyBuffResolution(resolution, "spell_buffs", hint => SpellBuffHint = hint);
-    }
-
-    /// <summary>把所选专长在 <c>feat_buffs</c> 中的效果加入修饰明细（供面板与测试调用）。</summary>
-    public async Task AddFeatBuffAsync()
-    {
-        if (_selectedFeatBuff is not { } feat)
-        {
-            return;
-        }
-
-        BuffResolution resolution;
-        try
-        {
-            resolution = await _buffs.ResolveFeatAsync(feat, CasterLevel ?? 0);
-        }
-        catch (Exception ex)
-        {
-            SaveError = ex.Message;
-            return;
-        }
-
-        ApplyBuffResolution(resolution, "feat_buffs", hint => FeatBuffHint = hint);
-    }
-
-    private void ApplyBuffResolution(BuffResolution resolution, string table, Action<string> setHint)
-    {
-        foreach (var entry in resolution.Entries)
-        {
-            Bonuses.Add(new BonusEntryViewModel(entry, OnInputChanged, RemoveBonus));
-        }
-
-        setHint(resolution.MatchedCount == 0
-            ? $"{table} 未收录：已添加 1 条空白加值"
-            : $"已添加 {resolution.MatchedCount} 条加值（按 CL {CasterLevel ?? 0}）");
     }
 
     private void ApplyWeaponPreset(WeaponPreset preset)
@@ -711,13 +754,14 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         this.RaisePropertyChanged(nameof(ConcentrationCheckDisplay));
     }
 
-    private void ApplyPreset(CombatPreset preset)
-    {
-        foreach (var entry in preset.CreateEntries())
+    private void ApplyPreset(CombatPreset preset) =>
+        RunBatch(() =>
         {
-            Bonuses.Add(new BonusEntryViewModel(entry, OnInputChanged, RemoveBonus));
-        }
-    }
+            foreach (var entry in preset.CreateEntries())
+            {
+                Bonuses.Add(new BonusEntryViewModel(entry, OnInputChanged, RemoveBonus));
+            }
+        });
 
     private void ApplySheet(CombatSheet sheet)
     {

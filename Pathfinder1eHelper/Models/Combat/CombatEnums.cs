@@ -38,7 +38,7 @@ public enum CombatStat
 {
     ArmorClass,
 
-    /// <summary>攻击命中（对应 WotR <c>Stats.AdditionalAttackBonus</c>）；近战/远程/接触共用，一切按描述符叠加判定。</summary>
+    /// <summary>攻击命中（对应 WotR <c>Stats.AdditionalAttackBonus</c>）；近战/远程/接触共用，并可用于 CMB。</summary>
     Attack,
 
     /// <summary>对应 WotR <c>Stats.AdditionalDamage</c>（附加伤害）。</summary>
@@ -64,6 +64,9 @@ public enum CombatStat
 
     /// <summary>属性值（需配合 <see cref="ModifierEntry.Ability"/>）。</summary>
     AbilityScore,
+
+    /// <summary>仅作用于武器攻击命中，不影响 CMB；追加于末尾以保留既有枚举数值。</summary>
+    WeaponAttack,
 }
 
 /// <summary>生物体型（由小到大），对应 WotR <c>Size</c>。</summary>

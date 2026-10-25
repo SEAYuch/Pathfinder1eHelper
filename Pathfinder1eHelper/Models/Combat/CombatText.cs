@@ -32,6 +32,7 @@ public static class CombatText
     {
         Models.Combat.CombatStat.ArmorClass => "防御等级(AC)",
         Models.Combat.CombatStat.Attack => "攻击命中",
+        Models.Combat.CombatStat.WeaponAttack => "武器攻击命中（不影响 CMB）",
         Models.Combat.CombatStat.Damage => "伤害",
         Models.Combat.CombatStat.Fortitude => "强韧豁免",
         Models.Combat.CombatStat.Reflex => "反射豁免",

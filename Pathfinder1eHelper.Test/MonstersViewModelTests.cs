@@ -72,8 +72,9 @@ public class MonstersViewModelTests
         var vm = new MonstersViewModel(service);
         using var activation = vm.Activator.Activate();
 
+        var opened = TestSignals.WaitForCollectionAsync(vm.GroupMembers, () => vm.GroupMembers.Count == 1);
         ((ICommand)vm.OpenGroupCommand).Execute(group);
-        await Task.Delay(50);
+        await opened;
 
         Assert.Same(group, vm.SelectedGroup);
         Assert.Single(vm.GroupMembers);
@@ -106,8 +107,9 @@ public class MonstersViewModelTests
         var vm = new MonstersViewModel(service);
         using var activation = vm.Activator.Activate();
 
+        var loaded = TestSignals.WaitForCollectionAsync(vm.RelatedGroups, () => vm.RelatedGroups.Count == 1);
         vm.SelectedMonster = new Monster { Id = 1, NameZh = "彩色龙，黑龙" };
-        await Task.Delay(50);
+        await loaded;
 
         Assert.Single(vm.RelatedGroups);
         Assert.Equal("龙类绪论", vm.RelatedGroups[0].NameZh);
@@ -132,8 +134,12 @@ public class MonstersViewModelTests
         Assert.True(vm.HasMoreResults);
         Assert.Contains("共 3 条", vm.ResultSummary);
 
+        var loaded = TestSignals.WaitForPropertyAsync(
+            vm,
+            nameof(MonstersViewModel.HasMoreResults),
+            () => !vm.HasMoreResults && vm.Monsters.Count == 3);
         ((ICommand)vm.LoadMoreCommand).Execute(null);
-        await Task.Delay(100);
+        await loaded;
 
         Assert.Equal(3, vm.Monsters.Count);
         Assert.False(vm.HasMoreResults);

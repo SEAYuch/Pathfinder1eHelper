@@ -15,7 +15,4 @@ public interface IFeatService
     Task<int> CountAsync(FeatQuery query, CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default);
-
-    /// <summary>Returns structured buff effects (feat_buffs) matching a feat name.</summary>
-    Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default);
 }

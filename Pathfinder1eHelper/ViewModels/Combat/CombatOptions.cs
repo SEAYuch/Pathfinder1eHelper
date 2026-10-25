@@ -22,6 +22,22 @@ public sealed record WeaponAttackTypeOption(WeaponAttackType Value, string Displ
 
 public sealed record WeaponCategoryOption(WeaponCategory Value, string Display);
 
+public enum PenaltySource
+{
+    ArmorClass,
+    WeaponAttack,
+}
+
+public sealed record PenaltySourceOption(PenaltySource Value, string Display);
+
+public enum BonusDestination
+{
+    Damage,
+    ArmorClass,
+}
+
+public sealed record BonusDestinationOption(BonusDestination Value, string Display);
+
 /// <summary>专注检定的常见情境（对应 WotR 的施法困难条件）。</summary>
 public enum ConcentrationSituation
 {
@@ -67,6 +83,30 @@ public static class CombatOptions
 
     public static IReadOnlyList<WeaponCategoryOption> WeaponCategories { get; } =
         Enum.GetValues<WeaponCategory>().Select(v => new WeaponCategoryOption(v, CombatText.WeaponCategory(v))).ToList();
+
+    public static IReadOnlyList<PenaltySourceOption> PenaltySources { get; } =
+    [
+        new(PenaltySource.ArmorClass, "防御等级（AC）"),
+        new(PenaltySource.WeaponAttack, "武器攻击命中（AB，不影响 CMB）"),
+    ];
+
+    public static IReadOnlyList<BonusDestinationOption> BonusDestinations { get; } =
+    [
+        new(BonusDestination.Damage, "伤害（所有武器）"),
+        new(BonusDestination.ArmorClass, "防御等级（AC）"),
+    ];
+
+    /// <summary>半步倍率单位：1 对应 0.5，20 对应 10.0。</summary>
+    public static IReadOnlyList<int> MultiplierHalfSteps { get; } = Enumerable.Range(1, 20).ToList();
+
+    public static IReadOnlyList<string> Multipliers { get; } =
+        MultiplierHalfSteps.Select(step => (step / 2m).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)).ToList();
+
+    public static PenaltySourceOption PenaltySourceOption(PenaltySource value) =>
+        PenaltySources.First(option => option.Value == value);
+
+    public static BonusDestinationOption BonusDestinationOption(BonusDestination value) =>
+        BonusDestinations.First(option => option.Value == value);
 
     public static IReadOnlyList<ConcentrationOption> ConcentrationSituations { get; } =
     [

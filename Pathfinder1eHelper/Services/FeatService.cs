@@ -26,17 +26,14 @@ public sealed class FeatService(IFeatRepository repository) : IFeatService
     public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
         repository.GetTypesAsync(ct);
 
-    public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-        repository.GetBuffsForFeatAsync(nameEn, nameZh, ct);
-
-    internal static FeatQuery Normalize(FeatQuery query)
-    {
-        var term = string.IsNullOrWhiteSpace(query.Term) ? null : query.Term.Trim();
-        var source = string.IsNullOrWhiteSpace(query.Source) ? null : query.Source.Trim();
-        var letter = string.IsNullOrWhiteSpace(query.FirstLetter) ? null : query.FirstLetter.Trim();
-        var type = string.IsNullOrWhiteSpace(query.Type) ? null : query.Type.Trim();
-        var skip = query.Skip < 0 ? 0 : query.Skip;
-        var take = query.Take <= 0 ? DefaultPageSize : query.Take;
-        return query with { Term = term, Source = source, FirstLetter = letter, Type = type, Skip = skip, Take = take };
-    }
+    internal static FeatQuery Normalize(FeatQuery query) =>
+        query with
+        {
+            Term = QueryNormalization.Optional(query.Term),
+            Source = QueryNormalization.Optional(query.Source),
+            FirstLetter = QueryNormalization.Optional(query.FirstLetter),
+            Type = QueryNormalization.Optional(query.Type),
+            Skip = QueryNormalization.Skip(query.Skip),
+            Take = QueryNormalization.Take(query.Take, DefaultPageSize),
+        };
 }

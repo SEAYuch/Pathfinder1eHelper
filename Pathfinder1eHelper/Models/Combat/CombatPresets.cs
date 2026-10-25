@@ -110,38 +110,5 @@ public static class CombatPresets
             Bonus("狂暴（意志）", ModifierDescriptor.Morale, CombatStat.Will, 2),
             Bonus("狂暴（AC 减值）", ModifierDescriptor.Penalty, CombatStat.ArmorClass, -2),
         ]),
-        new("猛力攻击", [
-            new ModifierEntry
-            {
-                Name = "猛力攻击",
-                Kind = ModifierKind.PowerAttack,
-                Descriptor = ModifierDescriptor.UntypedStackable,
-                Stat = CombatStat.Attack,
-                Value = 0,
-                Notes = "按 BAB 与握法自动计算（近战攻击减值换伤害）；停用/删除即取消",
-            },
-        ]),
-        new("寓守于攻", [
-            new ModifierEntry
-            {
-                Name = "寓守于攻",
-                Kind = ModifierKind.CombatExpertise,
-                Descriptor = ModifierDescriptor.Dodge,
-                Stat = CombatStat.ArmorClass,
-                Value = 0,
-                Notes = "近战攻击与战技 −1 换 AC +1 闪避，两者随 BAB 每 +4 同步放大；停用/删除即取消",
-            },
-        ]),
-        new("双武器格斗", [
-            new ModifierEntry
-            {
-                Name = "双武器格斗",
-                Kind = ModifierKind.TwoWeaponFighting,
-                Descriptor = ModifierDescriptor.UntypedStackable,
-                Stat = CombatStat.Attack,
-                Value = 0,
-                Notes = "双持（存在副手武器）时主手 −4 / 副手 −8，副手非轻型武器再 −2；额外攻击未建模",
-            },
-        ]),
     ];
 }

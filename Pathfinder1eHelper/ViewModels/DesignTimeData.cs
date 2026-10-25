@@ -36,9 +36,6 @@ internal sealed class DesignTimeSpellService : ISpellService
 
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         Task.FromResult(Sample.FirstOrDefault(s => s.Id == id));
-
-    public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<SpellBuff>>([]);
 }
 
 /// <summary>设计时角色仓储：返回一个示例角色、忽略写入。</summary>
@@ -144,9 +141,6 @@ internal sealed class DesignTimeFeatService : IFeatService
 
     public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<string>>([]);
-
-    public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<FeatBuff>>([]);
 }
 
 /// <summary>设计时怪物服务：空实现。</summary>

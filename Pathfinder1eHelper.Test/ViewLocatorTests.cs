@@ -7,6 +7,7 @@ using Pathfinder1eHelper.Views.Pages;
 namespace Pathfinder1eHelper.Test;
 
 /// <summary>显式映射 ViewLocator：命中、未命中，以及泛型/实例两种入口的一致性。</summary>
+[Collection(AvaloniaUiCollection.Name)]
 public class ViewLocatorTests
 {
     private readonly ViewLocator _locator = new();
@@ -16,7 +17,7 @@ public class ViewLocatorTests
     {
         var spells = new SpellsViewModel(new FakeSpellService());
         var feats = new FeatsViewModel(new FakeFeatService());
-        var combat = new CombatViewModel(new FakeCharacterRepository(), new FakeSpellService(), new FakeFeatService());
+        var combat = new CombatViewModel(new FakeCharacterRepository());
 
         Assert.IsType<SpellsView>(_locator.ResolveView(spells));
         Assert.IsType<FeatsView>(_locator.ResolveView(feats));

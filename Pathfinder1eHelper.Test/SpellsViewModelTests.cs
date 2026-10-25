@@ -81,8 +81,12 @@ public class SpellsViewModelTests
         Assert.Contains("共 3 条", vm.ResultSummary);
 
         // 加载更多：扩大页大小后重新查询，得到全部 3 条。
+        var loaded = TestSignals.WaitForPropertyAsync(
+            vm,
+            nameof(SpellsViewModel.HasMoreResults),
+            () => !vm.HasMoreResults && vm.Spells.Count == 3);
         ((ICommand)vm.LoadMoreCommand).Execute(null);
-        await Task.Delay(100);
+        await loaded;
 
         Assert.Equal(3, vm.Spells.Count);
         Assert.False(vm.HasMoreResults);

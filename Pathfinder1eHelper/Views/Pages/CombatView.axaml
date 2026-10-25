@@ -5,7 +5,6 @@
              xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
              xmlns:vmc="using:Pathfinder1eHelper.ViewModels.Combat"
              xmlns:models="using:Pathfinder1eHelper.Models.Combat"
-             xmlns:spells="using:Pathfinder1eHelper.Models"
              xmlns:controls="using:Pathfinder1eHelper.Views.Controls"
              mc:Ignorable="d" d:DesignWidth="1060" d:DesignHeight="720"
              x:Class="Pathfinder1eHelper.Views.Pages.CombatView"
@@ -21,6 +20,19 @@
             <Setter Property="FontSize" Value="14" />
         </Style>
     </UserControl.Styles>
+
+    <UserControl.Resources>
+        <!-- 数值组成明细（战斗卡与武器卡共用）。缩进按“类型即布局”记在 Resource 里，无实际意义。 -->
+        <DataTemplate x:Key="ContributionTemplate" x:DataType="models:Contribution">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,1"
+                  Opacity="{Binding RowOpacity}"
+                  ToolTip.Tip="{Binding Note}">
+                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding ValueDisplay}"
+                           Margin="8,0,0,0" FontFamily="Consolas" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
 
     <Design.DataContext>
         <vm:CombatViewModel />
@@ -183,19 +195,8 @@
                                             <TextBlock Text="{Binding TotalDisplay}" FontWeight="Bold" FontSize="16" />
                                         </StackPanel>
                                     </Expander.Header>
-                                    <ItemsControl ItemsSource="{Binding Contributions}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="models:Contribution">
-                                                <Grid ColumnDefinitions="*,Auto" Margin="0,1"
-                                                      Opacity="{Binding RowOpacity}"
-                                                      ToolTip.Tip="{Binding Note}">
-                                                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding ValueDisplay}"
-                                                               Margin="8,0,0,0" FontFamily="Consolas" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <ItemsControl ItemsSource="{Binding Contributions}"
+                                                  ItemTemplate="{StaticResource ContributionTemplate}" />
                                 </Expander>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -333,7 +334,61 @@
                 </StackPanel>
             </Border>
 
-            <!-- 6. 武器 -->
+            <!-- 6. 减值换加值生成器：仅在点击添加时把两条普通修饰复制到修饰明细。 -->
+            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="section" Text="减值换加值" />
+                    <TextBlock Text="设置仅用于本次生成；点击添加后，会在修饰明细中加入两条可分别编辑、启停和删除的无类型修饰。"
+                               Opacity="0.7" TextWrapping="Wrap" />
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="6">
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="field" Text="词条名称" />
+                            <TextBox Width="180" Text="{Binding ExchangeEntryName, Mode=TwoWay}"
+                                     PlaceholderText="减值换加值" />
+                        </StackPanel>
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="field" Text="减值幅度（生成 −N）" />
+                            <NumericUpDown Value="{Binding ExchangePenalty}" Minimum="0" Maximum="11"
+                                           ShowButtonSpinner="False" Width="100" />
+                        </StackPanel>
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="field" Text="减值来源" />
+                            <controls:OptionPicker MinWidth="220" ItemsSource="{Binding PenaltySources}"
+                                                   SelectedItem="{Binding SelectedPenaltySource}">
+                                <controls:OptionPicker.ItemTemplate>
+                                    <DataTemplate x:DataType="vmc:PenaltySourceOption">
+                                        <TextBlock Text="{Binding Display}" />
+                                    </DataTemplate>
+                                </controls:OptionPicker.ItemTemplate>
+                            </controls:OptionPicker>
+                        </StackPanel>
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="field" Text="加值倍率（0.5–10，每步 0.5）" />
+                            <ComboBox Width="150" IsEditable="True"
+                                      ItemsSource="{Binding BonusMultiplierOptions}"
+                                      Text="{Binding BonusMultiplierText, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="field" Text="加值去处" />
+                            <controls:OptionPicker MinWidth="180" ItemsSource="{Binding BonusDestinations}"
+                                                   SelectedItem="{Binding SelectedBonusDestination}">
+                                <controls:OptionPicker.ItemTemplate>
+                                    <DataTemplate x:DataType="vmc:BonusDestinationOption">
+                                        <TextBlock Text="{Binding Display}" />
+                                    </DataTemplate>
+                                </controls:OptionPicker.ItemTemplate>
+                            </controls:OptionPicker>
+                        </StackPanel>
+                        <Button Content="添加两条修饰" Command="{Binding AddPenaltyBonusCommand}"
+                                IsEnabled="{Binding CanAddExchange}" VerticalAlignment="Bottom" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding ExchangeValidationError}" Foreground="{DynamicResource AppDangerBrush}"
+                               TextWrapping="Wrap" IsVisible="{Binding ExchangeValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+            </Border>
+
+            <!-- 7. 武器 -->
             <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
                     CornerRadius="4" Padding="12">
                 <StackPanel Spacing="8">
@@ -513,31 +568,11 @@
                                         <Expander Header="明细（攻击 / 伤害组成）" Margin="0,2,0,0">
                                             <StackPanel Spacing="4">
                                                 <TextBlock Classes="field" Text="攻击组成" />
-                                                <ItemsControl ItemsSource="{Binding AttackContributions}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate x:DataType="models:Contribution">
-                                                            <Grid ColumnDefinitions="*,Auto" Opacity="{Binding RowOpacity}"
-                                                                  ToolTip.Tip="{Binding Note}">
-                                                                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
-                                                                <TextBlock Grid.Column="1" Text="{Binding ValueDisplay}"
-                                                                           Margin="8,0,0,0" FontFamily="Consolas" />
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding AttackContributions}"
+                                                              ItemTemplate="{StaticResource ContributionTemplate}" />
                                                 <TextBlock Classes="field" Text="伤害组成" Margin="0,4,0,0" />
-                                                <ItemsControl ItemsSource="{Binding DamageContributions}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate x:DataType="models:Contribution">
-                                                            <Grid ColumnDefinitions="*,Auto" Opacity="{Binding RowOpacity}"
-                                                                  ToolTip.Tip="{Binding Note}">
-                                                                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
-                                                                <TextBlock Grid.Column="1" Text="{Binding ValueDisplay}"
-                                                                           Margin="8,0,0,0" FontFamily="Consolas" />
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding DamageContributions}"
+                                                              ItemTemplate="{StaticResource ContributionTemplate}" />
                                             </StackPanel>
                                         </Expander>
                                     </StackPanel>
@@ -545,66 +580,6 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </StackPanel>
-            </Border>
-
-            <!-- 7. Buff 联动 -->
-            <Border BorderBrush="{DynamicResource AppDividerBrush}" BorderThickness="1"
-                    CornerRadius="4" Padding="12">
-                <StackPanel Spacing="8">
-                    <TextBlock Classes="section" Text="Buff 联动" />
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Classes="field" Text="法术 Buff（来自 spell_buffs 表）" />
-                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                            <AutoCompleteBox HorizontalAlignment="Stretch"
-                                             PlaceholderText="搜索法术（中/英文名）"
-                                             ItemsSource="{Binding SpellBuffCandidates}"
-                                             SelectedItem="{Binding SelectedSpellBuff}"
-                                             FilterMode="Contains"
-                                             MinimumPrefixLength="1"
-                                             MaxDropDownHeight="260">
-                                <AutoCompleteBox.ItemTemplate>
-                                    <DataTemplate x:DataType="spells:Spell">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="{Binding NameZh}" />
-                                            <TextBlock Text="{Binding NameEn}" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Source}" Opacity="0.5" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </AutoCompleteBox.ItemTemplate>
-                            </AutoCompleteBox>
-                            <Button Grid.Column="1" Content="添加为 Buff" Command="{Binding AddSpellBuffCommand}" />
-                            <TextBlock Grid.Column="2" Text="{Binding SpellBuffHint}" VerticalAlignment="Center"
-                                       Opacity="0.7" />
-                        </Grid>
-                    </StackPanel>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Classes="field" Text="专长 Buff（来自 feat_buffs 表）" />
-                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                            <AutoCompleteBox HorizontalAlignment="Stretch"
-                                             PlaceholderText="搜索专长（中/英文名）"
-                                             ItemsSource="{Binding FeatBuffCandidates}"
-                                             SelectedItem="{Binding SelectedFeatBuff}"
-                                             FilterMode="Contains"
-                                             MinimumPrefixLength="1"
-                                             MaxDropDownHeight="260">
-                                <AutoCompleteBox.ItemTemplate>
-                                    <DataTemplate x:DataType="spells:Feat">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="{Binding NameZh}" />
-                                            <TextBlock Text="{Binding NameEn}" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Source}" Opacity="0.5" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </AutoCompleteBox.ItemTemplate>
-                            </AutoCompleteBox>
-                            <Button Grid.Column="1" Content="添加为 Buff" Command="{Binding AddFeatBuffCommand}" />
-                            <TextBlock Grid.Column="2" Text="{Binding FeatBuffHint}" VerticalAlignment="Center"
-                                       Opacity="0.7" />
-                        </Grid>
-                    </StackPanel>
                 </StackPanel>
             </Border>
 

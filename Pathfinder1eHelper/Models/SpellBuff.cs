@@ -6,9 +6,11 @@ namespace Pathfinder1eHelper.Models;
 /// FreeSql entity mapped to the read-only <c>spell_buffs</c> table: structured bonus effects of
 /// common buff spells, keyed by spell English/Chinese name. Populated on the DB side (see
 /// <c>spell_buffs.sql</c>), so the conversion data lives in the database rather than in code.
+/// The combat page no longer reads this table (the buff-link panel was removed); the entity is
+/// kept to preserve the database contract and the smoke tests.
 /// </summary>
 [Table(Name = "spell_buffs", DisableSyncStructure = true)]
-public sealed class SpellBuff : IBuffEffect
+public sealed class SpellBuff
 {
     [Column(Name = "id", IsPrimary = true)] public int Id { get; set; }
 

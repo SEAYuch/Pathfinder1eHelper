@@ -36,10 +36,8 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     /// <summary>Sentinel shown in the level filter that means "all levels".</summary>
     public const string AllLevels = "全部环位";
 
-    /// <summary>默认每页条数；“加载更多”按 <see cref="PageSizeStep"/> 递增。</summary>
-    public const int DefaultPageSize = 200;
-
-    private const int PageSizeStep = 200;
+    /// <summary>默认每页条数；“加载更多”按 <see cref="Pagination.PageSizeStep"/> 递增。</summary>
+    public const int DefaultPageSize = Pagination.DefaultPageSize;
 
     private readonly ISpellService _spells;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
@@ -119,17 +117,18 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 
     private async Task<SpellPage> SearchAsync(SpellQuery query, CancellationToken ct)
     {
-        var items = await _spells.SearchAsync(query, ct);
-        // 结果不足一页即说明已到末尾，无需再查总数；否则查询真实总数用于提示与“加载更多”。
-        var total = items.Count < query.Take ? items.Count : await _spells.CountAsync(query, ct);
-        return new SpellPage(items, total);
+        var page = await Pagination.FetchAsync(
+            () => _spells.SearchAsync(query, ct),
+            () => _spells.CountAsync(query, ct),
+            query.Take);
+        return new SpellPage(page.Items, page.Total);
     }
 
     private async Task LoadMoreAsync(CancellationToken ct)
     {
         try
         {
-            PageSize += PageSizeStep;
+            PageSize += Pagination.PageSizeStep;
             var page = await Task.Run(() => SearchAsync(BuildQuery(), ct), ct);
             ct.ThrowIfCancellationRequested();
             ApplyPage(page);
@@ -146,17 +145,11 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 
     private void ApplyPage(SpellPage page)
     {
-        Spells.Clear();
-        foreach (var spell in page.Items)
-        {
-            Spells.Add(spell);
-        }
+        Pagination.Replace(Spells, page.Items);
 
         SelectedSpell = Spells.Count > 0 ? Spells[0] : null;
         HasMoreResults = Spells.Count < page.Total;
-        ResultSummary = HasMoreResults
-            ? $"共 {page.Total} 条法术，已显示前 {Spells.Count} 条"
-            : $"共 {page.Total} 条法术";
+        ResultSummary = Pagination.Summarize("法术", page.Total, Spells.Count);
     }
 
     /// <summary>Design-time constructor: sample data so the XAML previewer renders without DI.</summary>
@@ -202,10 +195,10 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 
     public ReactiveCommand<SpellQuery, SpellPage> SearchCommand { get; }
 
-    /// <summary>“加载更多”：按 <see cref="PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
+    /// <summary>“加载更多”：按 <see cref="Pagination.PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
     public ICommand LoadMoreCommand { get; }
 
-    /// <summary>当前页大小；“加载更多”每次递增 <see cref="PageSizeStep"/>。</summary>
+    /// <summary>当前页大小；“加载更多”每次递增 <see cref="Pagination.PageSizeStep"/>。</summary>
     public int PageSize { get; private set; } = DefaultPageSize;
 
     /// <summary>是否还有未显示的匹配结果（由 <see cref="ApplyPage"/> 更新）。</summary>

@@ -3,11 +3,12 @@ using FreeSql.DataAnnotations;
 namespace Pathfinder1eHelper.Models;
 
 /// <summary>
-/// FreeSql entity mapped to the read-only <c>feat_buffs</c> table：供战斗模块联动的专长结构化加值，
+/// FreeSql entity mapped to the read-only <c>feat_buffs</c> table：专长结构化加值数据，
 /// 列与 <see cref="SpellBuff"/> 完全同构。由 DB 侧 <c>feat_buffs.sql</c> 手工策展。
+/// 当前战斗页不再读取本表（Buff 联动已移除），实体保留以维持数据库契约与冒烟测试。
 /// </summary>
 [Table(Name = "feat_buffs", DisableSyncStructure = true)]
-public sealed class FeatBuff : IBuffEffect
+public sealed class FeatBuff
 {
     [Column(Name = "id", IsPrimary = true)] public int Id { get; set; }
 

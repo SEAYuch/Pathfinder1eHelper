@@ -39,6 +39,45 @@ public class CombatCalculatorTests
     }
 
     [Fact]
+    public void Weapon_attack_channel_applies_to_weapons_but_not_cmb()
+    {
+        var profile = Profile();
+        profile.BaseAttackBonus = 6;
+        profile.Abilities.Strength = 16; // +3
+        profile.Modifiers.Add(Bonus(ModifierDescriptor.UntypedStackable, CombatStat.WeaponAttack, -2, name: "攻击换伤害减值"));
+        profile.Weapons.Add(new WeaponProfile { Name = "长剑", BaseDamage = "1d8" });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(9, sheet.Cmb.Total); // BAB 6 + 力量 3；武器攻击减值不作用于 CMB
+        Assert.Equal(7, Assert.Single(sheet.Weapons).Attack.Total); // 6 + 3 − 2
+    }
+
+    [Fact]
+    public void Weapon_attack_channel_respects_weapon_specific_scope()
+    {
+        var profile = Profile();
+        profile.Abilities.Strength = 14;
+        profile.BaseAttackBonus = 4;
+        var affected = new WeaponProfile { Name = "长剑", BaseDamage = "1d8" };
+        var unaffected = new WeaponProfile { Name = "匕首", BaseDamage = "1d4" };
+        profile.Weapons.AddRange([affected, unaffected]);
+        profile.Modifiers.Add(new ModifierEntry
+        {
+            Name = "仅长剑的攻击减值",
+            Stat = CombatStat.WeaponAttack,
+            Descriptor = ModifierDescriptor.UntypedStackable,
+            Value = -2,
+            WeaponId = affected.Id,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(4, sheet.Weapons[0].Attack.Total); // BAB 4 + 力量 2 − 2
+        Assert.Equal(6, sheet.Weapons[1].Attack.Total); // BAB 4 + 力量 2；不受另一把武器的限定减值影响
+    }
+
+    [Fact]
     public void Attack_channel_modifier_applies_to_melee_and_ranged_weapons()
     {
         var profile = Profile();
@@ -341,6 +380,33 @@ public class CombatCalculatorTests
 
         Assert.Equal(1, sheet.Weapons[0].Attack.Total);
         Assert.Equal(0, sheet.Weapons[1].Attack.Total);
+    }
+
+    [Fact]
+    public void Scoped_attack_modifier_does_not_leak_into_the_global_attack_channel()
+    {
+        // 武器专属条目（武器专攻等）只进该武器的攻击加值，不得进入全局攻击通道——
+        // 全局通道会被战技（CMB）复用，漏进去就成了「武器专攻也加战技」。
+        var profile = Profile();
+        profile.BaseAttackBonus = 4;
+        var first = new WeaponProfile { Name = "甲", BaseDamage = "1d8" };
+        var second = new WeaponProfile { Name = "乙", BaseDamage = "1d8" };
+        profile.Weapons.Add(first);
+        profile.Weapons.Add(second);
+        profile.Modifiers.Add(new ModifierEntry
+        {
+            Name = "武器专攻（甲）",
+            Descriptor = ModifierDescriptor.UntypedStackable,
+            Stat = CombatStat.Attack,
+            Value = 5,
+            WeaponId = first.Id,
+        });
+
+        var sheet = CombatCalculator.Calculate(profile);
+
+        Assert.Equal(9, sheet.Weapons[0].Attack.Total); // 4 + 5，仅甲
+        Assert.Equal(4, sheet.Weapons[1].Attack.Total); // 乙不受影响
+        Assert.Equal(4, sheet.Cmb.Total); // 战技仍只含 BAB
     }
 
     [Fact]

@@ -86,7 +86,7 @@ public class CombatViewModelTests
     [Fact]
     public void Concentration_dc_follows_the_selected_situation()
     {
-        var vm = Create(new FakeCharacterRepository(), out _);
+        var vm = Create(new FakeCharacterRepository());
         vm.SpellLevel = 3;
 
         Assert.Equal(21, vm.ConcentrationDc); // 15 + 2 × 3
@@ -100,7 +100,7 @@ public class CombatViewModelTests
     [Fact]
     public void Applying_a_preset_adds_its_modifier_entries()
     {
-        var vm = Create(new FakeCharacterRepository(), out _);
+        var vm = Create(new FakeCharacterRepository());
         var charge = vm.Presets.First(p => p.Name == "冲锋");
 
         ((ICommand)charge.ApplyCommand).Execute(null);
@@ -112,7 +112,7 @@ public class CombatViewModelTests
     [Fact]
     public void Weapon_damage_can_switch_between_strength_and_dexterity()
     {
-        var vm = Create(new FakeCharacterRepository(), out _);
+        var vm = Create(new FakeCharacterRepository());
         vm.Dexterity = 16; // +3
         ((ICommand)vm.AddWeaponCommand).Execute(null);
 
@@ -128,7 +128,7 @@ public class CombatViewModelTests
     [Fact]
     public void Applying_a_weapon_preset_adds_a_weapon()
     {
-        var vm = Create(new FakeCharacterRepository(), out _);
+        var vm = Create(new FakeCharacterRepository());
         var greatsword = vm.WeaponPresets.First(p => p.Name == "巨剑");
 
         ((ICommand)greatsword.ApplyCommand).Execute(null);
@@ -208,126 +208,9 @@ public class CombatViewModelTests
     }
 
     [Fact]
-    public async Task Adding_a_catalog_spell_creates_entries_from_the_buff_table()
-    {
-        var spells = new FakeSpellService();
-        spells.Results.Add(new Spell { Id = 1, NameZh = "祝福术", NameEn = "Bless", Source = "CRB" });
-        spells.Buffs.Add(new SpellBuff
-        {
-            Id = 1,
-            NameEn = "Bless",
-            NameZh = "祝福术",
-            EffectName = "祝福术·攻击",
-            BonusType = "Morale",
-            Target = "Attack",
-            Value = 1,
-            SortOrder = 1,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells);
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
-        await vm.AddSpellBuffAsync();
-
-        var bonus = Assert.Single(vm.Bonuses);
-        Assert.Equal("祝福术·攻击", bonus.Name);
-        Assert.Equal(ModifierDescriptor.Morale, bonus.Descriptor.Value);
-        Assert.Equal(CombatStat.Attack, bonus.Stat.Value);
-        Assert.Equal(1, bonus.Value);
-        Assert.Equal(BonusOrigin.SpellBuff, bonus.Origin);
-        Assert.Contains("CRB", bonus.Notes);
-    }
-
-    [Fact]
-    public async Task Buff_with_negative_value_is_preserved()
-    {
-        var spells = new FakeSpellService();
-        spells.Results.Add(new Spell { Id = 9, NameZh = "虚弱诅咒", NameEn = "Bane", Source = "CRB" });
-        spells.Buffs.Add(new SpellBuff
-        {
-            Id = 9,
-            NameEn = "Bane",
-            NameZh = "虚弱诅咒",
-            EffectName = "虚弱诅咒·攻击",
-            BonusType = "None",
-            Target = "Attack",
-            Value = -1,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells);
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
-        await vm.AddSpellBuffAsync();
-
-        var bonus = Assert.Single(vm.Bonuses);
-        Assert.Equal(ModifierDescriptor.None, bonus.Descriptor.Value);
-        Assert.Equal(CombatStat.Attack, bonus.Stat.Value);
-        Assert.Equal(-1, bonus.Value);
-    }
-
-    [Fact]
-    public async Task Buff_with_inverted_scale_bounds_does_not_throw()
-    {
-        var spells = new FakeSpellService();
-        spells.Results.Add(new Spell { Id = 10, NameZh = "异常", NameEn = "Weird", Source = "CRB" });
-        spells.Buffs.Add(new SpellBuff
-        {
-            Id = 10,
-            NameEn = "Weird",
-            NameZh = "异常",
-            EffectName = "异常",
-            BonusType = "None",
-            Target = "Attack",
-            ScaleBase = 1,
-            ScaleOffset = 0,
-            ScaleStep = 1,
-            ScaleMin = 5,
-            ScaleMax = 2,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells);
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
-        await vm.AddSpellBuffAsync();
-
-        Assert.Single(vm.Bonuses);
-    }
-
-    [Fact]
-    public async Task Adding_a_feat_creates_entries_from_the_feat_buff_table()
-    {
-        var spells = new FakeSpellService();
-        var feats = new FakeFeatService();
-        feats.Results.Add(new Feat { Id = 1, NameZh = "闪避", NameEn = "Dodge", Source = "CRB" });
-        feats.Buffs.Add(new FeatBuff
-        {
-            Id = 1,
-            NameEn = "Dodge",
-            NameZh = "闪避",
-            EffectName = "闪避",
-            BonusType = "Dodge",
-            Target = "ArmorClass",
-            Value = 1,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells, feats);
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
-        await vm.AddFeatBuffAsync();
-
-        var bonus = Assert.Single(vm.Bonuses);
-        Assert.Equal("闪避", bonus.Name);
-        Assert.Equal(ModifierDescriptor.Dodge, bonus.Descriptor.Value);
-        Assert.Equal(CombatStat.ArmorClass, bonus.Stat.Value);
-        Assert.Equal(1, bonus.Value);
-        Assert.Equal(BonusOrigin.FeatBuff, bonus.Origin);
-        Assert.Contains("CRB", bonus.Notes);
-    }
-
-    [Fact]
     public void Clear_all_bonuses_removes_every_entry()
     {
-        var vm = Create(new FakeCharacterRepository(), out _);
+        var vm = Create(new FakeCharacterRepository());
         ((ICommand)vm.AddBonusCommand).Execute(null);
         var charge = vm.Presets.First(p => p.Name == "冲锋");
         ((ICommand)charge.ApplyCommand).Execute(null);
@@ -338,54 +221,6 @@ public class CombatViewModelTests
 
         Assert.Empty(vm.Bonuses);
         Assert.Equal(10, vm.Sheet.ArmorClass.Total);
-    }
-
-    [Fact]
-    public async Task Buff_value_scales_with_caster_level()
-    {
-        var spells = new FakeSpellService();
-        spells.Results.Add(new Spell { Id = 2, NameZh = "树皮术", NameEn = "Barkskin", Source = "CRB" });
-        spells.Buffs.Add(new SpellBuff
-        {
-            Id = 2,
-            NameEn = "Barkskin",
-            NameZh = "树皮术",
-            EffectName = "树皮术",
-            BonusType = "NaturalArmorEnhancement",
-            Target = "ArmorClass",
-            Value = 2,
-            ScaleBase = 2,
-            ScaleOffset = 3,
-            ScaleStep = 3,
-            ScaleMin = 2,
-            ScaleMax = 5,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells);
-        vm.CasterLevel = 9;
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
-        await vm.AddSpellBuffAsync();
-
-        var bonus = Assert.Single(vm.Bonuses);
-        Assert.Equal(4, bonus.Value); // CL9 → 2 + (9-3)/3 = 4
-        Assert.Equal(ModifierDescriptor.NaturalArmorEnhancement, bonus.Descriptor.Value);
-    }
-
-    [Fact]
-    public async Task Unknown_spell_adds_a_blank_editable_entry()
-    {
-        var spells = new FakeSpellService();
-        spells.Results.Add(new Spell { Id = 3, NameZh = "火球术", NameEn = "Fireball", Source = "CRB" });
-        var vm = Create(new FakeCharacterRepository(), spells);
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedSpellBuff = Assert.Single(vm.SpellBuffCandidates);
-        await vm.AddSpellBuffAsync();
-
-        var bonus = Assert.Single(vm.Bonuses);
-        Assert.Equal("火球术", bonus.Name);
-        Assert.Contains("未收录", bonus.Notes);
     }
 
     [Fact]
@@ -403,71 +238,6 @@ public class CombatViewModelTests
         Assert.Equal(ModifierDescriptor.UntypedStackable, bonus.Descriptor.Value);
         Assert.Equal(weapon.Id, bonus.WeaponId);
         Assert.Equal(1, vm.Sheet.Weapons[0].Attack.Total);
-    }
-
-    [Fact]
-    public async Task Feat_buff_power_attack_resolves_to_computed_kind()
-    {
-        var spells = new FakeSpellService();
-        var feats = new FakeFeatService();
-        feats.Results.Add(new Feat { Id = 1, NameZh = "猛力攻击", NameEn = "Power Attack", Source = "CRB" });
-        feats.Buffs.Add(new FeatBuff
-        {
-            Id = 9,
-            NameEn = "Power Attack",
-            NameZh = "猛力攻击",
-            EffectName = "猛力攻击",
-            BonusType = "None",
-            Target = "Attack",
-            Kind = "PowerAttack",
-            Value = 0,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells, feats);
-        vm.Strength = 16; // +3
-        vm.BaseAttackBonus = 4;
-        ((ICommand)vm.AddWeaponCommand).Execute(null);
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
-        await vm.AddFeatBuffAsync();
-
-        var entry = Assert.Single(vm.Bonuses);
-        Assert.True(entry.IsPowerAttack);
-        Assert.Equal(BonusOrigin.FeatBuff, entry.Origin);
-        Assert.Equal(5, vm.Sheet.Weapons[0].Attack.Total); // 4 + 3 - 2
-    }
-
-    [Fact]
-    public async Task Feat_buff_combat_expertise_resolves_to_computed_kind()
-    {
-        var spells = new FakeSpellService();
-        var feats = new FakeFeatService();
-        feats.Results.Add(new Feat { Id = 1, NameZh = "寓守于攻", NameEn = "Combat Expertise", Source = "CRB" });
-        feats.Buffs.Add(new FeatBuff
-        {
-            Id = 10,
-            NameEn = "Combat Expertise",
-            NameZh = "寓守于攻",
-            EffectName = "寓守于攻",
-            BonusType = "Dodge",
-            Target = "ArmorClass",
-            Kind = "CombatExpertise",
-            Value = 0,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells, feats);
-        vm.BaseAttackBonus = 4; // 档位 2
-        ((ICommand)vm.AddWeaponCommand).Execute(null);
-
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
-        await vm.AddFeatBuffAsync();
-
-        var entry = Assert.Single(vm.Bonuses);
-        Assert.Equal(ModifierKind.CombatExpertise, entry.Kind);
-        Assert.True(entry.IsRuleComputed);
-        Assert.Equal(BonusOrigin.FeatBuff, entry.Origin);
-        Assert.Equal(12, vm.Sheet.ArmorClass.Total);     // 10 + 2(寓守于攻)
-        Assert.Equal(2, vm.Sheet.Weapons[0].Attack.Total); // 4(BAB) − 2(寓守于攻)
     }
 
     [Fact]
@@ -500,38 +270,6 @@ public class CombatViewModelTests
         Assert.Equal(before, after);
     }
 
-    [Fact]
-    public async Task Crane_style_feat_buff_relaxes_an_applied_defensive_fighting_preset()
-    {
-        // 端到端：战斗页「添加防御式战斗」预设 + 专长 Buff 联动「白鹤拳」
-        var spells = new FakeSpellService();
-        var feats = new FakeFeatService();
-        feats.Results.Add(new Feat { Id = 1, NameZh = "白鹤拳", NameEn = "Crane Style", Source = "UC" });
-        feats.Buffs.Add(new FeatBuff
-        {
-            Id = 20, NameEn = "Crane Style", NameZh = "白鹤拳",
-            EffectName = "白鹤拳（减值放宽）", BonusType = "None", Target = "Attack", Kind = "CraneStyle",
-        });
-        feats.Buffs.Add(new FeatBuff
-        {
-            Id = 21, NameEn = "Crane Style", NameZh = "白鹤拳",
-            EffectName = "白鹤拳（AC 闪避）", BonusType = "Dodge", Target = "ArmorClass", Value = 1,
-        });
-        var vm = Create(new FakeCharacterRepository(), spells, feats);
-        vm.BaseAttackBonus = 6;
-        ((ICommand)vm.AddWeaponCommand).Execute(null);
-
-        vm.Presets.Single(p => p.Name == "防御式战斗").ApplyCommand.Execute(null);
-        await vm.LoadBuffCandidatesAsync();
-        vm.SelectedFeatBuff = Assert.Single(vm.FeatBuffCandidates);
-        await vm.AddFeatBuffAsync();
-
-        // 预设 2 条 + 专长 2 条
-        Assert.Equal(4, vm.Bonuses.Count);
-        Assert.Equal(4, vm.Sheet.Weapons[0].Attack.Total);  // 6 − 2（防御式战斗 −4 被白鹤拳放宽）
-        Assert.Equal(13, vm.Sheet.ArmorClass.Total);        // 10 + 2(预设) + 1(白鹤拳 AC 行)
-    }
-
     [Theory]
     [InlineData("防御式战斗", 2)]
     [InlineData("全防御", 1)]
@@ -546,15 +284,12 @@ public class CombatViewModelTests
     }
 
     [Fact]
-    public void Combat_expertise_preset_adds_a_rule_computed_entry()
+    public void Presets_do_not_include_removed_rule_buttons()
     {
         var vm = Create(new FakeCharacterRepository());
 
-        vm.Presets.Single(p => p.Name == "寓守于攻").ApplyCommand.Execute(null);
-
-        var entry = Assert.Single(vm.Bonuses);
-        Assert.Equal(ModifierKind.CombatExpertise, entry.Kind);
-        Assert.True(entry.IsRuleComputed);
+        Assert.DoesNotContain(vm.Presets, preset => preset.Name is "猛力攻击" or "寓守于攻" or "双武器格斗");
+        Assert.Contains(vm.Presets, preset => preset.Name == "狂暴");
     }
 
     [Fact]
@@ -589,14 +324,14 @@ public class CombatViewModelTests
         try
         {
             var repository = new JsonCharacterRepository(directory);
-            var vm = new CombatViewModel(repository, new FakeSpellService(), new FakeFeatService());
+            var vm = new CombatViewModel(repository);
             ((ICommand)vm.AddWeaponCommand).Execute(null);
             var weapon = Assert.Single(vm.Weapons);
             ((ICommand)weapon.AddWeaponFocusCommand).Execute(null);
             ((ICommand)weapon.AddWeaponSpecializationCommand).Execute(null);
             await vm.FlushPendingSavesAsync();
 
-            var restarted = new CombatViewModel(repository, new FakeSpellService(), new FakeFeatService());
+            var restarted = new CombatViewModel(repository);
 
             Assert.Single(restarted.Weapons);
             Assert.Equal(1, restarted.Sheet.Weapons[0].Attack.Total);
@@ -611,37 +346,234 @@ public class CombatViewModelTests
         }
     }
 
+    [Theory]
+    [InlineData(1, "0.5", 0)]
+    [InlineData(3, "1.5", 4)]
+    [InlineData(11, "10.0", 110)]
+    public void Exchange_generator_adds_two_normal_entries(int penalty, string multiplier, int expectedBonus)
+    {
+        var vm = Create(new FakeCharacterRepository());
+        vm.ExchangePenalty = penalty;
+        vm.BonusMultiplierText = multiplier;
+        var recalculations = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CombatViewModel.Cards))
+            {
+                recalculations++;
+            }
+        };
+
+        vm.AddPenaltyBonusCommand.Execute(null);
+
+        Assert.Equal(2, vm.Bonuses.Count);
+        var penaltyEntry = vm.Bonuses[0].ToModel();
+        var bonusEntry = vm.Bonuses[1].ToModel();
+        Assert.Equal(-penalty, penaltyEntry.Value);
+        Assert.Equal(ModifierDescriptor.Penalty, penaltyEntry.Descriptor);
+        Assert.Equal($"减值换加值：武器攻击命中（AB，不影响 CMB） −{penalty}", penaltyEntry.Name);
+        Assert.Equal(CombatStat.WeaponAttack, penaltyEntry.Stat);
+        Assert.Equal(expectedBonus, bonusEntry.Value);
+        Assert.Equal(ModifierDescriptor.UntypedStackable, bonusEntry.Descriptor);
+        Assert.Equal(CombatStat.Damage, bonusEntry.Stat);
+        Assert.All(vm.Bonuses, entry =>
+        {
+            var model = entry.ToModel();
+            Assert.Equal(ModifierKind.Normal, model.Kind);
+            Assert.Equal(BonusOrigin.Manual, model.Origin);
+            Assert.True(model.IsEnabled);
+        });
+        Assert.Equal(1, recalculations);
+    }
+
+    [Theory]
+    [InlineData("0.0")]
+    [InlineData("0.6")]
+    [InlineData("10.5")]
+    [InlineData("abc")]
+    [InlineData("")]
+    public void Exchange_generator_rejects_invalid_multiplier_without_partial_entries(string multiplier)
+    {
+        var vm = Create(new FakeCharacterRepository());
+        vm.BonusMultiplierText = multiplier;
+
+        vm.AddPenaltyBonusCommand.Execute(null);
+
+        Assert.Empty(vm.Bonuses);
+        Assert.NotNull(vm.ExchangeValidationError);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(12)]
+    public void Exchange_generator_rejects_out_of_range_penalties(int penalty)
+    {
+        var vm = Create(new FakeCharacterRepository());
+        vm.ExchangePenalty = penalty;
+
+        vm.AddPenaltyBonusCommand.Execute(null);
+
+        Assert.Empty(vm.Bonuses);
+        Assert.False(vm.CanAddExchange);
+        Assert.NotNull(vm.ExchangeValidationError);
+    }
+
     [Fact]
-    public void Power_attack_preset_adds_a_computed_buff_entry()
+    public void Exchange_generator_uses_custom_entry_name_for_both_modifiers()
     {
-        var repository = new FakeCharacterRepository();
-        var vm = Create(repository);
-        vm.Strength = 16; // +3
-        vm.BaseAttackBonus = 4;
-        ((ICommand)vm.AddWeaponCommand).Execute(null);
-        var preset = vm.Presets.First(p => p.Name == "猛力攻击");
+        var vm = Create(new FakeCharacterRepository());
+        vm.ExchangeEntryName = "猛攻";
+        vm.ExchangePenalty = 2;
+        vm.BonusMultiplierText = "1.5";
 
-        ((ICommand)preset.ApplyCommand).Execute(null);
+        vm.AddPenaltyBonusCommand.Execute(null);
 
-        var entry = Assert.Single(vm.Bonuses);
-        Assert.True(entry.IsPowerAttack);
-        Assert.Equal(BonusOrigin.Preset, entry.Origin);
-        Assert.Equal(5, vm.Sheet.Weapons[0].Attack.Total); // 4 + 3 - 2
-        Assert.Equal("1d8+7", vm.Sheet.Weapons[0].DamageDisplay);
+        Assert.Equal("猛攻：武器攻击命中（AB，不影响 CMB） −2", vm.Bonuses[0].ToModel().Name);
+        Assert.Equal("猛攻：伤害（所有武器） +3（倍率 ×1.5）", vm.Bonuses[1].ToModel().Name);
     }
 
-    private static CombatViewModel Create(FakeCharacterRepository repository) =>
-        Create(repository, new FakeSpellService());
-
-    private static CombatViewModel Create(FakeCharacterRepository repository, FakeSpellService spells) =>
-        new(repository, spells, new FakeFeatService());
-
-    private static CombatViewModel Create(FakeCharacterRepository repository, FakeSpellService spells, FakeFeatService feats) =>
-        new(repository, spells, feats);
-
-    private static CombatViewModel Create(FakeCharacterRepository repository, out FakeSpellService spells)
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Exchange_generator_rejects_empty_entry_name(string name)
     {
-        spells = new FakeSpellService();
-        return new CombatViewModel(repository, spells, new FakeFeatService());
+        var vm = Create(new FakeCharacterRepository());
+        vm.ExchangeEntryName = name;
+
+        vm.AddPenaltyBonusCommand.Execute(null);
+
+        Assert.Empty(vm.Bonuses);
+        Assert.Equal("请输入词条名称。", vm.ExchangeValidationError);
     }
+
+    [Fact]
+    public void Exchange_generator_can_target_ac_and_use_ac_penalty()
+    {
+        var vm = Create(new FakeCharacterRepository());
+        vm.Strength = 14; // 基线力量 +2，对 CMB 有影响但不影响 AC
+        vm.SelectedPenaltySource = CombatOptions.PenaltySources[0];
+        vm.SelectedBonusDestination = CombatOptions.BonusDestinations[1];
+        vm.ExchangePenalty = 2;
+        vm.BonusMultiplierText = "2.0";
+
+        vm.AddPenaltyBonusCommand.Execute(null);
+
+        Assert.Equal(12, vm.Sheet.ArmorClass.Total); // AC 10 −2 + AC +4
+        Assert.Equal(2, vm.Sheet.Cmb.Total); // 力量 +2；AC 换加值不影响 CMB
+        Assert.Equal(-2, vm.Bonuses[0].ToModel().Value);
+        Assert.Equal(CombatStat.ArmorClass, vm.Bonuses[0].Stat.Value);
+        Assert.Equal(4, vm.Bonuses[1].ToModel().Value);
+        Assert.Equal(CombatStat.ArmorClass, vm.Bonuses[1].Stat.Value);
+    }
+
+    [Fact]
+    public async Task Exchange_generator_entries_are_persisted_but_settings_are_not()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"pf1e-exchange-{Guid.NewGuid():N}");
+        try
+        {
+            var repository = new JsonCharacterRepository(directory);
+            var vm = new CombatViewModel(repository);
+            vm.ExchangePenalty = 3;
+            vm.BonusMultiplierText = "1.5";
+            vm.AddPenaltyBonusCommand.Execute(null);
+            await vm.FlushPendingSavesAsync();
+
+            var restarted = new CombatViewModel(repository);
+
+            Assert.Equal(2, restarted.Bonuses.Count);
+            Assert.Equal(-3, restarted.Bonuses[0].ToModel().Value);
+            Assert.Equal(4, restarted.Bonuses[1].ToModel().Value);
+            Assert.Equal(1, restarted.ExchangePenalty);
+            Assert.Equal("1.0", restarted.BonusMultiplierText);
+            Assert.Equal("减值换加值", restarted.ExchangeEntryName);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Applying_a_multi_entry_preset_recalculates_only_once()
+    {
+        var vm = Create(new FakeCharacterRepository());
+        var recalculations = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CombatViewModel.Cards))
+            {
+                recalculations++;
+            }
+        };
+
+        // 战栗：攻击/强韧/反射/意志 4 条，批量加入后只应重算一次。
+        vm.Presets.Single(p => p.Name == "战栗").ApplyCommand.Execute(null);
+
+        Assert.Equal(4, vm.Bonuses.Count);
+        Assert.Equal(1, recalculations);
+    }
+
+    [Fact]
+    public void Single_entry_edit_still_recalculates_immediately()
+    {
+        var vm = Create(new FakeCharacterRepository());
+        var recalculations = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CombatViewModel.Cards))
+            {
+                recalculations++;
+            }
+        };
+
+        ((ICommand)vm.AddBonusCommand).Execute(null);
+        Assert.Equal(1, recalculations);
+
+        vm.Bonuses[0].Value = 5;
+        Assert.Equal(2, recalculations);
+    }
+
+    [Fact]
+    public void Legacy_buff_origin_names_still_load_from_disk()
+    {
+        // Buff 联动已删除，但真实旧档里仍有 "SpellBuff"/"FeatBuff" 的 origin。
+        // 枚举按字符串序列化；删掉这两个成员会让反序列化抛错、整份角色被 LoadAll 静默跳过。
+        var directory = Path.Combine(Path.GetTempPath(), $"pf1e-origin-{Guid.NewGuid():N}");
+        var id = Guid.NewGuid();
+        try
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, $"{id:N}.json"), $$"""
+            {
+              "schemaVersion": 2,
+              "id": "{{id}}",
+              "name": "旧档",
+              "modifiers": [
+                { "origin": "FeatBuff", "name": "闪避", "stat": "ArmorClass", "descriptor": "Dodge", "value": 1 },
+                { "origin": "SpellBuff", "name": "祝福术", "stat": "Attack", "descriptor": "Morale", "value": 1 }
+              ]
+            }
+            """);
+
+            var profiles = new JsonCharacterRepository(directory).LoadAll();
+
+            var profile = Assert.Single(profiles);
+            Assert.Equal(2, profile.Modifiers.Count);
+            Assert.Equal(BonusOrigin.FeatBuff, profile.Modifiers[0].Origin);
+            Assert.Equal(BonusOrigin.SpellBuff, profile.Modifiers[1].Origin);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    private static CombatViewModel Create(FakeCharacterRepository repository) => new(repository);
 }

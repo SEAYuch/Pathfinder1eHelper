@@ -38,9 +38,9 @@ public static class CombatCalculator
         // 白鹤拳的补偿走同一条 Attack 通道，故武器攻击与战技（CMB）一致抵消（CHM 说的是「攻击骰」）。
         var craneRelief = RuleCalculateCraneStyle.AttackRelief(craneStyle, defensiveFighting);
         var globalAttack = Combine(
-            GlobalMods(profile, CombatStat.Attack),
+            Mods(profile, CombatStat.Attack, WeaponScope.AllWeapons),
             Rule(craneRelief, "白鹤拳", ModifierDescriptor.UntypedStackable));
-        var globalDamage = GlobalMods(profile, CombatStat.Damage);
+        var globalDamage = Mods(profile, CombatStat.Damage, WeaponScope.AllWeapons);
 
         // 「猛力攻击」以 buff 条目存在，启用时按 BAB 与握法逐武器展开。
         var powerAttack = profile.Modifiers.Any(m => m.IsEnabled && m.Kind == ModifierKind.PowerAttack);
@@ -92,8 +92,8 @@ public static class CombatCalculator
             ManeuverAbilityLabel = maneuverLabel,
             SizeBonus = sizeManeuver,
             AdditionalCmb = Combine(Mods(profile, CombatStat.Cmb), Mods(profile, CombatStat.AdditionalCMB)),
-            // 战技沿用全局攻击加值（猛力攻击按 DLL 只作用于攻击检定，不入 CMB）；
-            // 寓守于攻则按 CHM 同时作用于战技检定。
+            // 战技沿用通用攻击加值（猛力攻击按 DLL 只作用于攻击检定，不入 CMB）；
+            // WeaponAttack 是武器专属通道，不进入 CMB；寓守于攻按 CHM 同时作用于战技检定。
             AdditionalAttackBonus = Combine(
                 globalAttack,
                 [Size(sizeAttack)],
@@ -158,11 +158,13 @@ public static class CombatCalculator
 
         var attackMods = Combine(
             globalAttack,
-            ScopedMods(profile, CombatStat.Attack, weapon.Id),
+            Mods(profile, CombatStat.Attack, WeaponScope.SingleWeapon, weapon.Id),
+            Mods(profile, CombatStat.WeaponAttack, WeaponScope.AllWeapons),
+            Mods(profile, CombatStat.WeaponAttack, WeaponScope.SingleWeapon, weapon.Id),
             [Size(sizeAttack)]);
         var damageMods = Combine(
             globalDamage,
-            ScopedMods(profile, CombatStat.Damage, weapon.Id));
+            Mods(profile, CombatStat.Damage, WeaponScope.SingleWeapon, weapon.Id));
 
         if (powerAttack)
         {
@@ -258,25 +260,54 @@ public static class CombatCalculator
     }
 
     /// <summary>通道修饰（不区分武器；特殊条目如猛力攻击由计算层单独展开）。</summary>
-    private static IReadOnlyList<Modifier> Mods(CharacterProfile profile, CombatStat stat) =>
-        profile.Modifiers
-            .Where(m => m.IsEnabled && m.Kind == ModifierKind.Normal && m.Stat == stat)
-            .Select(m => m.ToModifier())
-            .ToList();
+    /// <param name="scope">
+    /// 武器范围。<see cref="WeaponScope.Any"/> 取全部（含武器专属）；
+    /// <see cref="WeaponScope.AllWeapons"/> 只取 <c>WeaponId is null</c> 的全局条目；
+    /// <see cref="WeaponScope.SingleWeapon"/> 只取绑定到 <paramref name="weaponId"/> 的条目。
+    /// —— 三者语义互不相同（Any 与 AllWeapons 尤其容易写反），故用枚举而非可空 Guid 表达。
+    /// </param>
+    private static IReadOnlyList<Modifier> Mods(
+        CharacterProfile profile,
+        CombatStat stat,
+        WeaponScope scope = WeaponScope.Any,
+        Guid weaponId = default)
+    {
+        var result = new List<Modifier>();
+        foreach (var entry in profile.Modifiers)
+        {
+            if (!entry.IsEnabled || entry.Kind != ModifierKind.Normal || entry.Stat != stat)
+            {
+                continue;
+            }
 
-    /// <summary>作用于全部武器的通道修饰（武器专攻/专精等带 WeaponId 的除外）。</summary>
-    private static IReadOnlyList<Modifier> GlobalMods(CharacterProfile profile, CombatStat stat) =>
-        profile.Modifiers
-            .Where(m => m.IsEnabled && m.Kind == ModifierKind.Normal && m.Stat == stat && m.WeaponId is null)
-            .Select(m => m.ToModifier())
-            .ToList();
+            var matches = scope switch
+            {
+                WeaponScope.AllWeapons => entry.WeaponId is null,
+                WeaponScope.SingleWeapon => entry.WeaponId == weaponId,
+                _ => true,
+            };
 
-    /// <summary>仅作用于指定武器的通道修饰。</summary>
-    private static IReadOnlyList<Modifier> ScopedMods(CharacterProfile profile, CombatStat stat, Guid weaponId) =>
-        profile.Modifiers
-            .Where(m => m.IsEnabled && m.Kind == ModifierKind.Normal && m.Stat == stat && m.WeaponId == weaponId)
-            .Select(m => m.ToModifier())
-            .ToList();
+            if (matches)
+            {
+                result.Add(entry.ToModifier());
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>修饰的武器适用范围。</summary>
+    private enum WeaponScope
+    {
+        /// <summary>不按武器过滤（AC、豁免、战技等非武器通道）。</summary>
+        Any,
+
+        /// <summary>作用于全部武器的条目（武器专攻/专精等带 WeaponId 的除外）。</summary>
+        AllWeapons,
+
+        /// <summary>仅作用于指定武器的条目。</summary>
+        SingleWeapon,
+    }
 
     private static Modifier Size(int sizeBonus) =>
         new(ModifierDescriptor.Size, sizeBonus, Source: "体型");

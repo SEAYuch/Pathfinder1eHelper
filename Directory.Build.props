@@ -12,7 +12,7 @@
        （InformationalVersion 才是运行期对外展示与写入 db_info 的那个，见 AppInfo；
          注意 SDK 会给它追加 "+<commit>" 的 SemVer 元数据后缀，AppInfo 会剥掉）。 -->
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <!-- 打包用：不含元数据的纯 SemVer 主体，供 Velopack / WiX / 后续 MSIX 取值。 -->
     <VersionPrefix>$(Version)</VersionPrefix>
     <!-- 发行元数据：写进 exe 的「属性 → 详细信息」，也由 AppInfo.ProductName 读取，

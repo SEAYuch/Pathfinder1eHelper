@@ -33,10 +33,8 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
     /// <summary>Sentinel shown in the type filter that means "all types".</summary>
     public const string AllTypes = "全部类型";
 
-    /// <summary>默认每页条数；“加载更多”按 <see cref="PageSizeStep"/> 递增。</summary>
-    public const int DefaultPageSize = 200;
-
-    private const int PageSizeStep = 200;
+    /// <summary>默认每页条数；“加载更多”按 <see cref="Pagination.PageSizeStep"/> 递增。</summary>
+    public const int DefaultPageSize = Pagination.DefaultPageSize;
 
     private readonly IFeatService _feats;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
@@ -127,10 +125,10 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
 
     public ReactiveCommand<FeatQuery, FeatPage> SearchCommand { get; }
 
-    /// <summary>“加载更多”：按 <see cref="PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
+    /// <summary>“加载更多”：按 <see cref="Pagination.PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
     public ICommand LoadMoreCommand { get; }
 
-    /// <summary>当前页大小；“加载更多”每次递增 <see cref="PageSizeStep"/>。</summary>
+    /// <summary>当前页大小；“加载更多”每次递增 <see cref="Pagination.PageSizeStep"/>。</summary>
     public int PageSize { get; private set; } = DefaultPageSize;
 
     /// <summary>是否还有未显示的匹配结果（由 <see cref="ApplyPage"/> 更新）。</summary>
@@ -194,17 +192,18 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
 
     private async Task<FeatPage> SearchAsync(FeatQuery query, CancellationToken ct)
     {
-        var items = await _feats.SearchAsync(query, ct);
-        // 结果不足一页即说明已到末尾，无需再查总数；否则查询真实总数用于提示与“加载更多”。
-        var total = items.Count < query.Take ? items.Count : await _feats.CountAsync(query, ct);
-        return new FeatPage(items, total);
+        var page = await Pagination.FetchAsync(
+            () => _feats.SearchAsync(query, ct),
+            () => _feats.CountAsync(query, ct),
+            query.Take);
+        return new FeatPage(page.Items, page.Total);
     }
 
     private async Task LoadMoreAsync(CancellationToken ct)
     {
         try
         {
-            PageSize += PageSizeStep;
+            PageSize += Pagination.PageSizeStep;
             var page = await Task.Run(() => SearchAsync(BuildQuery(), ct), ct);
             ct.ThrowIfCancellationRequested();
             ApplyPage(page);
@@ -221,17 +220,11 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
 
     private void ApplyPage(FeatPage page)
     {
-        Feats.Clear();
-        foreach (var feat in page.Items)
-        {
-            Feats.Add(feat);
-        }
+        Pagination.Replace(Feats, page.Items);
 
         SelectedFeat = Feats.Count > 0 ? Feats[0] : null;
         HasMoreResults = Feats.Count < page.Total;
-        ResultSummary = HasMoreResults
-            ? $"共 {page.Total} 条专长，已显示前 {Feats.Count} 条"
-            : $"共 {page.Total} 条专长";
+        ResultSummary = Pagination.Summarize("专长", page.Total, Feats.Count);
     }
 
     private async Task LoadSourcesAsync(CancellationToken ct)

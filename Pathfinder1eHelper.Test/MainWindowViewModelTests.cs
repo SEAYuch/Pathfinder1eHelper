@@ -54,7 +54,7 @@ public class MainWindowViewModelTests
     {
         var spells = new SpellsViewModel(new FakeSpellService());
         var feats = new FeatsViewModel(new FakeFeatService());
-        var combat = new CombatViewModel(new FakeCharacterRepository(), new FakeSpellService(), new FakeFeatService());
+        var combat = new CombatViewModel(new FakeCharacterRepository());
         var monsters = new MonstersViewModel(new FakeMonsterService());
         var vm = new MainWindowViewModel(() => spells, () => feats, () => combat, () => monsters);
         return (vm, spells, feats, combat, monsters);
