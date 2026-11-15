@@ -36,11 +36,12 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     /// <summary>Sentinel shown in the level filter that means "all levels".</summary>
     public const string AllLevels = "全部环位";
 
-    /// <summary>默认每页条数；“加载更多”按 <see cref="Pagination.PageSizeStep"/> 递增。</summary>
+    /// <summary>首批查询的默认条数；后续批次从当前结果末尾按页追加。</summary>
     public const int DefaultPageSize = Pagination.DefaultPageSize;
 
     private readonly ISpellService _spells;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
+    private readonly ObservableAsPropertyHelper<bool> _isLoadingMore;
     private readonly HashSet<string> _knownSources = new(StringComparer.Ordinal);
     private readonly HashSet<string> _knownClasses = new(StringComparer.Ordinal);
 
@@ -63,10 +64,29 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 
         SearchCommand = ReactiveCommand.CreateFromTask<SpellQuery, SpellPage>(SearchAsync);
         _isBusy = SearchCommand.IsExecuting.ToProperty(this, x => x.IsBusy);
+        ClearFiltersCommand = ReactiveCommand.Create(
+            ClearFilters,
+            this.WhenAnyValue(
+                x => x.SearchText,
+                x => x.SelectedSource,
+                x => x.SelectedLetter,
+                x => x.SelectedClass,
+                x => x.SelectedLevel,
+                (search, source, letter, spellClass, level) =>
+                    !string.IsNullOrWhiteSpace(search)
+                    || source != AllSources
+                    || letter != AllLetters
+                    || spellClass != AllClasses
+                    || level != AllLevels));
 
-        LoadMoreCommand = ReactiveCommand.CreateFromTask(
+        var loadMoreCommand = ReactiveCommand.CreateFromTask(
             LoadMoreAsync,
-            this.WhenAnyValue(x => x.HasMoreResults));
+            this.WhenAnyValue(
+                x => x.HasMoreResults,
+                x => x.IsBusy,
+                (hasMore, isBusy) => hasMore && !isBusy));
+        LoadMoreCommand = loadMoreCommand;
+        _isLoadingMore = loadMoreCommand.IsExecuting.ToProperty(this, x => x.IsLoadingMore);
 
         this.WhenActivated(disposables =>
         {
@@ -94,6 +114,19 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 
             // Apply results on the UI thread.
             SearchCommand
+                .IsExecuting
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
+                .Subscribe(isExecuting =>
+                {
+                    if (isExecuting)
+                    {
+                        HasNoResults = false;
+                        LastError = null;
+                    }
+                })
+                .DisposeWith(disposables);
+
+            SearchCommand
                 .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(ApplyPage)
                 .DisposeWith(disposables);
@@ -104,6 +137,15 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
                 .Subscribe(ex => LastError = ex.Message)
                 .DisposeWith(disposables);
         });
+    }
+
+    private void ClearFilters()
+    {
+        SearchText = null;
+        SelectedSource = AllSources;
+        SelectedLetter = AllLetters;
+        SelectedClass = AllClasses;
+        SelectedLevel = AllLevels;
     }
 
     private SpellQuery BuildQuery() => new(
@@ -128,10 +170,32 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     {
         try
         {
-            PageSize += Pagination.PageSizeStep;
-            var page = await Task.Run(() => SearchAsync(BuildQuery(), ct), ct);
+            if (!HasMoreResults || IsBusy)
+            {
+                return;
+            }
+
+            var alreadyLoaded = Spells.Count;
+            var currentQuery = BuildQuery();
+            var query = currentQuery with { Skip = alreadyLoaded, Take = Pagination.PageSizeStep };
+            var page = await Task.Run(
+                () => Pagination.FetchNextAsync(
+                    () => _spells.SearchAsync(query, ct),
+                    () => _spells.CountAsync(query, ct),
+                    query.Take,
+                    alreadyLoaded),
+                ct);
             ct.ThrowIfCancellationRequested();
-            ApplyPage(page);
+
+            if (alreadyLoaded != Spells.Count || currentQuery != BuildQuery())
+            {
+                return;
+            }
+
+            Pagination.Append(Spells, page.Items);
+            HasMoreResults = Spells.Count < page.Total;
+            HasNoResults = Spells.Count == 0;
+            ResultSummary = Pagination.Summarize("法术", page.Total, Spells.Count);
         }
         catch (OperationCanceledException)
         {
@@ -149,6 +213,7 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 
         SelectedSpell = Spells.Count > 0 ? Spells[0] : null;
         HasMoreResults = Spells.Count < page.Total;
+        HasNoResults = Spells.Count == 0;
         ResultSummary = Pagination.Summarize("法术", page.Total, Spells.Count);
     }
 
@@ -178,6 +243,7 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
         });
         SelectedSpell = Spells[0];
         ResultSummary = "共 1 条法术";
+        HasNoResults = false;
     }
 
     public ObservableCollection<Spell> Spells { get; }
@@ -195,10 +261,13 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
 
     public ReactiveCommand<SpellQuery, SpellPage> SearchCommand { get; }
 
-    /// <summary>“加载更多”：按 <see cref="Pagination.PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
+    /// <summary>清除文本搜索与所有筛选条件。</summary>
+    public ICommand ClearFiltersCommand { get; }
+
+    /// <summary>加载下一批结果并追加到当前列表（仅在还有更多结果且当前未搜索时可用）。</summary>
     public ICommand LoadMoreCommand { get; }
 
-    /// <summary>当前页大小；“加载更多”每次递增 <see cref="Pagination.PageSizeStep"/>。</summary>
+    /// <summary>首批查询的结果条数；后续批次从已加载列表末尾追加。</summary>
     public int PageSize { get; private set; } = DefaultPageSize;
 
     /// <summary>是否还有未显示的匹配结果（由 <see cref="ApplyPage"/> 更新）。</summary>
@@ -209,6 +278,14 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
     }
 
     public bool IsBusy => _isBusy.Value;
+
+    public bool IsLoadingMore => _isLoadingMore.Value;
+
+    public bool HasNoResults
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public string? SearchText
     {

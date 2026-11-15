@@ -37,10 +37,22 @@ public sealed class BonusEntryViewModel : ReactiveObject
         Kind = model.Kind;
         Stance = model.Stance;
 
+        ValueInput = new NumberFieldAdapter(() => _value, value => Value = value, 0);
+        PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(Value))
+            {
+                ValueInput.NotifySourceChanged();
+            }
+        };
+
         RemoveCommand = ReactiveCommand.Create(() => remove(this));
     }
 
     public Guid Id { get; }
+
+    /// <summary>数值的 decimal 适配器（Arc NumberField 绑定，模型仍为 int?）。</summary>
+    public NumberFieldAdapter ValueInput { get; }
 
     /// <summary>条目类型（普通 / 猛力攻击 / 寓守于攻）。</summary>
     public ModifierKind Kind { get; }

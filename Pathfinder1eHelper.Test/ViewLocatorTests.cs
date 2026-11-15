@@ -10,7 +10,7 @@ namespace Pathfinder1eHelper.Test;
 [Collection(AvaloniaUiCollection.Name)]
 public class ViewLocatorTests
 {
-    private readonly ViewLocator _locator = new();
+    private readonly Pathfinder1eHelper.Views.ViewLocator _locator = new();
 
     [Fact]
     public void Resolves_views_for_registered_page_view_models()

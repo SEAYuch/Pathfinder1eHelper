@@ -9,6 +9,7 @@
         <IsPackable>false</IsPackable>
         <!-- xUnit1051 为“传入 TestContext.Current.CancellationToken”的样式提示，非正确性问题，统一关闭以保持零告警 -->
         <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>

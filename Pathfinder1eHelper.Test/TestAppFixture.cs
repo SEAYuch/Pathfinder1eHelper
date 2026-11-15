@@ -6,6 +6,7 @@ using ReactiveUI.Avalonia;
 using ReactiveUI.Builder;
 using ReactiveUI.Primitives.Concurrency;
 using Splat;
+using TKCode.Arc;
 
 [assembly: Xunit.AssemblyFixture(typeof(Pathfinder1eHelper.Test.TestAppFixture))]
 
@@ -27,6 +28,10 @@ public sealed class TestAppFixture
     {
         AppBuilder.Configure<App>()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions())
+            .UseArc(arc => arc
+                .UseArcControls()
+                .UseArcBlocks()
+                .WithTheme(theme => theme.Appearance(ArcAppearance.System)))
             .SetupWithoutStarting();
 
         RxAppBuilder.CreateReactiveUIBuilder()

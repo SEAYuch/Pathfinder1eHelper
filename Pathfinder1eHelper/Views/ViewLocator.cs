@@ -24,7 +24,14 @@ public sealed class ViewLocator : IViewLocator
 
     public IViewFor<TViewModel>? ResolveView<TViewModel>()
         where TViewModel : class =>
-        ResolveView<TViewModel>(null);
+        ResolveByType(typeof(TViewModel)) as IViewFor<TViewModel>;
+
+    public IViewFor? ResolveView<TViewModel>(TViewModel viewModel, string? contract)
+        where TViewModel : class =>
+        ResolveByType(viewModel.GetType());
+
+    public IViewFor? ResolveViewUnsafe(object? viewModel, string? contract) =>
+        viewModel is null ? null : ResolveByType(viewModel.GetType());
 
     // 单视图/VM，contract 预留扩展（按需升级为 (Type, contract) 复合键）。
     public IViewFor<TViewModel>? ResolveView<TViewModel>(string? contract)

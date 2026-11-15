@@ -1,13 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Pathfinder1eHelper.Test" />
         <AvaloniaResource Include="Assets\**"/>
     </ItemGroup>
 
@@ -20,19 +22,18 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia" />
-        <PackageReference Include="Avalonia.Controls.DataGrid" />
+        <PackageReference Include="TKCode.Arc" />
         <PackageReference Include="Avalonia.Desktop" />
         <PackageReference Include="Avalonia.Fonts.Inter" />
         <PackageReference Include="Avalonia.Themes.Fluent" />
-        <PackageReference Include="FluentAvaloniaUI" />
         <PackageReference Include="AvaloniaUI.DiagnosticsSupport">
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="FluentIcons.Avalonia.Fluent" />
         <PackageReference Include="FreeSql" />
         <PackageReference Include="FreeSql.Provider.Duckdb" />
         <PackageReference Include="ReactiveUI.Avalonia" />
         <PackageReference Include="ReactiveUI.Avalonia.Autofac" />
+        <PackageReference Include="TKCode.Arc.Blocks" />
     </ItemGroup>
 </Project>

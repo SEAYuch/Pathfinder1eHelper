@@ -33,11 +33,12 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
     /// <summary>Sentinel shown in the type filter that means "all types".</summary>
     public const string AllTypes = "全部类型";
 
-    /// <summary>默认每页条数；“加载更多”按 <see cref="Pagination.PageSizeStep"/> 递增。</summary>
+    /// <summary>首批查询的默认条数；后续批次从当前结果末尾按页追加。</summary>
     public const int DefaultPageSize = Pagination.DefaultPageSize;
 
     private readonly IFeatService _feats;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
+    private readonly ObservableAsPropertyHelper<bool> _isLoadingMore;
     private readonly HashSet<string> _knownSources = new(StringComparer.Ordinal);
     private readonly HashSet<string> _knownTypes = new(StringComparer.Ordinal);
 
@@ -52,10 +53,27 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
 
         SearchCommand = ReactiveCommand.CreateFromTask<FeatQuery, FeatPage>(SearchAsync);
         _isBusy = SearchCommand.IsExecuting.ToProperty(this, x => x.IsBusy);
+        ClearFiltersCommand = ReactiveCommand.Create(
+            ClearFilters,
+            this.WhenAnyValue(
+                x => x.SearchText,
+                x => x.SelectedSource,
+                x => x.SelectedLetter,
+                x => x.SelectedType,
+                (search, source, letter, type) =>
+                    !string.IsNullOrWhiteSpace(search)
+                    || source != AllSources
+                    || letter != AllLetters
+                    || type != AllTypes));
 
-        LoadMoreCommand = ReactiveCommand.CreateFromTask(
+        var loadMoreCommand = ReactiveCommand.CreateFromTask(
             LoadMoreAsync,
-            this.WhenAnyValue(x => x.HasMoreResults));
+            this.WhenAnyValue(
+                x => x.HasMoreResults,
+                x => x.IsBusy,
+                (hasMore, isBusy) => hasMore && !isBusy));
+        LoadMoreCommand = loadMoreCommand;
+        _isLoadingMore = loadMoreCommand.IsExecuting.ToProperty(this, x => x.IsLoadingMore);
 
         this.WhenActivated(disposables =>
         {
@@ -75,6 +93,19 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
                 .Throttle(TimeSpan.FromMilliseconds(300), RxSchedulers.TaskpoolScheduler)
                 .DistinctUntilChanged()
                 .InvokeCommand(SearchCommand)
+                .DisposeWith(disposables);
+
+            SearchCommand
+                .IsExecuting
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
+                .Subscribe(isExecuting =>
+                {
+                    if (isExecuting)
+                    {
+                        HasNoResults = false;
+                        LastError = null;
+                    }
+                })
                 .DisposeWith(disposables);
 
             SearchCommand
@@ -111,6 +142,7 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
         Feats.Add(sample);
         SelectedFeat = sample;
         ResultSummary = "共 1 条专长";
+        HasNoResults = false;
     }
 
     public ObservableCollection<Feat> Feats { get; }
@@ -125,10 +157,13 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
 
     public ReactiveCommand<FeatQuery, FeatPage> SearchCommand { get; }
 
-    /// <summary>“加载更多”：按 <see cref="Pagination.PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
+    /// <summary>清除文本搜索与所有筛选条件。</summary>
+    public ICommand ClearFiltersCommand { get; }
+
+    /// <summary>加载下一批结果并追加到当前列表（仅在还有更多结果且当前未搜索时可用）。</summary>
     public ICommand LoadMoreCommand { get; }
 
-    /// <summary>当前页大小；“加载更多”每次递增 <see cref="Pagination.PageSizeStep"/>。</summary>
+    /// <summary>首批查询的结果条数；后续批次从已加载列表末尾追加。</summary>
     public int PageSize { get; private set; } = DefaultPageSize;
 
     /// <summary>是否还有未显示的匹配结果（由 <see cref="ApplyPage"/> 更新）。</summary>
@@ -139,6 +174,14 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
     }
 
     public bool IsBusy => _isBusy.Value;
+
+    public bool IsLoadingMore => _isLoadingMore.Value;
+
+    public bool HasNoResults
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public string? SearchText
     {
@@ -182,6 +225,14 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    private void ClearFilters()
+    {
+        SearchText = null;
+        SelectedSource = AllSources;
+        SelectedLetter = AllLetters;
+        SelectedType = AllTypes;
+    }
+
     private FeatQuery BuildQuery() => new(
         SearchText,
         SelectedSource == AllSources ? null : SelectedSource,
@@ -203,10 +254,32 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
     {
         try
         {
-            PageSize += Pagination.PageSizeStep;
-            var page = await Task.Run(() => SearchAsync(BuildQuery(), ct), ct);
+            if (!HasMoreResults || IsBusy)
+            {
+                return;
+            }
+
+            var alreadyLoaded = Feats.Count;
+            var currentQuery = BuildQuery();
+            var query = currentQuery with { Skip = alreadyLoaded, Take = Pagination.PageSizeStep };
+            var page = await Task.Run(
+                () => Pagination.FetchNextAsync(
+                    () => _feats.SearchAsync(query, ct),
+                    () => _feats.CountAsync(query, ct),
+                    query.Take,
+                    alreadyLoaded),
+                ct);
             ct.ThrowIfCancellationRequested();
-            ApplyPage(page);
+
+            if (alreadyLoaded != Feats.Count || currentQuery != BuildQuery())
+            {
+                return;
+            }
+
+            Pagination.Append(Feats, page.Items);
+            HasMoreResults = Feats.Count < page.Total;
+            HasNoResults = Feats.Count == 0;
+            ResultSummary = Pagination.Summarize("专长", page.Total, Feats.Count);
         }
         catch (OperationCanceledException)
         {
@@ -224,6 +297,7 @@ public sealed class FeatsViewModel : ViewModelBase, IPageViewModel
 
         SelectedFeat = Feats.Count > 0 ? Feats[0] : null;
         HasMoreResults = Feats.Count < page.Total;
+        HasNoResults = Feats.Count == 0;
         ResultSummary = Pagination.Summarize("专长", page.Total, Feats.Count);
     }
 

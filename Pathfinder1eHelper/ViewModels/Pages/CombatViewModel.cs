@@ -62,6 +62,22 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             .Select(p => new PresetViewModel(p.Name, () => ApplyWeaponPreset(p)))
             .ToList();
 
+        StrengthInput = CreateNumberField(nameof(Strength), () => Strength, value => Strength = value, 10);
+        DexterityInput = CreateNumberField(nameof(Dexterity), () => Dexterity, value => Dexterity = value, 10);
+        ConstitutionInput = CreateNumberField(nameof(Constitution), () => Constitution, value => Constitution = value, 10);
+        IntelligenceInput = CreateNumberField(nameof(Intelligence), () => Intelligence, value => Intelligence = value, 10);
+        WisdomInput = CreateNumberField(nameof(Wisdom), () => Wisdom, value => Wisdom = value, 10);
+        CharismaInput = CreateNumberField(nameof(Charisma), () => Charisma, value => Charisma = value, 10);
+        BaseAttackBonusInput = CreateNumberField(nameof(BaseAttackBonus), () => BaseAttackBonus, value => BaseAttackBonus = value, 0);
+        BaseFortitudeInput = CreateNumberField(nameof(BaseFortitude), () => BaseFortitude, value => BaseFortitude = value, 0);
+        BaseReflexInput = CreateNumberField(nameof(BaseReflex), () => BaseReflex, value => BaseReflex = value, 0);
+        BaseWillInput = CreateNumberField(nameof(BaseWill), () => BaseWill, value => BaseWill = value, 0);
+        CasterLevelInput = CreateNumberField(nameof(CasterLevel), () => CasterLevel, value => CasterLevel = value, 0);
+        MaxDexBonusInput = CreateNumberField(nameof(MaxDexBonus), () => MaxDexBonus, value => MaxDexBonus = value, 0);
+        SpellLevelInput = CreateNumberField(nameof(SpellLevel), () => SpellLevel, value => SpellLevel = value, 0);
+        DamageTakenInput = CreateNumberField(nameof(DamageTaken), () => DamageTaken, value => DamageTaken = value, 0);
+        CustomDcInput = CreateNumberField(nameof(CustomDc), () => CustomDc, value => CustomDc = value, 0);
+
         AddBonusCommand = ReactiveCommand.Create(AddBonus);
         AddWeaponCommand = ReactiveCommand.Create(AddWeapon);
         NewCharacterCommand = ReactiveCommand.Create(NewCharacter);
@@ -78,9 +94,21 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             _ = _autoSaver.FlushAsync())));
     }
 
-    /// <summary>设计时构造：示例数据，供 XAML 预览器使用。</summary>
-    public CombatViewModel() : this(new DesignTimeCharacterRepository())
+    private NumberFieldAdapter CreateNumberField(string sourceName, Func<int?> getValue, Action<int?> setValue, int fallback)
     {
+        var adapter = new NumberFieldAdapter(getValue, setValue, fallback);
+        PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == sourceName)
+            {
+                adapter.NotifySourceChanged();
+            }
+        };
+        return adapter;
+    }
+
+    /// <summary>设计时构造：示例数据，供 XAML 预览器使用。</summary>
+    public CombatViewModel() : this(new DesignTimeCharacterRepository())    {
     }
 
     public ObservableCollection<CharacterListItemViewModel> Characters { get; }
@@ -126,8 +154,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public IReadOnlyList<BonusDestinationOption> BonusDestinations => CombatOptions.BonusDestinations;
 
-    public IReadOnlyList<string> BonusMultiplierOptions => CombatOptions.Multipliers;
-
     public int ExchangePenalty
     {
         get;
@@ -135,9 +161,26 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanAddExchange));
+            this.RaisePropertyChanged(nameof(ExchangePenaltyInput));
             ExchangeValidationError = null;
         }
     } = 1;
+
+    /// <summary>Arc NumberField 的 decimal 适配器；只接受整数，保留领域值为 int。</summary>
+    public decimal ExchangePenaltyInput
+    {
+        get => ExchangePenalty;
+        set
+        {
+            if (value != decimal.Truncate(value) || value is < int.MinValue or > int.MaxValue)
+            {
+                this.RaisePropertyChanged(nameof(ExchangePenaltyInput));
+                return;
+            }
+
+            ExchangePenalty = (int)value;
+        }
+    }
 
     public PenaltySourceOption SelectedPenaltySource
     {
@@ -157,9 +200,19 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
         {
             this.RaiseAndSetIfChanged(ref _bonusMultiplierText, value);
             this.RaisePropertyChanged(nameof(CanAddExchange));
+            this.RaisePropertyChanged(nameof(BonusMultiplierError));
             ExchangeValidationError = null;
         }
     }
+
+    /// <summary>
+    /// 加值倍率的就地提示：合法（或还没填）时为空 —— Arc Input 只在非空时显示错误行，正常态不占高度。
+    /// 判定与 <see cref="TryGetMultiplierHalfSteps"/> 完全一致，避免「按钮点不动却看不出原因」。
+    /// </summary>
+    public string? BonusMultiplierError =>
+        string.IsNullOrWhiteSpace(BonusMultiplierText) || TryGetMultiplierHalfSteps(BonusMultiplierText, out _)
+            ? null
+            : "请输入 0.5–10 之间、步长 0.5 的数字，例如 1.5";
 
     public string ExchangeEntryName
     {
@@ -263,6 +316,37 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
             OnInputChanged();
         }
     }
+
+    // Arc NumberField 的 decimal 绑定适配器：模型仍是 int?，未设置时按 ToModel 的默认值显示。
+    public NumberFieldAdapter StrengthInput { get; }
+
+    public NumberFieldAdapter DexterityInput { get; }
+
+    public NumberFieldAdapter ConstitutionInput { get; }
+
+    public NumberFieldAdapter IntelligenceInput { get; }
+
+    public NumberFieldAdapter WisdomInput { get; }
+
+    public NumberFieldAdapter CharismaInput { get; }
+
+    public NumberFieldAdapter BaseAttackBonusInput { get; }
+
+    public NumberFieldAdapter BaseFortitudeInput { get; }
+
+    public NumberFieldAdapter BaseReflexInput { get; }
+
+    public NumberFieldAdapter BaseWillInput { get; }
+
+    public NumberFieldAdapter CasterLevelInput { get; }
+
+    public NumberFieldAdapter MaxDexBonusInput { get; }
+
+    public NumberFieldAdapter SpellLevelInput { get; }
+
+    public NumberFieldAdapter DamageTakenInput { get; }
+
+    public NumberFieldAdapter CustomDcInput { get; }
 
     public int? Dexterity
     {
@@ -766,6 +850,7 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     private void ApplySheet(CombatSheet sheet)
     {
         Sheet = sheet;
+
         Cards = BuildCards(sheet);
 
         var count = Math.Min(Weapons.Count, sheet.Weapons.Count);

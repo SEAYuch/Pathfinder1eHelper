@@ -1,8 +1,9 @@
-﻿using Autofac;
+using Autofac;
 using Avalonia;
 using Pathfinder1eHelper.Infrastructure;
 using ReactiveUI.Avalonia.Splat;
 using System;
+using TKCode.Arc;
 
 namespace Pathfinder1eHelper;
 
@@ -35,6 +36,10 @@ sealed class Program
             .WithDeveloperTools()
 #endif
             .WithInterFont()
+            .UseArc(arc => arc
+                .UseArcControls()
+                .UseArcBlocks()
+                .WithTheme(theme => theme.Appearance(ArcAppearance.System)))
             .LogToTrace()
             // ReactiveUI 24 + Autofac: this single call registers Autofac as the Splat/ReactiveUI
             // locator AND runs WithAvalonia() internally (activation-for-view-fetcher, binding hook,

@@ -10,8 +10,8 @@ Pathfinder 1e 中文助手：基于 Avalonia 的桌面参考工具，含**法术
 
 | 类别 | 选型 |
 | --- | --- |
-| 运行时/UI | .NET 10 · Avalonia 12.1.2 |
-| 控件库/主题 | FluentAvaloniaUI 3.1.0（`FluentAvaloniaTheme`）· FluentIcons.Avalonia.Fluent |
+| 运行时/UI | .NET 10 · Avalonia 12.1.6 |
+| 控件库/主题 | TKCode.Arc 1.1.0 / TKCode.Arc.Blocks 1.1.0 · Avalonia 官方 `FluentTheme`（原生控件过渡基础样式） |
 | MVVM | ReactiveUI 12（`ReactiveUI.Avalonia` / `ReactiveUI.Avalonia.Autofac`） |
 | DI | Autofac（经 `UseReactiveUIWithAutofac` 兼作 Splat/ReactiveUI 定位器） |
 | 数据访问 | FreeSql + DuckDB（只读） |
@@ -85,7 +85,10 @@ Pathfinder1eHelper.slnx
 ### XAML / Avalonia
 - `AvaloniaUseCompiledBindingsByDefault=true`：绑定路径写错是**编译错误**，改动 VM 属性名会连带编译失败。
 - 设计时预览：页面 VM 提供无参构造，使用 `ViewModels/DesignTimeData.cs` 的 `DesignTime*` 假实现；XAML 用 `<Design.DataContext>`。
-- **主题坑**：`FluentAvaloniaTheme` 已内置 DataGrid 样式。**不要**再 `StyleInclude` `avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml`——两套 DataGrid 主题叠加会让列表**列标题（表头）变透明/不可见**。
+- **查询列表用 Arc `Table`**：法术/专长/怪物三页已不再使用 `Avalonia.Controls.DataGrid`（包引用已移除）。列在 code-behind 用 `DataTableColumn.Create<T>` 生成且 `IsSortable=false`（分页由服务端 `Skip/Take` 决定，禁止客户端重排）。翻页依赖 `Table.ScrollViewerPart`（`PART_ScrollViewer`）的 `ScrollChanged`；单选主从与键盘导航由 `Views/Pages/TableSingleSelectionBehavior.cs` 补足——Arc 在 `IsSelectable=false` 时每次刷新数据都会把 `SelectedItems` 清空，行为类会重新写回，改动时别删这段逻辑。
+  - 点击行的条目解析：Arc 的文本单元格由行自绘（只有设了 `CellTemplate` 的列才有子控件并把条目挂成 `DataContext`），所以真实点击的 `e.Source` 是内部 `TableRow`、其 `DataContext` 不是条目。行为类先按祖先 `DataContext` 匹配，失败再识别 `TableRow` 类型并读它的 `Item`（`PropertyInfo` 按类型缓存）。这是文档未覆盖的一处小反射，改动前先确认 Arc 是否已给出公开的行点击事件/行类型。
+- **查 Arc API 先看文档，别反编译**：本机 `web_fetch` 因 DNS 解析到 fake-IP（198.18.x）被 SSRF 拦，但 Git Bash 里的 `curl` 可直连——用
+  `curl -fsSL https://docs.tkcode.si/components/<组件>.api.md -o /tmp/<组件>.api.md`（去掉 `.api` 是完整页，含「Choose instead / 何时不要用 / 可访问性」），再 `read` 读文件。只有文档确实没写的内部行为才退到 `ilspycmd`，并在代码注释里写明原因。
 - 自定义主题色（如 `AppDividerBrush`、`AppDangerBrush`）在 `App.axaml` 的 `ThemeDictionaries` 里按 Light/Dark 定义。
 
 ### 数据/查询
@@ -206,12 +209,12 @@ OS 指令前缀 `vpk [linux] pack ...`（少了会报 `the target rid must be Wi
 
 ## 版本与参考库元数据（db_info）
 
-- **单一版本源**：`Directory.Build.props` 的 `<Version>`（当前 `0.1.0`）。SDK 由它派生
-  `AssemblyVersion`/`FileVersion`（`0.1.0.0`）与 `InformationalVersion`（`0.1.0`，会被 SourceLink
+- **单一版本源**：`Directory.Build.props` 的 `<Version>`（当前 `0.2.0`）。SDK 由它派生
+  `AssemblyVersion`/`FileVersion`（`0.2.0.0`）与 `InformationalVersion`（`0.2.0`，会被 SourceLink
   追加 `+<commit>` 后缀）。**改版本号只改这一处**，勿在 csproj 另写 `<Version>`。
   `<Product>` 同在此处，`AppInfo.ProductName` 从程序集 `Product` 属性读取，与 exe「属性 → 详细信息」同源。
 - **运行期读取**：`AppInfo.Version`（三段 SemVer，剥掉 `+meta`/`-pre` 后缀）、`AppInfo.DisplayVersion`
-  （`v0.1.0`）。打包工具（Velopack/WiX/后续 MSIX）读 `FileVersion`，UI 与 DB 读 `InformationalVersion`，
+  （`v0.2.0`）。打包工具（Velopack/WiX/后续 MSIX）读 `FileVersion`，UI 与 DB 读 `InformationalVersion`，
   `AppInfoTests` 钉死三者一致。
 - **参考库盖章**：参考库有单行表 `db_info`（实体 `Models/DbInfo`，DDL 与写入在 `Services/DbInfoCatalog`），
   记录 `app_version` / `schema_version`（`AppInfo.ReferenceSchemaVersion`，表/列契约变更时 +1）/
@@ -232,7 +235,7 @@ OS 指令前缀 `vpk [linux] pack ...`（少了会报 `the target rid must be Wi
   （`Failure while replaying WAL file`）、且会在数据目录里堆垃圾。命令在 Dispose 后仍发现 `.wal` 会打印警告。
 - **升版流程**：改 `Directory.Build.props` 的 `<Version>` → `dotnet build` → 跑 `--stamp-db` → 跑测试。
   漏掉盖章时 `DbInfoDatabaseSmokeTests.Stamped_db_info_matches_the_running_assembly_version` 会失败
-  （已验证：源 0.2.0 + 库 0.1.0 即报 `Actual: "0.1.0"`），这正是该测试的用途。
+  （已验证：源与库版本不一致时即报库里的实际值），这正是该测试的用途。
 
 ## 专长（Feats）功能
 

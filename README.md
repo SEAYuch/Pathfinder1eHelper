@@ -21,7 +21,7 @@ Pathfinder 1e 中文助手 —— 一款基于 Avalonia 的桌面法术查询工
 | 类别 | 选型 |
 | --- | --- |
 | 运行时/UI | .NET 10 · Avalonia 12 |
-| 控件库/主题 | Avalonia Fluent(官方主题)· FluentIcons(FluentUI System Icons) |
+| 控件库/主题 | TKCode.Arc 1.1（Arc 控件与主题）· Avalonia 官方 FluentTheme（原生控件过渡基础样式） |
 | MVVM | ReactiveUI 12(含 `ReactiveUI.Avalonia.Autofac`) |
 | DI | Autofac(兼作 Splat/ReactiveUI 定位器) |
 | 数据访问 | FreeSql + DuckDB(只读) |
@@ -114,7 +114,7 @@ dotnet run --project Pathfinder1eHelper.Test
 
 ## 版本与参考库元数据
 
-版本号只在 `Directory.Build.props` 的 `<Version>` 处定义(当前 `0.1.0`),SDK 由此派生程序集版本、
+版本号只在 `Directory.Build.props` 的 `<Version>` 处定义(当前 `0.2.0`),SDK 由此派生程序集版本、
 文件版本与产品名;代码里通过 `AppInfo.Version` 读取,不另存第二份。
 
 参考库内置单行表 `db_info`,记录生成它的应用版本、表结构版本、数据批次与各表行数快照,由应用自身的

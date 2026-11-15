@@ -118,6 +118,7 @@ public class CombatViewModelTests
 
         var weapon = Assert.Single(vm.Weapons);
         Assert.Null(weapon.DamageBonusStat); // 自动（近战默认力量）
+        Assert.Null(weapon.ToModel().DamageBonusStat);
 
         weapon.DamageBonusStat = CombatOptions.Ability(Ability.Dexterity);
 
@@ -347,6 +348,32 @@ public class CombatViewModelTests
     }
 
     [Theory]
+    [InlineData(0, 0)]
+    [InlineData(7, 7)]
+    [InlineData(11, 11)]
+    public void Exchange_penalty_number_adapter_preserves_integer_domain(int penalty, decimal expected)
+    {
+        var vm = Create(new FakeCharacterRepository());
+
+        vm.ExchangePenaltyInput = penalty;
+
+        Assert.Equal(penalty, vm.ExchangePenalty);
+        Assert.Equal(expected, vm.ExchangePenaltyInput);
+    }
+
+    [Fact]
+    public void Exchange_penalty_number_adapter_rejects_fractional_values()
+    {
+        var vm = Create(new FakeCharacterRepository());
+        vm.ExchangePenalty = 3;
+
+        vm.ExchangePenaltyInput = 3.5m;
+
+        Assert.Equal(3, vm.ExchangePenalty);
+        Assert.Equal(3m, vm.ExchangePenaltyInput);
+    }
+
+    [Theory]
     [InlineData(1, "0.5", 0)]
     [InlineData(3, "1.5", 4)]
     [InlineData(11, "10.0", 110)]
@@ -416,6 +443,42 @@ public class CombatViewModelTests
         Assert.Empty(vm.Bonuses);
         Assert.False(vm.CanAddExchange);
         Assert.NotNull(vm.ExchangeValidationError);
+    }
+
+    [Fact]
+    public void Number_adapter_shows_the_default_and_writes_rounded_integers()
+    {
+        var vm = Create(new FakeCharacterRepository());
+
+        // 未设置/默认 10 时控件显示 10（与 ToModel 的默认值一致，而不是 0）。
+        Assert.Equal(10m, vm.StrengthInput.Value);
+
+        vm.StrengthInput.Value = 15.4m;
+        Assert.Equal(15, vm.Strength);
+
+        vm.StrengthInput.Value = 15.6m;
+        Assert.Equal(16, vm.Strength);
+
+        // 外部改动（读档/预设）要回写到控件显示。
+        vm.Strength = 18;
+        Assert.Equal(18m, vm.StrengthInput.Value);
+    }
+
+    [Theory]
+    [InlineData("1.5", null)]
+    [InlineData("0.5", null)]
+    [InlineData("10", null)]
+    [InlineData("", null)]
+    [InlineData("abc", "请输入 0.5–10 之间、步长 0.5 的数字，例如 1.5")]
+    [InlineData("0.25", "请输入 0.5–10 之间、步长 0.5 的数字，例如 1.5")]
+    [InlineData("11", "请输入 0.5–10 之间、步长 0.5 的数字，例如 1.5")]
+    public void Multiplier_error_shows_only_for_invalid_text(string text, string? expected)
+    {
+        var vm = Create(new FakeCharacterRepository());
+
+        vm.BonusMultiplierText = text;
+
+        Assert.Equal(expected, vm.BonusMultiplierError);
     }
 
     [Fact]

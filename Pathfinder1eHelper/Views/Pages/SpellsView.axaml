@@ -4,8 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
              xmlns:models="using:Pathfinder1eHelper.Models"
-             xmlns:fi="using:FluentIcons.Avalonia.Fluent"
-             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
+             xmlns:arc="https://github.com/AIDotNet/TKCode.Arc"
+             mc:Ignorable="d"
              x:Class="Pathfinder1eHelper.Views.Pages.SpellsView"
              x:DataType="vm:SpellsViewModel">
 
@@ -13,96 +13,82 @@
         <vm:SpellsViewModel />
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="{DynamicResource ArcSpace3Thickness}">
 
-        <!-- Filter bar -->
-        <Border Grid.Row="0" Padding="12" Margin="0,0,0,8">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <fi:FluentIcon Icon="Search" IconVariant="Regular" IconSize="Size20"
+        <!-- Search and filters -->
+        <Border Grid.Row="0" Padding="{DynamicResource ArcSpace3Thickness}"
+                Margin="{DynamicResource ArcSpace2Thickness}"
+                Background="{arc:ArcDesignTokenResource Surface}"
+                BorderBrush="{arc:ArcDesignTokenResource BorderSubtle}" BorderThickness="1"
+                    CornerRadius="{arc:ArcDesignTokenResource RadiusPanel}">
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="{arc:ArcDesignTokenResource Space3}">
+                <WrapPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <arc:SearchField Width="280" Size="Medium" Label="搜索法术"
+                                     Placeholder="中文名或英文名" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="{DynamicResource ArcSpace1Thickness}" />
+                    <arc:Combobox Width="210" Label="出处" Placeholder="搜索出处" ItemsSource="{Binding Sources}"
+                                SelectedItem="{Binding SelectedSource}"
+                                Margin="{DynamicResource ArcSpace1Thickness}" />
+                    <arc:Combobox Width="210" Label="首字母" Placeholder="搜索首字母" ItemsSource="{Binding Letters}"
+                                SelectedItem="{Binding SelectedLetter}"
+                                Margin="{DynamicResource ArcSpace1Thickness}" />
+                    <arc:Combobox Width="210" Label="职业/领域" Placeholder="搜索职业或领域" ItemsSource="{Binding Classes}"
+                                SelectedItem="{Binding SelectedClass}"
+                                Margin="{DynamicResource ArcSpace1Thickness}" />
+                    <arc:Select Width="180" Size="Medium" Label="环位" ItemsSource="{Binding Levels}"
+                                SelectedItem="{Binding SelectedLevel}"
+                                Margin="{DynamicResource ArcSpace1Thickness}" />
+                </WrapPanel>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ResultSummary}"
+                               Foreground="{arc:ArcDesignTokenResource TextSecondary}"
+                               FontSize="{arc:ArcDesignTokenResource TypeSM}"
                                VerticalAlignment="Center" />
-                <TextBox Width="280"
-                         PlaceholderText="搜索法术（中/英文名）"
-                         Text="{Binding SearchText}" />
-                <TextBlock Text="出处" VerticalAlignment="Center" Opacity="0.7" />
-                <ComboBox MinWidth="140"
-                          ItemsSource="{Binding Sources}"
-                          SelectedItem="{Binding SelectedSource}" />
-                <TextBlock Text="首字母" VerticalAlignment="Center" Opacity="0.7" />
-                <ComboBox MinWidth="92"
-                          ItemsSource="{Binding Letters}"
-                          SelectedItem="{Binding SelectedLetter}" />
-
-                <!-- 环位筛选：一个按钮式分组内包含 职业/领域 与 环位 两个下拉 -->
-                <Border BorderBrush="{DynamicResource AppDividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="10,3"
-                        VerticalAlignment="Center"
-                        ToolTip.Tip="按职业/领域与环位筛选">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="环位" VerticalAlignment="Center" Opacity="0.7" />
-                        <ComboBox MinWidth="150"
-                                  ItemsSource="{Binding Classes}"
-                                  SelectedItem="{Binding SelectedClass}" />
-                        <ComboBox MinWidth="70"
-                                  ItemsSource="{Binding Levels}"
-                                  SelectedItem="{Binding SelectedLevel}" />
-                    </StackPanel>
-                </Border>
-
-                <TextBlock Text="{Binding ResultSummary}"
-                           VerticalAlignment="Center" Opacity="0.7" />
-                <TextBlock Text="{Binding LastError}"
-                           Foreground="{DynamicResource AppDangerBrush}"
-                           VerticalAlignment="Center"
-                           IsVisible="{Binding LastError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            </StackPanel>
+                    <arc:Button Content="重置筛选" Command="{Binding ClearFiltersCommand}"
+                                Variant="Secondary" Size="Small"
+                                AutomationProperties.Name="清除法术搜索与筛选条件" />
+                </StackPanel>
+            </Grid>
         </Border>
+        <arc:Alert Grid.Row="1" Margin="{DynamicResource ArcSpace2Thickness}"
+                   Title="搜索法术失败" Tone="Danger" Content="{Binding LastError}"
+                   IsOpen="{Binding LastError, Converter={x:Static ObjectConverters.IsNotNull}, Mode=OneWay}" />
 
         <!-- Master-detail -->
-        <Grid Grid.Row="1" ColumnDefinitions="3*,4,2*">
+        <Grid Grid.Row="2" ColumnDefinitions="3*,4,2*">
 
-            <!-- List (master) with a busy overlay -->
+            <!-- List (master). Arc Table supplies the scroll viewer, virtualized rows, loading veil
+                 and empty text; columns are built in code-behind with typed selectors. -->
             <Panel Grid.Column="0">
-                <DataGrid ItemsSource="{Binding Spells}"
-                          SelectedItem="{Binding SelectedSpell}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserResizeColumns="True"
-                          GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <!-- 中文名固定宽：缩放时右侧的英文名列优先伸缩 -->
-                        <DataGridTextColumn Header="中文名" Binding="{Binding NameZh}" Width="150" />
-                        <DataGridTextColumn Header="英文名" Binding="{Binding NameEn}" Width="Auto" />
-                        <DataGridTextColumn Header="出处" Binding="{Binding Source}" Width="Auto" />
-                        <DataGridTextColumn Header="学派" Binding="{Binding School}" Width="Auto" />
-                        <DataGridTextColumn Header="环位" Binding="{Binding Level}" Width="Auto" />
-                    </DataGrid.Columns>
-                </DataGrid>
-
-                <Border IsVisible="{Binding IsBusy}"
-                        Background="#40000000"
-                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                    <ProgressBar IsIndeterminate="True" Width="160"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-
-                <Button Content="加载更多"
-                        Command="{Binding LoadMoreCommand}"
-                        IsVisible="{Binding HasMoreResults}"
-                        HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                        Margin="0,0,0,12" />
+                <arc:Table x:Name="ResultsTable" AutomationProperties.Name="法术搜索结果" Caption="法术搜索结果"
+                           ItemsSource="{Binding Spells}"
+                           IsLoading="{Binding IsBusy}" LoadingMessage="正在搜索法术"
+                           EmptyMessage=""
+                           MinWidth="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                <arc:EmptyState IsVisible="{Binding HasNoResults}"
+                                Title="没有找到法术" Description="试试更短的关键词，或清除部分筛选条件。"
+                                Label="法术搜索结果" Icon="{x:Static arc:ArcIcons.Search}"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                <ProgressBar AutomationProperties.Name="正在加载下一批法术" IsIndeterminate="True"
+                             IsVisible="{Binding IsLoadingMore}" IsHitTestVisible="False"
+                             HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Height="2" />
             </Panel>
 
-            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
 
             <!-- Detail -->
-            <Border Grid.Column="2" Padding="16" Margin="4,0,0,0">
+            <Border Grid.Column="2" Padding="{DynamicResource ArcSpace3Thickness}" Margin="{DynamicResource ArcSpace1Thickness}"
+                    Background="{arc:ArcDesignTokenResource Surface}"
+                    BorderBrush="{arc:ArcDesignTokenResource BorderSubtle}" BorderThickness="1"
+                    CornerRadius="{arc:ArcDesignTokenResource RadiusPanel}">
                 <Panel>
-                    <TextBlock Text="选择左侧的法术查看详情"
-                               Opacity="0.5"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding SelectedSpell, Converter={x:Static ObjectConverters.IsNull}}" />
+                    <arc:EmptyState Title="未选择法术"
+                                    Description="从左侧结果中选择法术以查看详细信息。"
+                                    Label="法术详情区域" Size="Small"
+                                    Icon="{x:Static arc:ArcIcons.BookOpen}"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                    IsVisible="{Binding SelectedSpell, Converter={x:Static ObjectConverters.IsNull}}" />
 
                     <!-- 水平滚动禁用：让字段值在可视宽度内自动换行，而不是被裁掉 -->
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
@@ -110,91 +96,91 @@
                         <ContentControl Content="{Binding SelectedSpell}">
                             <ContentControl.ContentTemplate>
                                 <DataTemplate x:DataType="models:Spell">
-                                    <StackPanel Spacing="8">
-                                        <TextBlock Text="{Binding NameZh}" FontSize="22" FontWeight="Bold"
+                                    <StackPanel Spacing="{arc:ArcDesignTokenResource Space2}">
+                                        <TextBlock Text="{Binding NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
                                                    TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding NameEn}" FontSize="15" Opacity="0.7"
+                                        <TextBlock Text="{Binding NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
                                                    TextWrapping="Wrap" />
 
-                                        <Border Height="1" Background="{DynamicResource AppDividerBrush}"
-                                                Margin="0,4" />
+                                        <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}"
+                                                Margin="{DynamicResource ArcSpace1Thickness}" />
 
                                         <!-- 字段行：两列 Grid（标签定宽 + 值占满剩余宽度）以支持长文本换行 -->
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding School, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="学派" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="学派" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding School}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Level, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="环位" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="环位" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Level}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding CastingTime, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="施法时间" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="施法时间" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding CastingTime}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Components, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="成分" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="成分" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Components}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Range, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="距离" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="距离" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Range}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Effect, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="效果" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="效果" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Effect}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Area, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="范围" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="范围" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Area}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Targets, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="目标" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="目标" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Targets}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Duration, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="持续时间" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="持续时间" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Duration}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding SavingThrow, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="豁免" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="豁免" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding SavingThrow}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding SpellResistance, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="法术抗力" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="法术抗力" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding SpellResistance}" TextWrapping="Wrap" />
                                         </Grid>
 
-                                        <Border Height="1" Background="{DynamicResource AppDividerBrush}"
-                                                Margin="0,4"
+                                        <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}"
+                                                Margin="{DynamicResource ArcSpace1Thickness}"
                                                 IsVisible="{Binding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                         <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                                   LineHeight="22"
+                                                   LineHeight="{arc:ArcDesignTokenResource TypeLG}"
                                                    IsVisible="{Binding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Margin="0,4,0,0"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}" Margin="{DynamicResource ArcSpace1Thickness}"
                                               IsVisible="{Binding Extra, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="附加" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="附加" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding Extra}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8"
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding SpellType, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                            <TextBlock Grid.Column="0" Text="法术类型" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="0" Text="法术类型" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding SpellType}" TextWrapping="Wrap" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="出处" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top" />
+                                        <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}">
+                                            <TextBlock Grid.Column="0" Text="出处" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
                                             <TextBlock Grid.Column="1" Text="{Binding SourceDisplay}" TextWrapping="Wrap" />
                                         </Grid>
                                     </StackPanel>

@@ -55,9 +55,33 @@ public sealed class WeaponViewModel : ReactiveObject
         RemoveCommand = ReactiveCommand.Create(() => remove(this));
         AddWeaponFocusCommand = ReactiveCommand.Create(() => addFocus?.Invoke(this));
         AddWeaponSpecializationCommand = ReactiveCommand.Create(() => addSpecialization?.Invoke(this));
+
+        EnhancementInput = new NumberFieldAdapter(() => _enhancement, value => Enhancement = value, 0);
+        CriticalThreatLowInput = new NumberFieldAdapter(() => _criticalThreatLow, value => CriticalThreatLow = value, 20);
+        CriticalMultiplierInput = new NumberFieldAdapter(() => _criticalMultiplier, value => CriticalMultiplier = value, 2);
+        DamageDiceSizeShiftInput = new NumberFieldAdapter(() => _damageDiceSizeShift, value => DamageDiceSizeShift = value, 0);
+        PropertyChanged += (_, args) =>
+        {
+            switch (args.PropertyName)
+            {
+                case nameof(Enhancement): EnhancementInput.NotifySourceChanged(); break;
+                case nameof(CriticalThreatLow): CriticalThreatLowInput.NotifySourceChanged(); break;
+                case nameof(CriticalMultiplier): CriticalMultiplierInput.NotifySourceChanged(); break;
+                case nameof(DamageDiceSizeShift): DamageDiceSizeShiftInput.NotifySourceChanged(); break;
+            }
+        };
     }
 
     public Guid Id { get; }
+
+    /// <summary>数值项的 decimal 适配器（Arc NumberField 绑定，模型仍为 int?）。</summary>
+    public NumberFieldAdapter EnhancementInput { get; }
+
+    public NumberFieldAdapter CriticalThreatLowInput { get; }
+
+    public NumberFieldAdapter CriticalMultiplierInput { get; }
+
+    public NumberFieldAdapter DamageDiceSizeShiftInput { get; }
 
     public ICommand RemoveCommand { get; }
 

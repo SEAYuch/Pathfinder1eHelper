@@ -67,6 +67,50 @@ public class PaginationTests
     }
 
     [Fact]
+    public async Task Short_next_page_adds_already_loaded_count_without_count_query()
+    {
+        var counted = false;
+        var page = await Pagination.FetchNextAsync<int>(
+            () => Task.FromResult<IReadOnlyList<int>>([3]),
+            () =>
+            {
+                counted = true;
+                return Task.FromResult(99);
+            },
+            take: 200,
+            alreadyLoaded: 2);
+
+        Assert.False(counted);
+        Assert.Equal(3, page.Total);
+        Assert.False(page.HasMore);
+    }
+
+    [Fact]
+    public async Task Full_next_page_uses_filtered_total()
+    {
+        var page = await Pagination.FetchNextAsync<int>(
+            () => Task.FromResult<IReadOnlyList<int>>([3, 4]),
+            () => Task.FromResult(7),
+            take: 2,
+            alreadyLoaded: 2);
+
+        Assert.Equal(7, page.Total);
+        Assert.True(page.HasMore);
+    }
+
+    [Fact]
+    public void Append_preserves_existing_items_and_adds_only_new_items()
+    {
+        var first = new object();
+        var target = new System.Collections.ObjectModel.ObservableCollection<object> { first };
+
+        Pagination.Append(target, [new object(), new object()]);
+
+        Assert.Equal(3, target.Count);
+        Assert.Same(first, target[0]);
+    }
+
+    [Fact]
     public void Summarize_appends_shown_count_only_when_more_remain()
     {
         Assert.Equal("共 3 条法术，已显示前 2 条", Pagination.Summarize("法术", 3, 2));

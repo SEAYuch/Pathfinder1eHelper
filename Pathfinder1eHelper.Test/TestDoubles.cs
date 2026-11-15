@@ -63,9 +63,11 @@ public sealed class FakeSpellService : ISpellService
     public IReadOnlyList<string> SourceList { get; set; } = new List<string> { "CRB", "APG" };
     public IReadOnlyList<string> ClassList { get; set; } = new List<string>();
     public SpellQuery? LastQuery { get; private set; }
+    public int SearchCallCount { get; private set; }
 
     public Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default)
     {
+        SearchCallCount++;
         LastQuery = query;
         return Task.FromResult<IReadOnlyList<Spell>>(
             Results.Skip(query.Skip).Take(query.Take).ToList());
@@ -122,9 +124,11 @@ public sealed class FakeFeatService : IFeatService
     public IReadOnlyList<string> SourceList { get; set; } = new List<string> { "CRB", "APG" };
     public IReadOnlyList<string> TypeList { get; set; } = new List<string> { "战斗", "通用" };
     public FeatQuery? LastQuery { get; private set; }
+    public int SearchCallCount { get; private set; }
 
     public Task<IReadOnlyList<Feat>> SearchAsync(FeatQuery query, CancellationToken ct = default)
     {
+        SearchCallCount++;
         LastQuery = query;
         return Task.FromResult<IReadOnlyList<Feat>>(Results.Skip(query.Skip).Take(query.Take).ToList());
     }
@@ -177,9 +181,11 @@ public sealed class FakeMonsterService : IMonsterService
     public List<Monster> GroupMembers { get; } = new();
     public IReadOnlyList<string> TypeList { get; set; } = new List<string> { "龙类", "异怪" };
     public MonsterQuery? LastQuery { get; private set; }
+    public int SearchCallCount { get; private set; }
 
     public Task<IReadOnlyList<Monster>> SearchAsync(MonsterQuery query, CancellationToken ct = default)
     {
+        SearchCallCount++;
         LastQuery = query;
         return Task.FromResult<IReadOnlyList<Monster>>(
             Results.Skip(query.Skip).Take(query.Take).ToList());

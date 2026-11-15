@@ -16,10 +16,11 @@ namespace Pathfinder1eHelper.ViewModels.Pages;
 /// Monster browser page: debounced search + first-letter / creature-type filters feeding a
 /// master-detail view; the detail pane also exposes related “绪论/概述” links and their members.
 /// </summary>
-public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
+public sealed partial class MonstersViewModel : ViewModelBase, IPageViewModel
 {
     /// <summary>ReactiveUI 路由：宿主屏幕（由 shell 在导航前赋值）。</summary>
-    public IScreen HostScreen { get; set; } = null!;
+    [ReactiveUI.SourceGenerators.Reactive]
+    public partial IScreen HostScreen { get; set; } = null!;
 
     /// <summary>ReactiveUI 路由标识。</summary>
     public string UrlPathSegment => "monsters";
@@ -30,11 +31,12 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
     /// <summary>Sentinel shown in the first-letter filter that means "all letters".</summary>
     public const string AllLetters = "全部";
 
-    /// <summary>默认每页条数；“加载更多”按 <see cref="Pagination.PageSizeStep"/> 递增。</summary>
+    /// <summary>首批查询的默认条数；后续批次从当前结果末尾按页追加。</summary>
     public const int DefaultPageSize = Pagination.DefaultPageSize;
 
     private readonly IMonsterService _monsters;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
+    private readonly ObservableAsPropertyHelper<bool> _isLoadingMore;
     private CancellationTokenSource? _relatedGroupsCts;
     private readonly HashSet<string> _knownCreatureTypes = new(StringComparer.Ordinal);
 
@@ -50,12 +52,27 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
 
         SearchCommand = ReactiveCommand.CreateFromTask<MonsterQuery, MonsterPage>(SearchAsync);
         _isBusy = SearchCommand.IsExecuting.ToProperty(this, x => x.IsBusy);
+        ClearFiltersCommand = ReactiveCommand.Create(
+            ClearFilters,
+            this.WhenAnyValue(
+                x => x.SearchText,
+                x => x.SelectedLetter,
+                x => x.SelectedCreatureType,
+                (search, letter, creatureType) =>
+                    !string.IsNullOrWhiteSpace(search)
+                    || letter != AllLetters
+                    || creatureType != AllTypes));
 
-        LoadMoreCommand = ReactiveCommand.CreateFromTask(
+        var loadMoreCommand = ReactiveCommand.CreateFromTask(
             LoadMoreAsync,
-            this.WhenAnyValue(x => x.HasMoreResults));
+            this.WhenAnyValue(
+                x => x.HasMoreResults,
+                x => x.IsBusy,
+                (hasMore, isBusy) => hasMore && !isBusy));
+        LoadMoreCommand = loadMoreCommand;
+        _isLoadingMore = loadMoreCommand.IsExecuting.ToProperty(this, x => x.IsLoadingMore);
 
-        OpenGroupCommand = ReactiveCommand.CreateFromTask<MonsterGroup>((group, ct) => OpenGroupAsync(group, ct));
+        OpenGroupCommand = ReactiveCommand.CreateFromTask<MonsterGroup>(OpenGroupAsync);
         CloseGroupCommand = ReactiveCommand.Create(() => SelectedGroup = null);
         OpenMonsterCommand = ReactiveCommand.Create<Monster>(OpenMonster);
 
@@ -82,6 +99,17 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
                 .DisposeWith(disposables);
 
             SearchCommand
+                .IsExecuting
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
+                .Subscribe(isExecuting =>
+                {
+                    if (!isExecuting) return;
+                    HasNoResults = false;
+                    LastError = null;
+                })
+                .DisposeWith(disposables);
+
+            SearchCommand
                 .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(ApplyPage)
                 .DisposeWith(disposables);
@@ -95,6 +123,13 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
                 .Subscribe(OnSelectedMonsterChanged)
                 .DisposeWith(disposables);
         });
+    }
+
+    private void ClearFilters()
+    {
+        SearchText = null;
+        SelectedLetter = AllLetters;
+        SelectedCreatureType = AllTypes;
     }
 
     private MonsterQuery BuildQuery() => new(
@@ -117,10 +152,32 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
     {
         try
         {
-            PageSize += Pagination.PageSizeStep;
-            var page = await Task.Run(() => SearchAsync(BuildQuery(), ct), ct);
+            if (!HasMoreResults || IsBusy)
+            {
+                return;
+            }
+
+            var alreadyLoaded = Monsters.Count;
+            var currentQuery = BuildQuery();
+            var query = currentQuery with { Skip = alreadyLoaded, Take = Pagination.PageSizeStep };
+            var page = await Task.Run(
+                () => Pagination.FetchNextAsync(
+                    () => _monsters.SearchAsync(query, ct),
+                    () => _monsters.CountAsync(query, ct),
+                    query.Take,
+                    alreadyLoaded),
+                ct);
             ct.ThrowIfCancellationRequested();
-            ApplyPage(page);
+
+            if (alreadyLoaded != Monsters.Count || currentQuery != BuildQuery())
+            {
+                return;
+            }
+
+            Pagination.Append(Monsters, page.Items);
+            HasMoreResults = Monsters.Count < page.Total;
+            HasNoResults = Monsters.Count == 0;
+            ResultSummary = Pagination.Summarize("怪物", page.Total, Monsters.Count);
         }
         catch (OperationCanceledException)
         {
@@ -138,6 +195,7 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
 
         SelectedMonster = Monsters.Count > 0 ? Monsters[0] : null;
         HasMoreResults = Monsters.Count < page.Total;
+        HasNoResults = Monsters.Count == 0;
         ResultSummary = Pagination.Summarize("怪物", page.Total, Monsters.Count);
     }
 
@@ -161,6 +219,7 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
         SelectedMonster = sample;
         CreatureTypes.Add("龙类");
         ResultSummary = "共 1 条怪物";
+        HasNoResults = false;
     }
 
     public ObservableCollection<Monster> Monsters { get; }
@@ -177,10 +236,13 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
 
     public ReactiveCommand<MonsterQuery, MonsterPage> SearchCommand { get; }
 
-    /// <summary>“加载更多”：按 <see cref="Pagination.PageSizeStep"/> 扩大页大小后重新查询（仅在还有更多时可用）。</summary>
+    /// <summary>清除文本搜索与所有筛选条件。</summary>
+    public ICommand ClearFiltersCommand { get; }
+
+    /// <summary>加载下一批结果并追加到当前列表（仅在还有更多结果且当前未搜索时可用）。</summary>
     public ICommand LoadMoreCommand { get; }
 
-    /// <summary>当前页大小；“加载更多”每次递增 <see cref="Pagination.PageSizeStep"/>。</summary>
+    /// <summary>首批查询的结果条数；后续批次从已加载列表末尾追加。</summary>
     public int PageSize { get; private set; } = DefaultPageSize;
 
     /// <summary>是否还有未显示的匹配结果（由 <see cref="ApplyPage"/> 更新）。</summary>
@@ -197,6 +259,14 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
     public ICommand OpenMonsterCommand { get; }
 
     public bool IsBusy => _isBusy.Value;
+
+    public bool IsLoadingMore => _isLoadingMore.Value;
+
+    public bool HasNoResults
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public string? SearchText
     {
@@ -333,8 +403,8 @@ public sealed class MonstersViewModel : ViewModelBase, IPageViewModel
     {
         SelectedGroup = null;
 
-        // 左侧列表（DataGrid）只能选中集合内的实例；从绪论成员跳转时该实例可能不在列表里，
-        // 若直接赋值会被 DataGrid 的 SelectedItem 双向绑定回写成 null（详情空白）。
+        // 左侧列表（Arc Table）只能高亮集合内的实例；从绪论成员跳转时该实例可能不在列表里，
+        // 直接赋值会让选中态与列表内容不一致（详情空白）。
         // 因此确保目标在集合中存在（同 Id 复用既有实例，否则插入）。
         var target = Monsters.FirstOrDefault(m => m.Id == monster.Id);
         if (target is null)

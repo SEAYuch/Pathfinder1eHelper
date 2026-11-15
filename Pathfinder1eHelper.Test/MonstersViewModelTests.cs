@@ -63,6 +63,42 @@ public class MonstersViewModelTests
     }
 
     [Fact]
+    public async Task Clear_filters_resets_every_monster_filter_and_runs_one_default_search()
+    {
+        var service = new FakeMonsterService();
+        var vm = new MonstersViewModel(service)
+        {
+            SearchText = "龙",
+            SelectedLetter = "C",
+            SelectedCreatureType = "龙类",
+        };
+        using var activation = vm.Activator.Activate();
+
+        var initialSearch = new TaskCompletionSource();
+        using var initialSubscription = vm.SearchCommand.Subscribe(_ => initialSearch.TrySetResult());
+        await initialSearch.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(1, service.SearchCallCount);
+        Assert.True(vm.ClearFiltersCommand.CanExecute(null));
+
+        var resetSearch = new TaskCompletionSource();
+        using var resetSubscription = vm.SearchCommand.Subscribe(_ => resetSearch.TrySetResult());
+        ((ICommand)vm.ClearFiltersCommand).Execute(null);
+        await resetSearch.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Null(vm.SearchText);
+        Assert.Equal(MonstersViewModel.AllLetters, vm.SelectedLetter);
+        Assert.Equal(MonstersViewModel.AllTypes, vm.SelectedCreatureType);
+        Assert.Equal(2, service.SearchCallCount);
+        Assert.NotNull(service.LastQuery);
+        Assert.Null(service.LastQuery!.Term);
+        Assert.Null(service.LastQuery.FirstLetter);
+        Assert.Null(service.LastQuery.CreatureType);
+        Assert.Equal(0, service.LastQuery.Skip);
+        Assert.Equal(MonstersViewModel.DefaultPageSize, service.LastQuery.Take);
+        Assert.False(vm.ClearFiltersCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task Opening_a_group_loads_its_members()
     {
         var service = new FakeMonsterService();
@@ -119,29 +155,35 @@ public class MonstersViewModelTests
     public async Task Load_more_expands_the_page_and_reports_the_true_total()
     {
         var service = new FakeMonsterService();
-        service.Results.Add(new Monster { Id = 1, NameZh = "甲", NameEn = "Aboleth" });
-        service.Results.Add(new Monster { Id = 2, NameZh = "乙", NameEn = "Ankheg" });
-        service.Results.Add(new Monster { Id = 3, NameZh = "丙", NameEn = "Basilisk" });
+        for (var id = 1; id <= Pagination.DefaultPageSize + 1; id++)
+        {
+            service.Results.Add(new Monster { Id = id, NameZh = $"怪物{id}", NameEn = $"Monster {id}" });
+        }
         var vm = new MonstersViewModel(service);
         using var activation = vm.Activator.Activate();
 
         var firstPage = new TaskCompletionSource();
         using var subscription = vm.SearchCommand.Subscribe(_ => firstPage.TrySetResult());
-        ((ICommand)vm.SearchCommand).Execute(new MonsterQuery(null, null, null, 0, 2));
+        ((ICommand)vm.SearchCommand).Execute(new MonsterQuery(null, null, null, 0, Pagination.DefaultPageSize));
         await firstPage.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(2, vm.Monsters.Count);
+        var selectedBeforeLoad = vm.SelectedMonster;
+        Assert.Equal(Pagination.DefaultPageSize, vm.Monsters.Count);
         Assert.True(vm.HasMoreResults);
-        Assert.Contains("共 3 条", vm.ResultSummary);
+        Assert.Contains($"共 {Pagination.DefaultPageSize + 1} 条", vm.ResultSummary);
 
         var loaded = TestSignals.WaitForPropertyAsync(
             vm,
             nameof(MonstersViewModel.HasMoreResults),
-            () => !vm.HasMoreResults && vm.Monsters.Count == 3);
+            () => !vm.HasMoreResults && vm.Monsters.Count == Pagination.DefaultPageSize + 1);
         ((ICommand)vm.LoadMoreCommand).Execute(null);
         await loaded;
 
-        Assert.Equal(3, vm.Monsters.Count);
+        Assert.Equal(Pagination.DefaultPageSize + 1, vm.Monsters.Count);
+        Assert.Same(selectedBeforeLoad, vm.SelectedMonster);
+        Assert.Equal(Enumerable.Range(1, Pagination.DefaultPageSize + 1), vm.Monsters.Select(monster => monster.Id));
+        Assert.Equal(Pagination.DefaultPageSize, service.LastQuery!.Skip);
+        Assert.Equal(Pagination.PageSizeStep, service.LastQuery.Take);
         Assert.False(vm.HasMoreResults);
     }
 }

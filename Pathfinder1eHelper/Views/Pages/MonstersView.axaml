@@ -5,6 +5,7 @@
              xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
              xmlns:models="using:Pathfinder1eHelper.Models"
              xmlns:controls="using:Pathfinder1eHelper.Views.Controls"
+             xmlns:arc="https://github.com/AIDotNet/TKCode.Arc"
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
              x:Class="Pathfinder1eHelper.Views.Pages.MonstersView"
              x:DataType="vm:MonstersViewModel">
@@ -13,84 +14,89 @@
         <vm:MonstersViewModel />
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="{DynamicResource ArcSpace3Thickness}">
 
-        <!-- Filter bar -->
-        <Border Grid.Row="0" Padding="12" Margin="0,0,0,8">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <TextBox Width="280"
-                         PlaceholderText="搜索怪物（中/英文名）"
-                         Text="{Binding SearchText}" />
-                <TextBlock Text="首字母" VerticalAlignment="Center" Opacity="0.7" />
-                <ComboBox MinWidth="92"
-                          ItemsSource="{Binding Letters}"
-                          SelectedItem="{Binding SelectedLetter}" />
-                <TextBlock Text="类型" VerticalAlignment="Center" Opacity="0.7" />
-                <ComboBox MinWidth="150"
-                          ItemsSource="{Binding CreatureTypes}"
-                          SelectedItem="{Binding SelectedCreatureType}" />
-                <TextBlock Text="{Binding ResultSummary}" VerticalAlignment="Center" Opacity="0.7" />
-                <TextBlock Text="{Binding LastError}"
-                           Foreground="{DynamicResource AppDangerBrush}"
-                           VerticalAlignment="Center"
-                           IsVisible="{Binding LastError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            </StackPanel>
+        <!-- Search and filters -->
+        <Border Grid.Row="0" Padding="{DynamicResource ArcSpace3Thickness}"
+                Margin="{DynamicResource ArcSpace2Thickness}"
+                Background="{arc:ArcDesignTokenResource Surface}"
+                BorderBrush="{arc:ArcDesignTokenResource BorderSubtle}" BorderThickness="1"
+                    CornerRadius="{arc:ArcDesignTokenResource RadiusPanel}">
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="{arc:ArcDesignTokenResource Space3}">
+                <WrapPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <arc:SearchField Width="280" Size="Medium" Label="搜索怪物"
+                                     Placeholder="中文名或英文名" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="{DynamicResource ArcSpace1Thickness}" />
+                    <arc:Combobox Width="210" Label="首字母" Placeholder="搜索首字母" ItemsSource="{Binding Letters}"
+                                SelectedItem="{Binding SelectedLetter}"
+                                Margin="{DynamicResource ArcSpace1Thickness}" />
+                    <arc:Combobox Width="210" Label="类型" Placeholder="搜索类型" ItemsSource="{Binding CreatureTypes}"
+                                SelectedItem="{Binding SelectedCreatureType}"
+                                Margin="{DynamicResource ArcSpace1Thickness}" />
+                </WrapPanel>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ResultSummary}"
+                               Foreground="{arc:ArcDesignTokenResource TextSecondary}"
+                               FontSize="{arc:ArcDesignTokenResource TypeSM}"
+                               VerticalAlignment="Center" />
+                    <arc:Button Content="重置筛选" Command="{Binding ClearFiltersCommand}"
+                                Variant="Secondary" Size="Small"
+                                AutomationProperties.Name="清除怪物搜索与筛选条件" />
+                </StackPanel>
+            </Grid>
         </Border>
+        <arc:Alert Grid.Row="1" Margin="{DynamicResource ArcSpace2Thickness}"
+                   Title="搜索怪物失败" Tone="Danger" Content="{Binding LastError}"
+                   IsOpen="{Binding LastError, Converter={x:Static ObjectConverters.IsNotNull}, Mode=OneWay}" />
 
         <!-- Master-detail -->
-        <Grid Grid.Row="1" ColumnDefinitions="3*,4,2*">
+        <Grid Grid.Row="2" ColumnDefinitions="3*,4,2*">
 
+            <!-- Arc Table supplies the scroll viewer, virtualized rows, loading veil and empty text;
+                 columns are built in code-behind with typed selectors. -->
             <Panel Grid.Column="0">
-                <DataGrid ItemsSource="{Binding Monsters}"
-                          SelectedItem="{Binding SelectedMonster}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserResizeColumns="True"
-                          GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="中文名" Binding="{Binding NameZh}" Width="160" />
-                        <DataGridTextColumn Header="英文名" Binding="{Binding NameEn}" Width="Auto" />
-                        <DataGridTextColumn Header="CR" Binding="{Binding Cr}" Width="60" />
-                        <DataGridTextColumn Header="类型" Binding="{Binding CreatureType}" Width="Auto" />
-                        <DataGridTextColumn Header="体型" Binding="{Binding Size}" Width="Auto" />
-                    </DataGrid.Columns>
-                </DataGrid>
-
-                <Border IsVisible="{Binding IsBusy}"
-                        Background="#40000000"
-                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                    <ProgressBar IsIndeterminate="True" Width="160"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-
-                <Button Content="加载更多"
-                        Command="{Binding LoadMoreCommand}"
-                        IsVisible="{Binding HasMoreResults}"
-                        HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                        Margin="0,0,0,12" />
+                <arc:Table x:Name="ResultsTable" AutomationProperties.Name="怪物搜索结果" Caption="怪物搜索结果"
+                           ItemsSource="{Binding Monsters}"
+                           IsLoading="{Binding IsBusy}" LoadingMessage="正在搜索怪物"
+                           EmptyMessage=""
+                           MinWidth="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                <arc:EmptyState IsVisible="{Binding HasNoResults}"
+                                Title="没有找到怪物" Description="试试更短的关键词，或清除部分筛选条件。"
+                                Label="怪物搜索结果" Icon="{x:Static arc:ArcIcons.Search}"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                <ProgressBar AutomationProperties.Name="正在加载下一批怪物" IsIndeterminate="True"
+                             IsVisible="{Binding IsLoadingMore}" IsHitTestVisible="False"
+                             HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Height="2" />
             </Panel>
 
-            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
 
-            <Border Grid.Column="2" Padding="16" Margin="4,0,0,0">
+            <Border Grid.Column="2" Padding="{DynamicResource ArcSpace4Thickness}" Margin="{DynamicResource ArcSpace1Thickness}"
+                    Background="{arc:ArcDesignTokenResource Surface}"
+                    BorderBrush="{arc:ArcDesignTokenResource BorderSubtle}" BorderThickness="1"
+                    CornerRadius="{arc:ArcDesignTokenResource RadiusPanel}">
                 <Panel>
-                    <TextBlock Text="选择左侧的怪物查看详情"
-                               Opacity="0.5"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding SelectedMonster, Converter={x:Static ObjectConverters.IsNull}}" />
-
                     <!-- 怪物详情 -->
                     <ScrollViewer IsVisible="{Binding SelectedGroup, Converter={x:Static ObjectConverters.IsNull}}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="{Binding SelectedMonster.NameZh}" FontSize="22" FontWeight="Bold"
+                        <Panel>
+                            <arc:EmptyState Title="未选择怪物"
+                                            Description="从左侧结果中选择怪物以查看详细信息。"
+                                            Label="怪物详情区域" Size="Small"
+                                            Icon="{x:Static arc:ArcIcons.Bug}"
+                                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                            IsVisible="{Binding SelectedMonster, Converter={x:Static ObjectConverters.IsNull}}" />
+                            <StackPanel Spacing="{arc:ArcDesignTokenResource Space2}"
+                                        IsVisible="{Binding SelectedMonster, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <TextBlock Text="{Binding SelectedMonster.NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
                                        TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding SelectedMonster.NameEn}" FontSize="15" Opacity="0.7"
+                            <TextBlock Text="{Binding SelectedMonster.NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
                                        TextWrapping="Wrap" />
 
                             <!-- 相关绪论链接 -->
-                            <StackPanel Spacing="4"
+                            <StackPanel Spacing="{arc:ArcDesignTokenResource Space1}"
                                         IsVisible="{Binding RelatedGroups.Count}">
-                                <TextBlock Text="相关绪论" FontWeight="SemiBold" Opacity="0.7" />
+                                <TextBlock Text="相关绪论" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <ItemsControl ItemsSource="{Binding RelatedGroups}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
@@ -99,37 +105,37 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:MonsterGroup">
-                                            <Button Content="{Binding NameZh}" Margin="0,0,8,4"
+                                            <arc:Button Content="{Binding NameZh}" Variant="Secondary" Margin="{DynamicResource ArcSpace1Thickness}"
                                                     Click="OnGroupClick" />
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </StackPanel>
 
-                            <Border Height="1" Background="{DynamicResource AppDividerBrush}" Margin="0,4" />
+                            <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}" Margin="{DynamicResource ArcSpace1Thickness}" />
 
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="CR" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="CR" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.Cr}" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="体型" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="体型" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.Size}" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="类型" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="类型" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.CreatureType}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="亚种" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="亚种" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.Subtypes}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="阵营" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="阵营" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.Alignment}" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="属性" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="属性" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock>
                                     <Run Text="{Binding SelectedMonster.Strength}" /><Run Text=" / " />
                                     <Run Text="{Binding SelectedMonster.Dexterity}" /><Run Text=" / " />
@@ -139,38 +145,39 @@
                                     <Run Text="{Binding SelectedMonster.Charisma}" />
                                 </TextBlock>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="环境" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="环境" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.Environment}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="组织" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="组织" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.Organization}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="宝物" FontWeight="SemiBold" Width="72" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
+                                <TextBlock Text="宝物" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                                 <TextBlock Text="{Binding SelectedMonster.Treasure}" TextWrapping="Wrap" />
                             </StackPanel>
 
                             <TextBlock Text="{Binding SelectedMonster.Description}" TextWrapping="Wrap"
-                                       LineHeight="22" Margin="0,4" />
+                                       LineHeight="{arc:ArcDesignTokenResource TypeLG}" Margin="{DynamicResource ArcSpace1Thickness}" />
                             <controls:MonsterTextView Text="{Binding SelectedMonster.StatBlock}" />
                             <controls:MonsterTextView Text="{Binding SelectedMonster.SpecialAbilities}" />
-                        </StackPanel>
+                            </StackPanel>
+                        </Panel>
                     </ScrollViewer>
 
                     <!-- 绪论(概述)详情 -->
                     <ScrollViewer IsVisible="{Binding SelectedGroup, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Spacing="8">
-                            <Button Content="← 返回怪物" Command="{Binding CloseGroupCommand}"
+                        <StackPanel Spacing="{arc:ArcDesignTokenResource Space2}">
+                            <arc:Button Content="← 返回怪物" Variant="Secondary" Command="{Binding CloseGroupCommand}"
                                     HorizontalAlignment="Left" />
-                            <TextBlock Text="{Binding SelectedGroup.NameZh}" FontSize="22" FontWeight="Bold"
+                            <TextBlock Text="{Binding SelectedGroup.NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
                                        TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding SelectedGroup.NameEn}" FontSize="15" Opacity="0.7"
+                            <TextBlock Text="{Binding SelectedGroup.NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
                                        TextWrapping="Wrap" />
                             <controls:MonsterTextView Text="{Binding SelectedGroup.Content}" />
-                            <Border Height="1" Background="{DynamicResource AppDividerBrush}" Margin="0,4" />
-                            <TextBlock Text="包含怪物" FontWeight="SemiBold" Opacity="0.7" />
+                            <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}" Margin="{DynamicResource ArcSpace1Thickness}" />
+                            <TextBlock Text="包含怪物" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
                             <ItemsControl ItemsSource="{Binding GroupMembers}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -179,7 +186,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:Monster">
-                                        <Button Content="{Binding NameZh}" Margin="0,0,8,4"
+                                        <arc:Button Content="{Binding NameZh}" Variant="Secondary" Margin="{DynamicResource ArcSpace1Thickness}"
                                                 Click="OnMemberClick" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

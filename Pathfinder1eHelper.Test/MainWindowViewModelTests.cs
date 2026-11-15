@@ -17,6 +17,30 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public void Sidebar_route_keys_mirror_the_navigable_items()
+    {
+        var (vm, _, _, _, _) = Create();
+
+        Assert.Equal(new[] { "spells", "feats", "combat", "monsters" }, vm.SidebarItems.Select(item => item.Key));
+        Assert.Equal(vm.NavItems.Select(item => item.Header), vm.SidebarItems.Select(item => item.Label));
+        Assert.Same(vm.NavItems[0], vm.SidebarItems[0].Tag);
+        Assert.Equal("spells", vm.SelectedNavKey);
+    }
+
+    [Fact]
+    public void Selecting_sidebar_route_key_navigates_and_keeps_key_in_sync()
+    {
+        var (vm, _, feats, _, _) = Create();
+
+        vm.SelectedNavKey = "feats";
+
+        Assert.Same(vm.NavItems[1], vm.SelectedNavItem);
+        Assert.Same(feats, vm.Router.GetCurrentViewModel());
+        Assert.Same(vm, feats.HostScreen);
+        Assert.Single(vm.Router.NavigationStack);
+    }
+
+    [Fact]
     public void Selecting_feats_navigates_to_the_feat_page()
     {
         var (vm, _, feats, _, _) = Create();
@@ -25,6 +49,7 @@ public class MainWindowViewModelTests
 
         Assert.Same(feats, vm.Router.GetCurrentViewModel());
         Assert.Same(vm, feats.HostScreen);
+        Assert.Equal("feats", vm.SelectedNavKey);
     }
 
     [Fact]

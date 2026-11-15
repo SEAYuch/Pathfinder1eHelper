@@ -9,8 +9,11 @@ namespace Pathfinder1eHelper.ViewModels.Pages;
 /// <typeparam name="T">列表项类型（法术/怪物/专长）。</typeparam>
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total)
 {
+    /// <summary>本批次开始前已加载的项目数；首批为零。</summary>
+    public int AlreadyLoaded { get; init; }
+
     /// <summary>是否还有未显示的匹配结果。</summary>
-    public bool HasMore => Items.Count < Total;
+    public bool HasMore => AlreadyLoaded + Items.Count < Total;
 }
 
 /// <summary>
@@ -43,6 +46,33 @@ public static class Pagination
         var items = await fetchPage();
         var total = items.Count < take ? items.Count : await countTotal();
         return new PagedResult<T>(items, total);
+    }
+
+    /// <summary>查询下一段结果，短页时用已加载数量推导筛选结果总数。</summary>
+    public static async Task<PagedResult<T>> FetchNextAsync<T>(
+        Func<Task<IReadOnlyList<T>>> fetchPage,
+        Func<Task<int>> countTotal,
+        int take,
+        int alreadyLoaded)
+    {
+        ArgumentNullException.ThrowIfNull(fetchPage);
+        ArgumentNullException.ThrowIfNull(countTotal);
+
+        var items = await fetchPage();
+        var total = items.Count < take ? alreadyLoaded + items.Count : await countTotal();
+        return new PagedResult<T>(items, total) { AlreadyLoaded = alreadyLoaded };
+    }
+
+    /// <summary>将一页结果追加到列表尾部，不清空既有项（保留选择与滚动锚点）。</summary>
+    public static void Append<T>(ObservableCollection<T> target, IReadOnlyList<T> items)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(items);
+
+        foreach (var item in items)
+        {
+            target.Add(item);
+        }
     }
 
     /// <summary>用一页结果整体替换列表内容（保持集合实例，供绑定继续使用）。</summary>
