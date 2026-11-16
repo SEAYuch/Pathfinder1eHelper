@@ -17,7 +17,7 @@ public sealed class TablePagingBehaviorTests
             items.Add(new object());
         }
 
-        var table = new TKCode.Arc.Table { ItemsSource = items };
+        var table = new Table { ItemsSource = items };
         var canLoadMore = true;
         var isLoadingMore = false;
         var calls = 0;
@@ -42,7 +42,7 @@ public sealed class TablePagingBehaviorTests
     public void Table_load_more_ignores_underfilled_grids_busy_state_and_empty_sources()
     {
         var items = new List<object> { new(), new() };
-        var table = new TKCode.Arc.Table { ItemsSource = items };
+        var table = new Table { ItemsSource = items };
         var canLoadMore = true;
         var isLoadingMore = false;
         var calls = 0;
@@ -72,7 +72,7 @@ public sealed class TablePagingBehaviorTests
         var first = new object();
         var second = new object();
         var third = new object();
-        var table = new TKCode.Arc.Table { ItemsSource = new List<object> { first, second, third } };
+        var table = new Table { ItemsSource = new List<object> { first, second, third } };
         object? selected = second;
         var behavior = new TableSingleSelectionBehavior(table, () => selected, value => selected = value);
 
@@ -95,7 +95,7 @@ public sealed class TablePagingBehaviorTests
         var first = new object();
         var second = new object();
         var third = new object();
-        var table = new TKCode.Arc.Table { ItemsSource = new List<object> { first, second, third } };
+        var table = new Table { ItemsSource = new List<object> { first, second, third } };
         object? selected = first;
         var behavior = new TableSingleSelectionBehavior(table, () => selected, value => selected = value);
 

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Pathfinder1eHelper.ViewModels.Pages;
 using Pathfinder1eHelper.Views.Pages;
-using ReactiveUI;
 using Splat;
 
 namespace Pathfinder1eHelper.Views;
@@ -22,7 +21,7 @@ public sealed class ViewLocator : IViewLocator
         [typeof(MonstersViewModel)] = Create<MonstersView>,
     };
 
-    public IViewFor<TViewModel>? ResolveView<TViewModel>()
+    public static IViewFor<TViewModel>? ResolveView<TViewModel>()
         where TViewModel : class =>
         ResolveByType(typeof(TViewModel)) as IViewFor<TViewModel>;
 

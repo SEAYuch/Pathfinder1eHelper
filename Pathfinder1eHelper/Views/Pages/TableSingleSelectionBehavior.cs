@@ -84,13 +84,11 @@ internal sealed class TableSingleSelectionBehavior : IDisposable
         // Arc only hands SelectedItems out when IsSelectable is on: on every source re-read it
         // writes an empty list back. Re-apply the view-model selection so the highlight survives
         // new searches and appended pages.
-        if (e.Property == Table.SelectedItemsProperty && !_restoringSelection)
+        if (e.Property != Table.SelectedItemsProperty || _restoringSelection) return;
+        var selected = _getSelected();
+        if (selected is not null && e.NewValue is not IList { Count: > 0 })
         {
-            var selected = _getSelected();
-            if (selected is not null && e.NewValue is not System.Collections.IList { Count: > 0 })
-            {
-                SetSelectedItems(selected);
-            }
+            SetSelectedItems(selected);
         }
     }
 
@@ -102,11 +100,9 @@ internal sealed class TableSingleSelectionBehavior : IDisposable
             _observedItems = null;
         }
 
-        if (items is INotifyCollectionChanged observable)
-        {
-            _observedItems = observable;
-            observable.CollectionChanged += OnItemsChanged;
-        }
+        if (items is not INotifyCollectionChanged observable) return;
+        _observedItems = observable;
+        observable.CollectionChanged += OnItemsChanged;
     }
 
     private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -197,37 +193,16 @@ internal sealed class TableSingleSelectionBehavior : IDisposable
 
     private List<object> Snapshot()
     {
-        if (_table.ItemsSource is not IEnumerable items)
-        {
-            return [];
-        }
-
-        var list = new List<object>();
-        foreach (var item in items)
-        {
-            if (item is not null)
-            {
-                list.Add(item);
-            }
-        }
-
-        return list;
+        return _table.ItemsSource is not { } items ? [] : [.. items.OfType<object>()];
     }
 
     private double EstimateRowHeight()
     {
         var count = (_table.ItemsSource as ICollection)?.Count ?? 0;
         var extent = _scrollViewer?.Extent.Height ?? 0;
-        if (count > 0 && extent > 0)
-        {
-            var estimate = extent / count;
-            if (estimate > 0)
-            {
-                return estimate;
-            }
-        }
-
-        return FallbackRowHeight;
+        if (count <= 0 || !(extent > 0)) return FallbackRowHeight;
+        var estimate = extent / count;
+        return estimate > 0 ? estimate : FallbackRowHeight;
     }
 
     private void RevealRow(int index)
@@ -260,17 +235,15 @@ internal sealed class TableSingleSelectionBehavior : IDisposable
     {
         for (var current = source; current is not null && current != _table; current = current.GetVisualParent())
         {
-            if (current is InputElement { Focusable: true } focusable)
-            {
-                focusable.Focus();
-                return;
-            }
+            if (current is not InputElement { Focusable: true } focusable) continue;
+            focusable.Focus();
+            return;
         }
     }
 
     private object? FindRowItem(Visual? source)
     {
-        if (_table.ItemsSource is not IEnumerable items)
+        if (_table.ItemsSource is not { } items)
         {
             return null;
         }
@@ -294,17 +267,19 @@ internal sealed class TableSingleSelectionBehavior : IDisposable
         // DataContext) and its item has to be read from the public Item property.
         for (var current = source; current is not null && current != _table; current = current.GetVisualParent())
         {
-            if (current is Control { DataContext: { } dataContext } && known.Contains(dataContext))
+            switch (current)
             {
-                return dataContext;
-            }
-
-            if (current is Visual row && row.GetType().Name == "TableRow")
-            {
-                var item = ReadRowItem(row);
-                if (item is not null && known.Contains(item))
+                case Control { DataContext: { } dataContext } when known.Contains(dataContext):
+                    return dataContext;
+                case { } row when row.GetType().Name == "TableRow":
                 {
-                    return item;
+                    var item = ReadRowItem(row);
+                    if (item is not null && known.Contains(item))
+                    {
+                        return item;
+                    }
+
+                    break;
                 }
             }
         }
@@ -315,15 +290,13 @@ internal sealed class TableSingleSelectionBehavior : IDisposable
     private object? ReadRowItem(Visual row)
     {
         var type = row.GetType();
-        if (type != _rowType)
-        {
-            _rowType = type;
-            _rowItemProperty = type
-                .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-                .Where(property => property.Name == "Item" && property.CanRead && property.GetIndexParameters().Length == 0)
-                .OrderByDescending(property => property.DeclaringType == type)
-                .FirstOrDefault();
-        }
+        if (type == _rowType) return _rowItemProperty?.GetValue(row);
+        _rowType = type;
+        _rowItemProperty = type
+            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Where(property => property is { Name: "Item", CanRead: true } && property.GetIndexParameters().Length == 0)
+            .OrderByDescending(property => property.DeclaringType == type)
+            .FirstOrDefault();
 
         return _rowItemProperty?.GetValue(row);
     }

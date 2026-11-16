@@ -9,17 +9,18 @@ using Pathfinder1eHelper.Models;
 namespace Pathfinder1eHelper.Services;
 
 /// <summary>FreeSql-backed <see cref="ISpellRepository"/> over the read-only DuckDB reference data.</summary>
-public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
+public sealed class SpellRepository(IFreeSql fSql) : ISpellRepository
 {
     private ISelect<Spell> Filtered(SpellQuery q)
     {
         // 中文名按原样匹配；英文名两侧统一 lower()，使英文搜索不区分大小写。
         var term = q.Term;
         var lowerTerm = term?.ToLowerInvariant();
-        var sel = fsql.Select<Spell>()
+        var sel = fSql.Select<Spell>()
             .WhereIf(
                 !string.IsNullOrWhiteSpace(term),
-                s => s.NameZh.Contains(term!) || s.NameEn.ToLower().Contains(lowerTerm!))
+                s => s.NameZh.Contains(term!) ||
+                     s.NameEn.Contains(lowerTerm!, StringComparison.CurrentCultureIgnoreCase))
             .WhereIf(!string.IsNullOrEmpty(q.Source), s => s.Source == q.Source)
             .WhereIf(!string.IsNullOrEmpty(q.FirstLetter), s => s.FirstLetter == q.FirstLetter);
 
@@ -28,22 +29,21 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
         // 精确匹配任一分量；仅指定环位时限定 kind='class' 的主职业行。
         var hasClass = !string.IsNullOrWhiteSpace(q.ClassName);
         var hasLevel = q.ClassLevel is >= 0 and <= 9;
-        if (hasClass || hasLevel)
-        {
-            var className = q.ClassName!;
-            var firstToken = className + "/";
-            var lastToken = "/" + className;
-            var middleToken = "/" + className + "/";
-            sel = sel.Where(s => fsql.Select<SpellLevel>().Any(sl =>
-                sl.SpellId == s.Id
-                && (!hasLevel || sl.Level == q.ClassLevel)
-                && (hasClass
-                    ? (sl.ClassName == className
-                        || sl.ClassName.StartsWith(firstToken)
-                        || sl.ClassName.EndsWith(lastToken)
-                        || sl.ClassName.Contains(middleToken))
-                    : sl.Kind == "class")));
-        }
+        if (!hasClass && !hasLevel) return sel;
+        
+        var className = q.ClassName!;
+        var firstToken = className + "/";
+        var lastToken = "/" + className;
+        var middleToken = "/" + className + "/";
+        sel = sel.Where(s => fSql.Select<SpellLevel>().Any(sl =>
+            sl.SpellId == s.Id
+            && (!hasLevel || sl.Level == q.ClassLevel)
+            && (hasClass
+                ? sl.ClassName == className
+                  || sl.ClassName.StartsWith(firstToken)
+                  || sl.ClassName.EndsWith(lastToken)
+                  || sl.ClassName.Contains(middleToken)
+                : sl.Kind == "class")));
 
         return sel;
     }
@@ -60,7 +60,7 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
 
     // 去重与排序下推到 SQL（DISTINCT + ORDER BY），避免把整列拉进内存再处理。
     public async Task<IReadOnlyList<string>> GetSourcesAsync(CancellationToken ct = default) =>
-        await fsql.Select<Spell>()
+        await fSql.Select<Spell>()
             .Where(s => s.Source != null && s.Source != "")
             .Distinct()
             .OrderBy(s => s.Source)
@@ -70,7 +70,7 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
     {
         // DISTINCT 下推到 SQL 取回原始 class_name，再在内存里把复合项（如“术士/法师”）按 '/'
         // 摊平成单个职业/领域并去重——去重后集合很小（职业+领域约百余项），无需 SQL 侧 unnest。
-        var names = await fsql.Select<SpellLevel>()
+        var names = await fSql.Select<SpellLevel>()
             .Where(sl => sl.ClassName != null && sl.ClassName != "")
             .Distinct()
             .ToListAsync(sl => sl.ClassName, ct);
@@ -83,21 +83,5 @@ public sealed class SpellRepository(IFreeSql fsql) : ISpellRepository
     }
 
     public async Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
-        await fsql.Select<Spell>().Where(s => s.Id == id).FirstAsync(ct);
-
-    public async Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default)
-    {
-        var lowerEnglish = string.IsNullOrWhiteSpace(nameEn) ? null : nameEn.Trim().ToLowerInvariant();
-        var chinese = string.IsNullOrWhiteSpace(nameZh) ? null : nameZh.Trim();
-        if (lowerEnglish is null && chinese is null)
-        {
-            return [];
-        }
-
-        return await fsql.Select<SpellBuff>()
-            .Where(b => (b.NameEn != null && b.NameEn.ToLower() == lowerEnglish)
-                || (b.NameZh != null && b.NameZh == chinese))
-            .OrderBy(b => b.SortOrder)
-            .ToListAsync(ct);
-    }
+        await fSql.Select<Spell>().Where(s => s.Id == id).FirstAsync(ct);
 }

@@ -37,11 +37,9 @@ public static class ModifierEngine
 
         if (zeroOnHelpless && modifiers.Any(m => Passes(m, filter) && m.Descriptor == ModifierDescriptor.Helpless))
         {
-            foreach (var modifier in modifiers)
-            {
-                var helpless = modifier.Descriptor == ModifierDescriptor.Helpless;
-                contributions.Add(new ModifierContribution(modifier, helpless, helpless ? "无助：属性归零" : null));
-            }
+            contributions.AddRange(modifiers
+                .Select(modifier => new { modifier, helpless = modifier.Descriptor == ModifierDescriptor.Helpless })
+                .Select(t => new ModifierContribution(t.modifier, t.helpless, t.helpless ? "无助：属性归零" : null)));
 
             return new ModifierEvaluation(0, contributions);
         }
@@ -71,8 +69,7 @@ public static class ModifierEngine
                     continue;
                 }
 
-                if (modifier.Value < 0
-                    && modifier.Descriptor is ModifierDescriptor.Armor or ModifierDescriptor.Encumbrance)
+                if (modifier is { Value: < 0, Descriptor: ModifierDescriptor.Armor or ModifierDescriptor.Encumbrance })
                 {
                     var isWinner = ReferenceEquals(modifier, globalPenaltyWinner);
                     contributions.Add(new ModifierContribution(
@@ -88,35 +85,28 @@ public static class ModifierEngine
                     continue;
                 }
 
-                if (modifier.Value > 0 && (highestPositive is null || modifier.Value > highestPositive.Value))
+                switch (modifier.Value)
                 {
-                    highestPositive = modifier;
-                }
-
-                if (modifier.Value < 0 && (lowestNegative is null || modifier.Value < lowestNegative.Value))
-                {
-                    lowestNegative = modifier;
+                    case > 0 when highestPositive is null || modifier.Value > highestPositive.Value:
+                        highestPositive = modifier;
+                        break;
+                    case < 0 when lowestNegative is null || modifier.Value < lowestNegative.Value:
+                        lowestNegative = modifier;
+                        break;
                 }
 
                 (modifier.Value > 0 ? positives : negatives).Add(modifier);
             }
 
-            foreach (var modifier in stackables)
-            {
-                contributions.Add(new ModifierContribution(modifier, true, null));
-            }
+            contributions.AddRange(stackables.Select(modifier => new ModifierContribution(modifier, true, null)));
 
-            foreach (var modifier in positives)
-            {
-                var included = ReferenceEquals(modifier, highestPositive);
-                contributions.Add(new ModifierContribution(modifier, included, included ? null : "同类型取高，被更高者压制"));
-            }
+            contributions.AddRange(positives
+                .Select(modifier => new { modifier, included = ReferenceEquals(modifier, highestPositive) })
+                .Select(t => new ModifierContribution(t.modifier, t.included, t.included ? null : "同类型取高，被更高者压制")));
 
-            foreach (var modifier in negatives)
-            {
-                var included = ReferenceEquals(modifier, lowestNegative);
-                contributions.Add(new ModifierContribution(modifier, included, included ? null : "同类型取低，被更低者压制"));
-            }
+            contributions.AddRange(negatives
+                .Select(modifier => new { modifier, included = ReferenceEquals(modifier, lowestNegative) })
+                .Select(t => new ModifierContribution(t.modifier, t.included, t.included ? null : "同类型取低，被更低者压制")));
         }
 
         var total = baseValue + contributions.Where(c => c.Included).Sum(c => c.Modifier.Value);

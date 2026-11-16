@@ -8,7 +8,7 @@ using System.Windows.Input;
 using Pathfinder1eHelper.Models;
 using Pathfinder1eHelper.Services;
 using ReactiveUI;
-using ReactiveUI.Primitives; // Throttle, ObserveOn, DistinctUntilChanged, DisposeWith, Subscribe
+using ReactiveUI.Primitives;
 
 namespace Pathfinder1eHelper.ViewModels.Pages;
 
@@ -118,11 +118,9 @@ public sealed class SpellsViewModel : ViewModelBase, IPageViewModel
                 .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(isExecuting =>
                 {
-                    if (isExecuting)
-                    {
-                        HasNoResults = false;
-                        LastError = null;
-                    }
+                    if (!isExecuting) return;
+                    HasNoResults = false;
+                    LastError = null;
                 })
                 .DisposeWith(disposables);
 

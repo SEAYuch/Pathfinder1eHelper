@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
 using Avalonia.Media;
 
 namespace Pathfinder1eHelper.Views.Controls;
@@ -79,7 +78,7 @@ public sealed class MonsterTextView : UserControl
             grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         }
 
-        var brush = this.TryGetResource("AppDividerBrush", null, out var resource) && resource is IBrush found
+        var brush = TryGetResource("AppDividerBrush", null, out var resource) && resource is IBrush found
             ? found
             : Brushes.Gray;
 

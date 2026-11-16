@@ -11,15 +11,13 @@ namespace Pathfinder1eHelper.ViewModels.Combat;
 /// </summary>
 public sealed class CharacterRoster(ICharacterRepository repository)
 {
-    private readonly ICharacterRepository _repository = repository;
-
     public ObservableCollection<CharacterListItemViewModel> Characters { get; } = [];
 
     /// <summary>从仓储载入全部角色（按仓储顺序）。</summary>
     public void Load()
     {
         Characters.Clear();
-        foreach (var profile in _repository.LoadAll())
+        foreach (var profile in repository.LoadAll())
         {
             Characters.Add(new CharacterListItemViewModel(profile));
         }
@@ -33,7 +31,7 @@ public sealed class CharacterRoster(ICharacterRepository repository)
     public CharacterListItemViewModel Create()
     {
         var profile = NewProfile();
-        _repository.Save(profile);
+        repository.Save(profile);
 
         var item = new CharacterListItemViewModel(profile);
         Characters.Add(item);
@@ -45,7 +43,7 @@ public sealed class CharacterRoster(ICharacterRepository repository)
     {
         var clone = CharacterCloner.Duplicate(source);
         clone.Name = NextDuplicateName(source.Name);
-        _repository.Save(clone);
+        repository.Save(clone);
 
         var item = new CharacterListItemViewModel(clone);
         Characters.Add(item);
@@ -55,7 +53,7 @@ public sealed class CharacterRoster(ICharacterRepository repository)
     /// <summary>删除指定角色并返回应选中的角色（删空时自动新建）。</summary>
     public CharacterListItemViewModel Delete(CharacterListItemViewModel item)
     {
-        _repository.Delete(item.Profile.Id);
+        repository.Delete(item.Profile.Id);
         Characters.Remove(item);
         return EnsureAtLeastOne();
     }

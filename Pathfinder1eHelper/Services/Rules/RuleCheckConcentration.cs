@@ -17,14 +17,13 @@ public static class RuleCheckConcentration
         ArgumentNullException.ThrowIfNull(modifiers);
 
         var level = Math.Max(1, casterLevel);
-        var contributions = new List<Contribution>
-        {
+        List<Contribution> contributions =
+        [
             new("施法者等级", level),
             new("施法属性", castingAbilityBonus, Included: castingAbilityBonus != 0),
-        };
-
-        contributions.AddRange(ModifierEngine.Evaluate(0, modifiers)
-            .Contributions.Select(RuleMath.FromModifier));
+            .. ModifierEngine.Evaluate(0, modifiers)
+                .Contributions.Select(RuleMath.FromModifier)
+        ];
 
         return RuleMath.Stat(contributions);
     }

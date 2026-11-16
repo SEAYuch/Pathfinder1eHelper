@@ -9,7 +9,7 @@ public class ModifierDescriptorCatalogTests
     [Fact]
     public void Display_order_covers_every_declared_descriptor_once()
     {
-        var declared = System.Enum.GetValues<ModifierDescriptor>().Distinct().ToArray();
+        var declared = Enum.GetValues<ModifierDescriptor>().Distinct().ToArray();
         var order = ModifierDescriptorCatalog.DisplayOrder;
 
         Assert.Equal(declared.Length, order.Count);

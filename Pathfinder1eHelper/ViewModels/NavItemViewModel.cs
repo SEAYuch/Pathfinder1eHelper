@@ -1,6 +1,5 @@
 using System;
 using Avalonia.Media;
-using ReactiveUI;
 
 namespace Pathfinder1eHelper.ViewModels;
 

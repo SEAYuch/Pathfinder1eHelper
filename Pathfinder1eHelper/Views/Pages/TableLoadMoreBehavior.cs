@@ -16,40 +16,36 @@ internal sealed class TableLoadMoreBehavior : IDisposable
 {
     private const double PreloadDistance = 120;
 
-    private readonly Table _table;
     private readonly Func<bool> _canLoadMore;
     private readonly Func<bool> _isLoadingMore;
     private readonly Action _loadMore;
-    private ScrollViewer? _scrollViewer;
     private int _lastRequestedItemCount = -1;
 
-    internal Table ObservedTable => _table;
+    internal Table ObservedTable { get; }
 
-    internal ScrollViewer? ObservedScrollViewer => _scrollViewer;
+    internal ScrollViewer? ObservedScrollViewer { get; private set; }
 
     public TableLoadMoreBehavior(Table table, Func<bool> canLoadMore, Func<bool> isLoadingMore, Action loadMore)
     {
-        _table = table ?? throw new ArgumentNullException(nameof(table));
+        ObservedTable = table ?? throw new ArgumentNullException(nameof(table));
         _canLoadMore = canLoadMore ?? throw new ArgumentNullException(nameof(canLoadMore));
         _isLoadingMore = isLoadingMore ?? throw new ArgumentNullException(nameof(isLoadingMore));
         _loadMore = loadMore ?? throw new ArgumentNullException(nameof(loadMore));
-        _table.TemplateApplied += OnTemplateApplied;
-        _table.AttachedToVisualTree += OnAttachedToVisualTree;
-        if (_table.IsAttachedToVisualTree())
+        ObservedTable.TemplateApplied += OnTemplateApplied;
+        ObservedTable.AttachedToVisualTree += OnAttachedToVisualTree;
+        if (ObservedTable.IsAttachedToVisualTree())
         {
-            _table.ApplyTemplate();
+            ObservedTable.ApplyTemplate();
         }
     }
 
     internal void AttachTemplateParts(INameScope nameScope)
     {
         DetachScrollViewer();
-        _scrollViewer = nameScope.Find<ScrollViewer>(Table.ScrollViewerPart);
-        if (_scrollViewer is not null)
-        {
-            _scrollViewer.ScrollChanged += OnScrollChanged;
-            TryLoadMore(_scrollViewer.Extent.Height, _scrollViewer.Viewport.Height, _scrollViewer.Offset.Y);
-        }
+        ObservedScrollViewer = nameScope.Find<ScrollViewer>(Table.ScrollViewerPart);
+        if (ObservedScrollViewer is null) return;
+        ObservedScrollViewer.ScrollChanged += OnScrollChanged;
+        TryLoadMore(ObservedScrollViewer.Extent.Height, ObservedScrollViewer.Viewport.Height, ObservedScrollViewer.Offset.Y);
     }
 
     internal bool TryLoadMore(double extent, double viewport, double offset)
@@ -61,18 +57,16 @@ internal sealed class TableLoadMoreBehavior : IDisposable
         }
 
         var remaining = extent - viewport - offset;
-        if (remaining > PreloadDistance)
+        switch (remaining)
         {
-            _lastRequestedItemCount = -1;
-            return false;
+            case > PreloadDistance:
+                _lastRequestedItemCount = -1;
+                return false;
+            case < 0:
+                return false;
         }
 
-        if (remaining < 0)
-        {
-            return false;
-        }
-
-        var count = (_table.ItemsSource as ICollection)?.Count ?? 0;
+        var count = (ObservedTable.ItemsSource as ICollection)?.Count ?? 0;
         if (count == 0 || count == _lastRequestedItemCount || !_canLoadMore() || _isLoadingMore())
         {
             return false;
@@ -85,29 +79,27 @@ internal sealed class TableLoadMoreBehavior : IDisposable
 
     private void OnTemplateApplied(object? sender, TemplateAppliedEventArgs e) => AttachTemplateParts(e.NameScope);
 
-    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e) => _table.ApplyTemplate();
+    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e) => ObservedTable.ApplyTemplate();
 
     private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
-        if (_scrollViewer is not null)
+        if (ObservedScrollViewer is not null)
         {
-            TryLoadMore(_scrollViewer.Extent.Height, _scrollViewer.Viewport.Height, _scrollViewer.Offset.Y);
+            TryLoadMore(ObservedScrollViewer.Extent.Height, ObservedScrollViewer.Viewport.Height, ObservedScrollViewer.Offset.Y);
         }
     }
 
     private void DetachScrollViewer()
     {
-        if (_scrollViewer is not null)
-        {
-            _scrollViewer.ScrollChanged -= OnScrollChanged;
-            _scrollViewer = null;
-        }
+        if (ObservedScrollViewer is null) return;
+        ObservedScrollViewer.ScrollChanged -= OnScrollChanged;
+        ObservedScrollViewer = null;
     }
 
     public void Dispose()
     {
         DetachScrollViewer();
-        _table.TemplateApplied -= OnTemplateApplied;
-        _table.AttachedToVisualTree -= OnAttachedToVisualTree;
+        ObservedTable.TemplateApplied -= OnTemplateApplied;
+        ObservedTable.AttachedToVisualTree -= OnAttachedToVisualTree;
     }
 }

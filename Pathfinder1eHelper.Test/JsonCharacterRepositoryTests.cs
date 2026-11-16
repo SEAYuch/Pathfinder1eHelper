@@ -115,16 +115,6 @@ public class JsonCharacterRepositoryTests : IDisposable
         repository.Save(new CharacterProfile
         {
             Name = "双持",
-            Modifiers =
-            [
-                new ModifierEntry
-                {
-                    Name = "双武器格斗",
-                    Kind = ModifierKind.TwoWeaponFighting,
-                    Descriptor = ModifierDescriptor.UntypedStackable,
-                    Stat = CombatStat.Attack,
-                },
-            ],
             Weapons =
             [
                 new WeaponProfile { Name = "长剑", BaseDamage = "1d8", IsDouble = true },
@@ -139,12 +129,10 @@ public class JsonCharacterRepositoryTests : IDisposable
         });
 
         var loaded = Assert.Single(repository.LoadAll());
-        var sheet = CombatCalculator.Calculate(loaded);
 
         Assert.True(loaded.Weapons[0].IsDouble);
         Assert.Equal(WeaponCategory.Medium, loaded.Weapons[1].Category);
-        // 重启后双武器格斗仍生效：主手双头 → 副手 −8
-        Assert.Equal(-8, sheet.Weapons[1].Attack.Total);
+        Assert.True(loaded.Weapons[1].IsSecondary);
     }
 
     [Fact]

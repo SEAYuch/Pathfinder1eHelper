@@ -58,7 +58,7 @@ public static class RuleCalculateAttackBonus
             contributions.Add(new Contribution("攻击减值", -request.AttackPenalty));
         }
 
-        if (request.IsMelee && request.TargetIsFlanked)
+        if (request is { IsMelee: true, TargetIsFlanked: true })
         {
             contributions.Add(new Contribution("夹击", Flanking));
         }

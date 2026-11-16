@@ -129,7 +129,7 @@ internal static class MaintenanceMode
         catch (Exception ex)
         {
             AppLog.Error("MaintenanceMode.StampDb", ex);
-            Console.Error.WriteLine($"盖章失败：{ex.Message}");
+            await Console.Error.WriteLineAsync($"盖章失败：{ex.Message}");
             return ExitStampFailed;
         }
 
@@ -137,7 +137,7 @@ internal static class MaintenanceMode
         var walPath = dbPath + ".wal";
         if (File.Exists(walPath))
         {
-            Console.Error.WriteLine($"警告：盖章后仍存在 WAL 文件 {walPath}，分发前请确认其已合并。");
+            await Console.Error.WriteLineAsync($"警告：盖章后仍存在 WAL 文件 {walPath}，分发前请确认其已合并。");
         }
 
         Console.WriteLine($"已盖章 {dbPath}");
@@ -166,14 +166,10 @@ internal static class MaintenanceMode
             return false;
         }
 
-        if (!File.Exists(dbPath))
-        {
-            Console.Error.WriteLine($"参考库不存在：{dbPath}");
-            exitCode = ExitMissingDb;
-            return false;
-        }
-
-        return true;
+        if (File.Exists(dbPath)) return true;
+        Console.Error.WriteLine($"参考库不存在：{dbPath}");
+        exitCode = ExitMissingDb;
+        return false;
     }
 
     /// <summary>
@@ -223,7 +219,7 @@ internal static class MaintenanceMode
 
             if (info is null)
             {
-                Console.Error.WriteLine("参考库没有 db_info 盖章行（或是旧库）；请先运行 --stamp-db。");
+                await Console.Error.WriteLineAsync("参考库没有 db_info 盖章行（或是旧库）；请先运行 --stamp-db。");
                 return ExitMismatch;
             }
 
@@ -248,7 +244,7 @@ internal static class MaintenanceMode
             {
                 foreach (var problem in problems)
                 {
-                    Console.Error.WriteLine($"✗ {problem}");
+                    await Console.Error.WriteLineAsync($"✗ {problem}");
                 }
 
                 return ExitMismatch;

@@ -8,17 +8,12 @@ namespace Pathfinder1eHelper.Services;
 /// 可叠加数值：基础值 + 一组按描述符叠加的 <see cref="Modifier"/>。
 /// 语义对应 WotR <c>ModifiableValue</c>；AC / 属性等派生数值将在此之上扩展。
 /// </summary>
-public class ModifiableValue
+public class ModifiableValue(int baseValue = 0)
 {
     private readonly List<Modifier> _modifiers = [];
 
-    public ModifiableValue(int baseValue = 0)
-    {
-        BaseValue = baseValue;
-    }
-
     /// <summary>基础值。</summary>
-    public int BaseValue { get; set; }
+    public int BaseValue { get; set; } = baseValue;
 
     /// <summary>叠加结果的下限（AC / 属性为 1，其余不限制）。</summary>
     public virtual int MinValueRaw => int.MinValue;
@@ -48,7 +43,7 @@ public class ModifiableValue
     public void Clear() => _modifiers.Clear();
 
     /// <summary>按叠加规则求值；可选过滤器（如接触 / 措手不及）。</summary>
-    public virtual int GetValue(Func<Modifier, bool>? filter = null) =>
+    public int GetValue(Func<Modifier, bool>? filter = null) =>
         ModifierEngine.Apply(BaseValue, _modifiers, MinValueRaw, ZeroOnHelpless, filter);
 
     /// <summary>仅统计某一描述符贡献（对应 WotR <c>ModifiableValue.GetDescriptorBonus</c>）。</summary>

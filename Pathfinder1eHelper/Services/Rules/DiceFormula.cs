@@ -25,18 +25,16 @@ public readonly record struct DiceFormula(int Rolls, int Sides)
         var index = value.IndexOf('d');
         if (index < 0)
         {
-            if (int.TryParse(value, out var flat) && flat >= 0)
-            {
-                formula = new DiceFormula(flat, 0);
-                return true;
-            }
-
-            return false;
+            if (!int.TryParse(value, out var flat) || flat < 0) return false;
+            formula = new DiceFormula(flat, 0);
+            return true;
         }
 
         var rollsText = value[..index];
         var sidesText = value[(index + 1)..];
-        var rolls = string.IsNullOrEmpty(rollsText) ? 1 : int.Parse(rollsText, System.Globalization.CultureInfo.InvariantCulture);
+        var rolls = string.IsNullOrEmpty(rollsText)
+            ? 1
+            : int.Parse(rollsText, System.Globalization.CultureInfo.InvariantCulture);
 
         // 截掉骰面后可能存在的修饰符（如 1d8+1）。
         var end = 0;
@@ -48,13 +46,9 @@ public readonly record struct DiceFormula(int Rolls, int Sides)
         if (end == 0)
         {
             // 处理 1dOne 这类命名骰面。
-            if (sidesText.StartsWith("one", StringComparison.OrdinalIgnoreCase))
-            {
-                formula = new DiceFormula(rolls, 0);
-                return true;
-            }
-
-            return false;
+            if (!sidesText.StartsWith("one", StringComparison.OrdinalIgnoreCase)) return false;
+            formula = new DiceFormula(rolls, 0);
+            return true;
         }
 
         var sides = int.Parse(sidesText[..end], System.Globalization.CultureInfo.InvariantCulture);
@@ -62,5 +56,6 @@ public readonly record struct DiceFormula(int Rolls, int Sides)
         return true;
     }
 
-    public override string ToString() => IsFlat ? Rolls.ToString(System.Globalization.CultureInfo.InvariantCulture) : $"{Rolls}d{Sides}";
+    public override string ToString() =>
+        IsFlat ? Rolls.ToString(System.Globalization.CultureInfo.InvariantCulture) : $"{Rolls}d{Sides}";
 }

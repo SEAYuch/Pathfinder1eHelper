@@ -8,7 +8,6 @@ using Pathfinder1eHelper.Models.Combat;
 using Pathfinder1eHelper.Services;
 using Pathfinder1eHelper.ViewModels.Combat;
 using ReactiveUI;
-using ReactiveUI.Primitives;
 
 namespace Pathfinder1eHelper.ViewModels.Pages;
 
@@ -36,11 +35,6 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
     private SizeOption _selectedSize = CombatOptions.Size(SizeCategory.Medium);
     private AbilityOption _selectedCastingAbility = CombatOptions.Ability(Ability.Intelligence);
     private ConcentrationOption _concentrationSituation = CombatOptions.Concentration(ConcentrationSituation.DefensiveCasting);
-    private PenaltySourceOption _selectedPenaltySource = CombatOptions.PenaltySources[1];
-    private BonusDestinationOption _selectedBonusDestination = CombatOptions.BonusDestinations[0];
-    private string _bonusMultiplierText = "1.0";
-    private string? _exchangeValidationError;
-    private string _exchangeEntryName = "减值换加值";
 
     public CombatViewModel(ICharacterRepository repository)
     {
@@ -184,26 +178,26 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public PenaltySourceOption SelectedPenaltySource
     {
-        get => _selectedPenaltySource;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _selectedPenaltySource, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanAddExchange));
             ExchangeValidationError = null;
         }
-    }
+    } = CombatOptions.PenaltySources[1];
 
     public string BonusMultiplierText
     {
-        get => _bonusMultiplierText;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _bonusMultiplierText, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanAddExchange));
             this.RaisePropertyChanged(nameof(BonusMultiplierError));
             ExchangeValidationError = null;
         }
-    }
+    } = "1.0";
 
     /// <summary>
     /// 加值倍率的就地提示：合法（或还没填）时为空 —— Arc Input 只在非空时显示错误行，正常态不占高度。
@@ -216,33 +210,33 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     public string ExchangeEntryName
     {
-        get => _exchangeEntryName;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _exchangeEntryName, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             ExchangeValidationError = null;
         }
-    }
+    } = "减值换加值";
 
     public BonusDestinationOption SelectedBonusDestination
     {
-        get => _selectedBonusDestination;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _selectedBonusDestination, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanAddExchange));
             ExchangeValidationError = null;
         }
-    }
+    } = CombatOptions.BonusDestinations[0];
 
     public string? ExchangeValidationError
     {
-        get => _exchangeValidationError;
-        private set => this.RaiseAndSetIfChanged(ref _exchangeValidationError, value);
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public bool CanAddExchange => ExchangePenalty is >= 0 and <= 11
-        && TryGetMultiplierHalfSteps(BonusMultiplierText, out _);
+                                  && TryGetMultiplierHalfSteps(BonusMultiplierText, out _);
 
     public CombatSheet Sheet
     {
@@ -891,17 +885,17 @@ public sealed class CombatViewModel : ViewModelBase, IPageViewModel
 
     private static IReadOnlyList<StatCard> BuildCards(CombatSheet sheet) =>
     [
-        new StatCard("防御等级 AC", sheet.ArmorClass, signed: false),
-        new StatCard("接触 AC", sheet.TouchArmorClass, signed: false),
-        new StatCard("措手不及 AC", sheet.FlatFootedArmorClass, signed: false),
-        new StatCard("措手不及接触 AC", sheet.FlatFootedTouchArmorClass, signed: false),
-        new StatCard("强韧", sheet.Fortitude),
-        new StatCard("反射", sheet.Reflex),
-        new StatCard("意志", sheet.Will),
-        new StatCard("CMB", sheet.Cmb),
-        new StatCard("CMD", sheet.Cmd, signed: false),
-        new StatCard("专注", sheet.Concentration),
-        new StatCard("先攻", sheet.Initiative),
-        new StatCard("法术 DC", new StatResult(sheet.SpellDc, []), signed: false),
+        new("防御等级 AC", sheet.ArmorClass, signed: false),
+        new("接触 AC", sheet.TouchArmorClass, signed: false),
+        new("措手不及 AC", sheet.FlatFootedArmorClass, signed: false),
+        new("措手不及接触 AC", sheet.FlatFootedTouchArmorClass, signed: false),
+        new("强韧", sheet.Fortitude),
+        new("反射", sheet.Reflex),
+        new("意志", sheet.Will),
+        new("CMB", sheet.Cmb),
+        new("CMD", sheet.Cmd, signed: false),
+        new("专注", sheet.Concentration),
+        new("先攻", sheet.Initiative),
+        new("法术 DC", new StatResult(sheet.SpellDc, []), signed: false),
     ];
 }

@@ -70,7 +70,8 @@ public static class RuleCalculateCombatManeuver
         var contributions = new List<Contribution>
         {
             new("BAB", request.BaseAttackBonus, Included: request.BaseAttackBonus != 0),
-            new(request.ManeuverAbilityLabel, request.ManeuverAbilityBonus, Included: request.ManeuverAbilityBonus != 0),
+            new(request.ManeuverAbilityLabel, request.ManeuverAbilityBonus,
+                Included: request.ManeuverAbilityBonus != 0),
             new("体型", request.SizeBonus, Included: request.SizeBonus != 0),
         };
 
@@ -106,33 +107,25 @@ public static class RuleCalculateCombatManeuver
         ArgumentNullException.ThrowIfNull(request);
 
         var dexAllowed = !request.DenyDexterityBonus || request.DexterityBonus < 0;
-        var contributions = new List<Contribution>
-        {
+        List<Contribution> contributions =
+        [
             new("基础", BaseCmd),
             new("BAB", request.BaseAttackBonus, Included: request.BaseAttackBonus != 0),
-            new(request.ManeuverAbilityLabel, request.ManeuverAbilityBonus, Included: request.ManeuverAbilityBonus != 0),
+            new(request.ManeuverAbilityLabel, request.ManeuverAbilityBonus,
+                Included: request.ManeuverAbilityBonus != 0),
+
             new("敏捷", dexAllowed ? request.DexterityBonus : 0, Included: dexAllowed && request.DexterityBonus != 0),
             new("体型", request.SizeBonus, Included: request.SizeBonus != 0),
-        };
+            .. ModifierEngine.Evaluate(0, request.ArmorClassModifiers)
+                .Contributions.Where(contribution => contribution.Included)
+                .Select(contribution => new { contribution, descriptor = contribution.Modifier.Descriptor })
+                .Where(t =>
+                    !RuleMath.ExcludesFromTouch(t.contribution.Modifier) &&
+                    t.descriptor is not (ModifierDescriptor.DexterityBonus or ModifierDescriptor.Size))
+                .Select(t => RuleMath.FromModifier(t.contribution))
+        ];
 
         // 从 AC 修饰派生「接触允许、非敏捷/体型」的加值（含闪避）。
-        foreach (var contribution in ModifierEngine.Evaluate(0, request.ArmorClassModifiers).Contributions)
-        {
-            if (!contribution.Included)
-            {
-                continue;
-            }
-
-            var descriptor = contribution.Modifier.Descriptor;
-            if (RuleMath.ExcludesFromTouch(contribution.Modifier)
-                || descriptor is ModifierDescriptor.DexterityBonus or ModifierDescriptor.Size)
-            {
-                continue;
-            }
-
-            contributions.Add(RuleMath.FromModifier(contribution));
-        }
-
         if (request.AdditionalCmdBase != 0)
         {
             contributions.Add(new Contribution("额外CMD", request.AdditionalCmdBase));

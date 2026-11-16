@@ -7,7 +7,7 @@ public enum BonusOrigin
     Manual,
 
     /// <summary>
-    /// 历史来源：曾由已删除的“Buff 联动”从 <c>spell_buffs</c> 表添加。
+    /// 历史来源：Buff 联动功能已随 <c>spell_buffs</c>/<c>feat_buffs</c> 表一并移除，此成员只用于旧档兼容。
     /// </summary>
     /// <remarks>
     /// 保留成员是存档兼容性要求：枚举按字符串序列化，旧档里可能已有 "SpellBuff"，
@@ -17,7 +17,7 @@ public enum BonusOrigin
     SpellBuff,
 
     /// <summary>
-    /// 历史来源：曾由已删除的“Buff 联动”从 <c>feat_buffs</c> 表添加（旧档中确有此项）。
+    /// 历史来源：Buff 联动功能已随 <c>spell_buffs</c>/<c>feat_buffs</c> 表一并移除，此成员只用于旧档兼容（旧档中确有此项）。
     /// </summary>
     /// <remarks>同上：为旧档兼容而保留，勿删。</remarks>
     FeatBuff,

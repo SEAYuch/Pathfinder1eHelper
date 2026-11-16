@@ -19,7 +19,4 @@ public interface IFeatRepository
 
     /// <summary>Returns the distinct set of feat types (feat_type), sorted.</summary>
     Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default);
-
-    /// <summary>Returns structured buff effects (feat_buffs) matching a feat name, ordered by sort_order.</summary>
-    Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default);
 }

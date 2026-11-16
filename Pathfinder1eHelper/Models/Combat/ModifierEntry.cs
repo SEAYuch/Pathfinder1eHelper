@@ -16,7 +16,7 @@ public sealed class ModifierEntry
 
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>条目类型（普通 / 猛力攻击）。</summary>
+    /// <summary>条目类型；除普通条目外其余成员仅用于旧档兼容（对应规则已移除）。</summary>
     public ModifierKind Kind { get; set; } = ModifierKind.Normal;
 
     /// <summary>叠加分组键（对应 DLL <c>ModifierDescriptor</c>）。</summary>
@@ -39,8 +39,7 @@ public sealed class ModifierEntry
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>
-    /// 战斗机动标记：非空表示本条是姿态条目（防御式战斗/全防御），
-    /// 计算层据此处理姿态互斥（CHM：全防御时无法从「寓守于攻」获益）。普通条目为 null。
+    /// 战斗机动标记：非空表示本条是姿态条目（防御式战斗/全防御）。普通条目为 null。
     /// </summary>
     public CombatStance? Stance { get; set; }
 

@@ -69,18 +69,18 @@ public sealed class TableClickSelectionTests
         }
     }
 
-    private static (TKCode.Arc.Table Table, TableSingleSelectionBehavior Behavior, Func<object?> Selected) CreateTable(
+    private static (Table Table, TableSingleSelectionBehavior Behavior, Func<object?> Selected) CreateTable(
         Control hitTarget,
         object first,
         object second)
     {
-        var table = new TKCode.Arc.Table
+        var table = new Table
         {
             ItemsSource = new ObservableCollection<object> { first, second },
             IsSelectable = false,
         };
 
-        table.Template = new FuncControlTemplate<TKCode.Arc.Table>((_, _) => new Panel { Children = { hitTarget } });
+        table.Template = new FuncControlTemplate<Table>((_, _) => new Panel { Children = { hitTarget } });
         table.ApplyTemplate();
 
         object? selected = null;

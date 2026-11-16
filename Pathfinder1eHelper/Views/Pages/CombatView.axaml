@@ -5,7 +5,6 @@
              xmlns:vm="using:Pathfinder1eHelper.ViewModels.Pages"
              xmlns:vmc="using:Pathfinder1eHelper.ViewModels.Combat"
              xmlns:models="using:Pathfinder1eHelper.Models.Combat"
-             xmlns:controls="using:Pathfinder1eHelper.Views.Controls"
              xmlns:arc="https://github.com/AIDotNet/TKCode.Arc"
              mc:Ignorable="d" d:DesignWidth="1060" d:DesignHeight="720"
              x:Class="Pathfinder1eHelper.Views.Pages.CombatView"
@@ -134,11 +133,15 @@
                         </StackPanel>
                     </WrapPanel>
 
+                    <!-- 复选框没有顶部标签，和带标签的 NumberField 同行时必须按底边对齐，
+                         否则会被居中到「标签 + 输入框」两行高度的中间，看起来比输入框高半行。 -->
                     <WrapPanel Orientation="Horizontal" ItemSpacing="{arc:ArcDesignTokenResource Space3}" LineSpacing="{arc:ArcDesignTokenResource Space2}">
-                        <arc:Checkbox Content="限制 AC 敏捷加值" IsChecked="{Binding LimitDex}" AutomationProperties.Name="限制 AC 敏捷加值" />
+                        <arc:Checkbox Content="限制 AC 敏捷加值" IsChecked="{Binding LimitDex}" VerticalAlignment="Bottom"
+                                      AutomationProperties.Name="限制 AC 敏捷加值" />
                         <arc:NumberField AutomationProperties.Name="最大敏捷加值" Label="最大敏捷加值" Minimum="0" Maximum="40" Step="1" Width="148" IsEnabled="{Binding LimitDex}"
                                            Value="{Binding MaxDexBonusInput.Value}" />
-                        <arc:Checkbox Content="超小型及以下用敏捷计算 CMB" IsChecked="{Binding UseDexForManeuvers}" AutomationProperties.Name="超小型及以下用敏捷计算 CMB" />
+                        <arc:Checkbox Content="超小型及以下用敏捷计算 CMB" IsChecked="{Binding UseDexForManeuvers}" VerticalAlignment="Bottom"
+                                      AutomationProperties.Name="超小型及以下用敏捷计算 CMB" />
                     </WrapPanel>
                 </StackPanel>
             </Border>
@@ -243,8 +246,7 @@
                                                         AutomationProperties.Name="删除修饰条目" />
                                         </Grid>
 
-                                        <WrapPanel Orientation="Horizontal" ItemSpacing="{arc:ArcDesignTokenResource Space2}" LineSpacing="{arc:ArcDesignTokenResource Space2}"
-                                                  IsEnabled="{Binding !IsRuleComputed}">
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="{arc:ArcDesignTokenResource Space2}" LineSpacing="{arc:ArcDesignTokenResource Space2}">
                                             <StackPanel Spacing="{arc:ArcDesignTokenResource Space1}">
                                                 <arc:Select Label="描述符" MinWidth="116"
                                                             ItemsSource="{x:Static vmc:CombatOptions.Descriptors}"
@@ -271,15 +273,10 @@
                                                             SelectedItem="{Binding StackMode}" />
                                             </StackPanel>
                                         </WrapPanel>
-
-                                        <TextBlock Text="{Binding RuleHint}"
-                                                   FontSize="{arc:ArcDesignTokenResource TypeXS}" Foreground="{arc:ArcDesignTokenResource TextSecondary}" TextWrapping="Wrap"
-                                                   IsVisible="{Binding IsRuleComputed}" />
-
                                         <WrapPanel Orientation="Horizontal" ItemSpacing="{arc:ArcDesignTokenResource Space2}" LineSpacing="{arc:ArcDesignTokenResource Space2}">
                                             <StackPanel Spacing="{arc:ArcDesignTokenResource Space1}">
                                                 <TextBlock Classes="field" Text="数值（带符号）" />
-                                                <arc:NumberField AutomationProperties.Name="数值（带符号）" IsLabelVisible="False" Minimum="-99" Maximum="99" Step="1" Width="120" IsEnabled="{Binding !IsRuleComputed}"
+                                                <arc:NumberField AutomationProperties.Name="数值（带符号）" IsLabelVisible="False" Minimum="-99" Maximum="99" Step="1" Width="120"
                                            Value="{Binding ValueInput.Value}" />
                                             </StackPanel>
                                             <StackPanel Spacing="{arc:ArcDesignTokenResource Space1}">
@@ -525,8 +522,14 @@
                                            Value="{Binding DamageTakenInput.Value}" />
                         <arc:NumberField AutomationProperties.Name="自定义 DC" Label="自定义 DC" Minimum="0" Maximum="99" Step="1" Width="104" IsEnabled="{Binding IsCustomDc}"
                                            Value="{Binding CustomDcInput.Value}" />
-                        <TextBlock Text="{Binding ConcentrationCheckDisplay}" FontWeight="Bold"
-                                   FontSize="{arc:ArcDesignTokenResource TypeLG}" VerticalAlignment="Bottom" Margin="{DynamicResource ArcSpace1Thickness}" />
+                        <!-- 检定结果仍是纯文本展示（不套输入控件）。下方 Border 只负责对齐：
+                             高度 44 与 Arc 字段框的 Medium 高度一致，靠底对齐后文本就落在相邻
+                             NumberField/Select 的输入框那一行，而不是浮在标签与框之间。 -->
+                        <Border Height="44" VerticalAlignment="Bottom" Padding="{DynamicResource ArcSpace2Thickness}">
+                            <TextBlock Text="{Binding ConcentrationCheckDisplay}" FontWeight="Bold"
+                                       FontSize="{arc:ArcDesignTokenResource TypeLG}" VerticalAlignment="Center"
+                                       AutomationProperties.Name="专注检定结果" />
+                        </Border>
                     </WrapPanel>
                 </StackPanel>
             </Border>

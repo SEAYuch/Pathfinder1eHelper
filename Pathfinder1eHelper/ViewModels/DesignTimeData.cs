@@ -19,8 +19,8 @@ internal sealed class DesignTimeSpellService : ISpellService
 
     private static readonly IReadOnlyList<Spell> Sample =
     [
-        new Spell { Id = 1, NameZh = "祝福术", NameEn = "Bless", Source = "CRB", FirstLetter = "B" },
-        new Spell { Id = 2, NameZh = "树皮术", NameEn = "Barkskin", Source = "CRB", FirstLetter = "B" },
+        new() { Id = 1, NameZh = "祝福术", NameEn = "Bless", Source = "CRB", FirstLetter = "B" },
+        new() { Id = 2, NameZh = "树皮术", NameEn = "Barkskin", Source = "CRB", FirstLetter = "B" },
     ];
 
     public Task<IReadOnlyList<Spell>> SearchAsync(SpellQuery query, CancellationToken ct = default) =>

@@ -131,7 +131,7 @@ public sealed class WeaponViewModel : ReactiveObject
         }
     }
 
-    /// <summary>武器分类（轻型/中型/重型）；「双武器格斗」据此判定副手是否轻型。</summary>
+    /// <summary>武器分类（轻型/中型/重型）；纯数据字段，不参与计算。</summary>
     public WeaponCategoryOption Category
     {
         get => _category;

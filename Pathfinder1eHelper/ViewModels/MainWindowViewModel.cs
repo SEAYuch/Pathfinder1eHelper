@@ -1,6 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
-using Avalonia.Media;
+using System.Linq;
 using Pathfinder1eHelper.ViewModels.Pages;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -48,15 +48,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IScreen
                     return;
                 }
 
-                NavItemViewModel? match = null;
-                foreach (var item in NavItems)
-                {
-                    if (item.Key == key)
-                    {
-                        match = item;
-                        break;
-                    }
-                }
+                var match = NavItems.FirstOrDefault(item => item.Key == key);
 
                 if (match is not null && !ReferenceEquals(match, SelectedNavItem))
                 {

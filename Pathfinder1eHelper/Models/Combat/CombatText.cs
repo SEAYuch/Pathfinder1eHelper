@@ -5,12 +5,12 @@ public static class CombatText
 {
     public static string Ability(Ability ability) => ability switch
     {
-        Models.Combat.Ability.Strength => "力量",
-        Models.Combat.Ability.Dexterity => "敏捷",
-        Models.Combat.Ability.Constitution => "体质",
-        Models.Combat.Ability.Intelligence => "智力",
-        Models.Combat.Ability.Wisdom => "感知",
-        Models.Combat.Ability.Charisma => "魅力",
+        Combat.Ability.Strength => "力量",
+        Combat.Ability.Dexterity => "敏捷",
+        Combat.Ability.Constitution => "体质",
+        Combat.Ability.Intelligence => "智力",
+        Combat.Ability.Wisdom => "感知",
+        Combat.Ability.Charisma => "魅力",
         _ => ability.ToString(),
     };
 
@@ -28,47 +28,48 @@ public static class CombatText
         _ => size.ToString(),
     };
 
-    public static string CombatStat(Models.Combat.CombatStat stat) => stat switch
+    public static string CombatStat(CombatStat stat) => stat switch
     {
-        Models.Combat.CombatStat.ArmorClass => "防御等级(AC)",
-        Models.Combat.CombatStat.Attack => "攻击命中",
-        Models.Combat.CombatStat.WeaponAttack => "武器攻击命中（不影响 CMB）",
-        Models.Combat.CombatStat.Damage => "伤害",
-        Models.Combat.CombatStat.Fortitude => "强韧豁免",
-        Models.Combat.CombatStat.Reflex => "反射豁免",
-        Models.Combat.CombatStat.Will => "意志豁免",
-        Models.Combat.CombatStat.Initiative => "先攻",
-        Models.Combat.CombatStat.Cmb => "战技加值(CMB)",
-        Models.Combat.CombatStat.Cmd => "战技防御(CMD)",
-        Models.Combat.CombatStat.AdditionalCMB => "额外 CMB",
-        Models.Combat.CombatStat.AdditionalCMD => "额外 CMD",
-        Models.Combat.CombatStat.Concentration => "专注",
-        Models.Combat.CombatStat.SpellDC => "法术 DC",
-        Models.Combat.CombatStat.AbilityScore => "属性值",
+        Combat.CombatStat.ArmorClass => "防御等级(AC)",
+        Combat.CombatStat.Attack => "攻击命中",
+        Combat.CombatStat.WeaponAttack => "武器攻击命中（不影响 CMB）",
+        Combat.CombatStat.Damage => "伤害",
+        Combat.CombatStat.Fortitude => "强韧豁免",
+        Combat.CombatStat.Reflex => "反射豁免",
+        Combat.CombatStat.Will => "意志豁免",
+        Combat.CombatStat.Initiative => "先攻",
+        Combat.CombatStat.Cmb => "战技加值(CMB)",
+        Combat.CombatStat.Cmd => "战技防御(CMD)",
+        Combat.CombatStat.AdditionalCMB => "额外 CMB",
+        Combat.CombatStat.AdditionalCMD => "额外 CMD",
+        Combat.CombatStat.Concentration => "专注",
+        Combat.CombatStat.SpellDC => "法术 DC",
+        Combat.CombatStat.AbilityScore => "属性值",
         _ => stat.ToString(),
     };
 
-    public static string WeaponHand(Models.Combat.WeaponHand hand) => hand switch
+    public static string WeaponHand(WeaponHand hand) => hand switch
     {
-        Models.Combat.WeaponHand.Primary => "主手 ×1",
-        Models.Combat.WeaponHand.TwoHanded => "双手 ×1.5",
-        Models.Combat.WeaponHand.OffHand => "副手 ×0.5",
+        Combat.WeaponHand.Primary => "主手 ×1",
+        Combat.WeaponHand.TwoHanded => "双手 ×1.5",
+        Combat.WeaponHand.OffHand => "副手 ×0.5",
         _ => hand.ToString(),
     };
 
-    public static string WeaponCategory(Models.Combat.WeaponCategory category) => category switch
+    public static string WeaponCategory(WeaponCategory category) => category switch
     {
-        Models.Combat.WeaponCategory.Light => "轻型",
-        Models.Combat.WeaponCategory.Medium => "中型",
-        Models.Combat.WeaponCategory.Heavy => "重型",
+        Combat.WeaponCategory.Light => "轻型",
+        Combat.WeaponCategory.Medium => "中型",
+        Combat.WeaponCategory.Heavy => "重型",
         _ => category.ToString(),
     };
 
-    public static string WeaponAttackType(Models.Combat.WeaponAttackType type) => type switch    {
-        Models.Combat.WeaponAttackType.Melee => "近战",
-        Models.Combat.WeaponAttackType.Touch => "近战接触",
-        Models.Combat.WeaponAttackType.Ranged => "远程",
-        Models.Combat.WeaponAttackType.RangedTouch => "远程接触",
+    public static string WeaponAttackType(WeaponAttackType type) => type switch
+    {
+        Combat.WeaponAttackType.Melee => "近战",
+        Combat.WeaponAttackType.Touch => "近战接触",
+        Combat.WeaponAttackType.Ranged => "远程",
+        Combat.WeaponAttackType.RangedTouch => "远程接触",
         _ => type.ToString(),
     };
 
@@ -133,11 +134,11 @@ public static class CombatText
         _ => descriptor.ToString(),
     };
 
-    public static string StackMode(Models.Combat.StackMode mode) => mode switch
+    public static string StackMode(StackMode mode) => mode switch
     {
-        Models.Combat.StackMode.Default => "默认",
-        Models.Combat.StackMode.ForceStack => "强制叠加",
-        Models.Combat.StackMode.ForceNonStack => "强制不叠加",
+        Combat.StackMode.Default => "默认",
+        Combat.StackMode.ForceStack => "强制叠加",
+        Combat.StackMode.ForceNonStack => "强制不叠加",
         _ => mode.ToString(),
     };
 }

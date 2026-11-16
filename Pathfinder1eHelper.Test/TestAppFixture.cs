@@ -8,7 +8,7 @@ using ReactiveUI.Primitives.Concurrency;
 using Splat;
 using TKCode.Arc;
 
-[assembly: Xunit.AssemblyFixture(typeof(Pathfinder1eHelper.Test.TestAppFixture))]
+[assembly: AssemblyFixture(typeof(Pathfinder1eHelper.Test.TestAppFixture))]
 
 namespace Pathfinder1eHelper.Test;
 

@@ -53,16 +53,16 @@ Pathfinder1eHelper.slnx
 - **领域计算（已对齐《开拓者：正义之怒》DLL）**：
   - `Models/Combat/ModifierDescriptor` = 游戏 `ModifierDescriptor` 全量（去 `Difficulty`/`DLC3_Stackable`）；可叠加集合见 `ModifierDescriptorHelper`（10 项，与 DLL 一致，去 `DLC3_Stackable`）。`CombatStat` = 游戏 `StatType` 战斗子集（通用攻击命中统一为 `Attack`，近战/远程/接触共用且可用于 CMB；另有仅作用于武器命中、不进入 CMB 的 `WeaponAttack` 通道，一切按描述符叠加判定）；`ModifierEntry`（Descriptor + Stat + Ability + Value + StackMode）取代旧 `BonusEntry`；`Penalty` 描述符用于减值条目，生成器的减值用它，加值仍可用 `UntypedStackable`。
   - `Services/ModifierEngine.Evaluate` 复刻 `ModifiableValue.ApplyModifiersFiltered`：按描述符分组，可叠加求和、非叠加「最大正值 + 最小负值」同时生效，护甲/负重负值全局只取一次 `min`，`StackMode` 可强制覆盖。`ModifiableValue`/`AttributeValue`（`Bonus=值/2-5`）为可叠加数值基类。
-  - `Services/Rules/RuleCalculate*`（攻击/AC/豁免/先攻/CMB/CMD/武器/猛力攻击）、`RuleCheckConcentration` 复刻游戏同名规则；`CombatCalculator` 按 `ModifierEntry.Stat` 路由修饰后调用之。均无状态、可单测。武器伤害骰经 `WeaponDamageScaleTable`（逐行照搬 DLL）按 `WeaponProfile.WeaponSize`（可 `DamageDiceSizeShift` 偏移）缩放。
+  - `Services/Rules/RuleCalculate*`（攻击/AC/豁免/先攻/CMB/CMD/武器）、`RuleCheckConcentration` 复刻游戏同名规则；`CombatCalculator` 按 `ModifierEntry.Stat` 路由修饰后调用之。均无状态、可单测。武器伤害骰经 `WeaponDamageScaleTable`（逐行照搬 DLL）按 `WeaponProfile.WeaponSize`（可 `DamageDiceSizeShift` 偏移）缩放。
   - **武器专属修饰**：`ModifierEntry.WeaponId`（null=全部武器）用于武器专攻/专精等；`CombatCalculator` 按「全局 + 该武器专属」拆分后送给武器规则。⚠️ 构造 `WeaponViewModel` 的**每一处**都必须传 `addFocus`/`addSpecialization` 回调（`AddWeapon`、预设、`LoadProfile`）——少传则快捷按钮变空操作，表现为「重启后点不动，删掉武器再加才恢复」，回归测试 `Weapon_focus_buttons_work_on_weapons_loaded_from_disk`。
-  - **规则计算型专长（`ModifierKind`）**：数值不进 `feat_buffs.value`，由 `Services/Rules/Rule*` 按 BAB/握法/姿态展开，UI 卡片只读（`BonusEntryViewModel.IsRuleComputed` + `RuleHint`）。现三种：
-    - `PowerAttack`（猛力攻击）——`RuleCalculatePowerAttack`：攻击 `-(1+BAB/4)`、伤害 `2×(1+BAB/4)`（副手 ÷2、双手 ×3/2、描述符 `UntypedStackable`），**仅近战攻击检定、不入 CMB**。
-    - `CombatExpertise`（寓守于攻）——`RuleCalculateCombatExpertise`：档位 `1+BAB/4`，近战攻击与**战技（CMB）**各 `-档位`、AC `+档位` 闪避（描述符 `Dodge`，故与「闪避」专长求和、也受措手不及 AC 的闪避过滤影响）。CHM 限定「只能以近战武器攻击或全力攻击时」，故减值只加在非远程武器上，AC 加值整轮生效。**神话/高等猛力攻击未实现**。
-    - `CraneStyle`（白鹤拳）——`RuleCalculateCraneStyle`：CHM「你在进行防御式战斗时攻击骰只受 -2 减值」。检测到启用的 `DefensiveFighting` 条目时，把它的 −4 攻击减值**补偿 +2** 抬回 −2；补偿走**同一条 `Attack` 通道**，故武器攻击与 CMB 一致抵消（CHM 说的是「攻击骰」）。没有防御式战斗条目时**不生效**（否则凭空 +2）。白鹤拳的「AC 闪避 +1」与基准无关，作为**普通**条目单列一行。
-    - `TwoWeaponFighting`（双武器格斗）——`RuleCalculateTwoWeaponFighting`：**照游戏 DLL 的 `TwoWeaponFightingAttackPenalty` 实现**（rank 1 → 主手 −4 / 副手 −8；副手非轻型武器再 −2；rank>1 非神话 → −2/−2；rank>1 神话 → 0）。需同时存在**副手武器**（`IsTwoWeaponing`）才生效。⚠️ 该方法返回**正数减值量**——`RuleCalculateAttackBonus.AttackPenalty` 的约定是「正数、由它取负」，而 DLL 里是负的 modifier 值，别把符号搞反（曾因此把减值变成加值）。武器轻型/中型/重型由新字段 `WeaponProfile.Category`（`WeaponCategory`）提供，**与 `WeaponSize`（`SizeCategory` 体型，用于伤害骰缩放）是两回事**；双头武器由 `WeaponProfile.IsDouble`（DLL `Blueprint.Double`）提供——主手持双头时副手不再因非轻型追加减值。另复刻 `TwoWeaponFightingDamagePenalty`：**副手伤害加值减半**（`RuleCalculateWeaponStats.HalfDamageBonus`，只减半属性×倍率+增强+修饰，基础骰不减半，合计向下取整减半并补一行差额使明细仍对得上；`DoubleSlice` 职业特性豁免未建模）。
+  - **`ModifierKind` 的四个规则成员已退役**：`PowerAttack`（猛力攻击）/`CombatExpertise`（寓守于攻）/
+    `CraneStyle`（白鹤拳）/`TwoWeaponFighting`（双武器格斗）对应的 `RuleCalculate*` 规则类与测试已删除，
+    `CombatCalculator` 不再按条目类型展开任何数值，一律按普通条目的描述符与通道叠加。
+    ⚠️ 枚举成员**必须保留**：旧档按名字序列化，删成员会让 `JsonStringEnumConverter` 抛错、整份角色被跳过。
+    需要这些效果时用手工修饰条目或状态预设（见「战斗姿态」）。
   - 专注 DC：`ConcentrationCalculator`/`RuleCheckConcentration`——防御式 `15+2×环位`、受伤 `10+环位+伤害/2`、施法困难（含擒抱）`15+环位`、施法极难（含被压制）`15+2×环位`（对应 DLL `UnitCondition.SpellCastingIsDifficult/VeryDifficult`；游戏无「擒抱者 CMB」项）。
-  - `bonus_type`/`target` 字符串直接对应 `ModifierDescriptor`/`CombatStat` 枚举（数据表已用规范命名）。`SpellBuffResolver` 与 `IBuffEffect` 已随 Buff 联动一并移除；`ISpellService`/`IFeatService` 上的 `GetBuffsFor*` 透传方法也已删除。`spell_buffs`/`feat_buffs` 两张表、实体与**仓储层**的 `GetBuffsFor*` 保留，仅由冒烟测试校验数据契约。
-- **战斗页协作类**（`ViewModels/Combat/`）：`CharacterRoster`（列表增删改+命名）、`CharacterAutoSaver`（后台写回）、`BonusEntryViewModel`/`WeaponViewModel` 等编辑项 VM。页面（`Views/Pages/CombatView.axaml`）按分区排布：角色档案 / 基础数值 / 战斗数值卡 / 状态预设 / 修饰明细 / 减值换加值生成器 / 武器 / 专注；生成器的词条名称与配置仅用于当前页面，点击添加时会把减值与加值各作为一条普通修饰复制进修饰明细，之后可分别编辑/启停/删除并随角色保存；减值使用 `Penalty` 描述符，可作用于 AC 或仅武器攻击命中（不影响 CMB），加值使用 `UntypedStackable`，可作用于所有武器伤害或 AC。修饰与武器为带字段标签的紧凑编辑器，武器卡内含攻击/伤害组成明细与「＋武器专攻/＋武器专精」快捷按钮（生成带 `WeaponId` 的 scoped 条目）；猛力攻击/寓守于攻/双武器格斗仍支持档案中的规则计算型条目，但不再提供相应状态预设按钮。战斗数值卡不含通用攻击卡（攻击按武器单独计算）。
+  - `bonus_type`/`target` 字符串直接对应 `ModifierDescriptor`/`CombatStat` 枚举（数据表已用规范命名）。参考库**不再有** `spell_buffs`/`feat_buffs` 两张表：Buff 联动面板及其解析链（`CombatBuffLibrary`、`SpellBuffResolver`、`IBuffEffect`、`Add*BuffAsync`）早已移除，实体 `SpellBuff`/`FeatBuff` 与仓储层 `GetBuffsFor*` 也已在 schema v2 一并删除，不要再加回来。`BonusOrigin` 的 `SpellBuff`/`FeatBuff` 两个成员是**旧档兼容**用途（见下文），与数据表无关。
+- **战斗页协作类**（`ViewModels/Combat/`）：`CharacterRoster`（列表增删改+命名）、`CharacterAutoSaver`（后台写回）、`BonusEntryViewModel`/`WeaponViewModel` 等编辑项 VM。页面（`Views/Pages/CombatView.axaml`）按分区排布：角色档案 / 基础数值 / 战斗数值卡 / 状态预设 / 修饰明细 / 减值换加值生成器 / 武器 / 专注；生成器的词条名称与配置仅用于当前页面，点击添加时会把减值与加值各作为一条普通修饰复制进修饰明细，之后可分别编辑/启停/删除并随角色保存；减值使用 `Penalty` 描述符，可作用于 AC 或仅武器攻击命中（不影响 CMB），加值使用 `UntypedStackable`，可作用于所有武器伤害或 AC。修饰与武器为带字段标签的紧凑编辑器，武器卡内含攻击/伤害组成明细与「＋武器专攻/＋武器专精」快捷按钮（生成带 `WeaponId` 的 scoped 条目）；所有条目都是普通修饰（旧的规则计算型条目仍能读入，但按普通条目叠加）；战斗数值卡不含通用攻击卡（攻击按武器单独计算）。
 ## 施工约定（Key Conventions）
 
 ### 线程与调度
@@ -289,35 +289,23 @@ CREATE INDEX idx_feats_first_letter ON feats(first_letter);
 CREATE INDEX idx_feats_name_en ON feats(name_en);
 CREATE INDEX idx_feats_name_zh ON feats(name_zh);
 -- 按需求不建出处索引（同 spells/monsters 约定）
-
--- feat_buffs：结构化专长效果（列与 spell_buffs 完全同构）。战斗页已无 UI 入口，仅供数据校验
-CREATE TABLE feat_buffs (
-  id INTEGER PRIMARY KEY,
-  feat_id INTEGER,        -- 可空，由 name_en 关联 feats.id
-  name_en TEXT, name_zh TEXT,   -- 匹配键（忽略大小写 / 中文精确）
-  effect_name TEXT, bonus_type TEXT, target TEXT, value INTEGER,
-  enhancement_subject TEXT, ability TEXT,
-  scale_base INTEGER, scale_offset INTEGER, scale_step INTEGER,
-  scale_min INTEGER, scale_max INTEGER,
-  notes TEXT, sort_order INTEGER
-);
 ```
 
-- `feat_buffs` 只收录**能映射到现有 `ModifierDescriptor/CombatStat/Ability` 枚举**的专长（首版建议：闪避→AC+1 闪避、精通先攻→先攻+4 无类型、强韧加强/闪电反射/钢铁意志→对应豁免+2 等，规模类似 spell_buffs 的 20 法术/47 行起步）；不能映射的（技能加值、HP、按武器生效如武器专攻）不入表，走“未收录→手动加值”兜底，与 `spell_buffs` 行为一致。
+> 参考库 schema **v2** 起不再包含 `spell_buffs` / `feat_buffs`：法术与专长只保留主表与查询所需的结构化字段，加值效果一律由战斗页手工条目、状态预设或 `Services/Rules/` 的规则代码产生。重建库时若还看到这两张表，说明用了旧版构建脚本。
 
 ### 构建管线（`scripts/build-feat-db/`，沿用 build-monster-db 模式）
 
-`extract_feats.mjs <解包目录> <输出.jsonl>`：GBK 解码 + 命名实体解码（可复用 extract_monsters.mjs 的 `decodeEntities`）；按“页面结构”解析：简表行给 `name_en/name_zh/is_fighter_bonus/prerequisites/summary`，详述段落按 `中文名（English）〔类型〕` 分段、`先决条件：/专长效果：` 前缀切字段，两表按 `中文名` 对齐；`schema.sql` + `load.sql` 建表装载数据；`feat_buffs.sql` 手工策展行；最后把表**并入**现有 `pathfinder1e.duckdb`（应用只认这一个文件）。注意 UI 页表头在第 2 行、ARG 表头叫“种族专长”。
+`extract_feats.mjs <解包目录> <输出.jsonl>`：GBK 解码 + 命名实体解码（可复用 extract_monsters.mjs 的 `decodeEntities`）；按“页面结构”解析：简表行给 `name_en/name_zh/is_fighter_bonus/prerequisites/summary`，详述段落按 `中文名（English）〔类型〕` 分段、`先决条件：/专长效果：` 前缀切字段，两表按 `中文名` 对齐；`schema.sql` + `load.sql` 建表装载数据；最后把表**并入**现有 `pathfinder1e.duckdb`（应用只认这一个文件）。注意 UI 页表头在第 2 行、ARG 表头叫“种族专长”。
 
 ### 应用侧改动清单
 
 - **导航（三处同步，见上文架构要点）**：`ViewLocator.Map` 加 `FeatsViewModel → FeatsView`；`AppModule` 注册 `FeatRepository/FeatService/FeatsViewModel/FeatsView`；`MainWindowViewModel` 构造注入 `Func<FeatsViewModel>` 并把 `NavItem("专长", Icon.Medal, featsFactory)` 插到法术之后（同时改无参设计时构造与 `MainWindowViewModelTests`）。
-- **Models**：`Feat`、`FeatBuff` 实体，均带 `[Table(DisableSyncStructure = true)]` 与显式 `[Column(Name=...)]`（只读三重防护）。
+- **Models**：`Feat` 实体，带 `[Table(DisableSyncStructure = true)]` 与显式 `[Column(Name=...)]`（只读三重防护）。
 - **Services**：`FeatQuery(Term, Source, FirstLetter, Type, Skip, Take)` record；`IFeatRepository/FeatRepository`（`NameZh.Contains || NameEn.ToLower().Contains || Prerequisites.ToLower().Contains`，`OrderBy(NameEn)`，`DISTINCT` 下推用于出处/类型下拉）；`IFeatService/FeatService`（归一化 + 默认页大小 200）。
 - **ViewModels**：`FeatsViewModel : ViewModelBase, IPageViewModel`，完整复刻 `SpellsViewModel` 形态：搜索防抖管道（Taskpool 执行、结果回主线程）、`PageSize/HasMoreResults/LoadMoreCommand` + 总数优化、`HashSet` 去重的懒加载过滤器（出处/首字母/类型）、`DesignTime` 无参构造。
 - **Views**：`FeatsView.axaml` 复刻 `SpellsView` 布局（列表 + 详情 + “加载更多”）；详情字段：名称/类型/是否战士奖励专长/先决条件/简述/专长效果/出处。
-- **战斗联动（已移除）**：`BonusOrigin` 的 `SpellBuff`/`FeatBuff` 成员保留——旧存档按字符串序列化（`FeatBuff` 已出现在真实档里），删成员会让 `JsonStringEnumConverter` 抛错、整份角色被 `LoadAll` 跳过。战斗页原有的「法术/专长 Buff 联动」面板与其解析链（`CombatBuffLibrary`、`SpellBuffResolver`、`IBuffEffect`、`Add*BuffAsync`）已整体删除。
-- **测试**：`FeatDatabaseSmokeTests`（`TestDatabase.SkipIfUnavailable()`；行数阈值、猛力攻击/Power Attack 命中、首字母/出处/类型筛选收窄、`feat_buffs` 闪避→AC 映射）；`FeatsViewModelTests`（哨兵、管道映射、分页）。Fake 加 `FakeFeatService/FakeFeatRepository`（按 Skip/Take 切片）进 `TestDoubles.cs`。
+- **战斗联动（已移除）**：`BonusOrigin` 的 `SpellBuff`/`FeatBuff` 成员保留——旧存档按字符串序列化（`FeatBuff` 已出现在真实档里），删成员会让 `JsonStringEnumConverter` 抛错、整份角色被 `LoadAll` 跳过。战斗页原有的「法术/专长 Buff 联动」面板与其解析链（`CombatBuffLibrary`、`SpellBuffResolver`、`IBuffEffect`、`Add*BuffAsync`）已整体删除；参考库两张 Buff 表、`SpellBuff`/`FeatBuff` 实体与仓储 `GetBuffsFor*` 也已在 schema v2 一并删除。
+- **测试**：`FeatDatabaseSmokeTests`（`TestDatabase.SkipIfUnavailable()`；行数阈值、猛力攻击/Power Attack 命中、首字母/出处/类型筛选收窄）；`FeatsViewModelTests`（哨兵、管道映射、分页）。Fake 加 `FakeFeatService/FakeFeatRepository`（按 Skip/Take 切片）进 `TestDoubles.cs`。
 
 ### 实施顺序建议
 
@@ -328,17 +316,18 @@ CREATE TABLE feat_buffs (
 
 ## 已知待办 / 暂缓项
 
-- **神话武器专攻/专精、神话（高等）猛力攻击未实现**：现只做 CRB 三个（武器专攻/专精/猛力攻击）；神话版需额外字段（神话阶层、伤害翻倍/取整规则）与 `MythicPowerAttack`/`GreaterPowerAttack` 分支。
+- **猛力攻击系列未实现**：`猛力攻击`/`高等猛力攻击` 与神话版本的规则代码已按要求移除；如需恢复，得重新加规则类与 `ModifierKind` 判定，并按 BAB 与握法展开数值。
 - **专长 `UI` 页详述缺失**（`page_856.html` 仅简表；其正文非标准段落结构，如需补全须另解析）。
 - **`extract_feats.mjs` 已升级 v2（本地脚本；仓库无 scripts/）**：补齐名称清洗（en 去全角 `（）` 碎片、去首尾半角 `)`；zh 去尾悬 `（`，`first_letter` 重算）、MA 神话专长解析（`page_624`）、54 个 `专长*.htm` 异构解析（出处取 `.hhc` 父节点，代码缺失时回退书名）。冒烟测试 `Feat_names_have_no_dangling_brackets` + MA/后续书籍用例锁定；重建 `feats` 表须用该版脚本。
 - `CombatViewModel` 仍有约 20 个表单标量属性（表单 VM 固有形态）。若继续瘦身，可抽 `CombatEditorViewModel` 并同步改 `CombatView.axaml` 绑定路径（编译期绑定会校验）。
-- 数据表 `spell_buffs`/`feat_buffs` 现已无 UI 入口，仅冒烟测试消费；`CombatView.axaml` 原联动区域现用于减值换加值生成器。
-- `spell_buffs`/`feat_buffs` 的 `bonus_type`/`target` 已改用 `ModifierDescriptor`/`CombatStat` 命名（含攻击统一为 `Attack`、同源 Melee/Ranged 行已合并；`scripts/*/*_buffs.sql` 与本地 `data/pathfinder1e.duckdb` 已同步）。
+- 数据表 `spell_buffs`/`feat_buffs` 已随 schema v2 移除（实体、仓储查询、构建 SQL、冒烟测试同步删除）；`CombatView.axaml` 原联动区域现用于减值换加值生成器。
 - **规则计算型专长待办**：遍历 `feats` 表（1639 条 / 47 出处）后判定，尚需规则代码的核心战斗专长为：震慑拳（额外震慑豁免 + 自定义 DC，需新增「额外豁免」模型）、旋风攻击（全力攻击→每人一次满 BAB 攻击，需多段攻击模型）。**双武器防御不做**（CHM「+1 盾牌，防御姿态 +2」，游戏未实现，收益小）。**精通重击**（逐武器重击范围）与**武器娴熟**（攻击改用敏捷）**不做**——两者都能在武器卡上直接调整（武器已有 `CriticalThreatLow` 与 `AttackBonusStat`），无需规则代码。**职业专长**（ACG 剑客、UC 火枪手等）依赖本应用没有的职业等级模型，暂不做。**MA 神话层**（160 条）全部按神话阶层缩放，需新增阶层输入。规则数值一律以 CHM（`feats.benefit`）为准，DLL 的 `UnitFact` 只提供机制（per-feat 逻辑在 Unity 蓝图里，代码中查不到），且 DLL 含大量游戏原创专长（KPoP/Kingdom），不可作为专长清单来源。
 - **双武器战斗（CHM `rpage_0008.htm`）与 DLL 的数值冲突**：CHM 的「表：双持武器战斗」给出**有专长时主手 −4 / 副手 −4**（副手轻型 −2/−2），而 DLL 的 `TwoWeaponFightingAttackPenalty` 是**主手 −4 / 副手 −8**（副手非轻型再 −2）。已按用户指示**以 DLL 为准**。CHM 该页散文（基准 −6/−10）与它自己的表也算不出 −4/−4，故以表/DLL 为准。此外 CHM 与 DLL 都还有这些**未建模**项：每轮额外副手攻击（`TwoWeaponFightingAttacks`，需多段攻击模型；且它按 fact rank>2 才生效，而 CHM 只有 CRB 的 rank 1）、Shield Master 持盾豁免（本应用无盾牌/战斗风格模型）、EffortlessDualWielding（职业特性）、双头武器的「另一头算一次副手攻击」。
-- **闪避/Dodge 的已知缺口**：`feat_buffs` 中「闪避」的备注写了「失去 AC 的敏捷加值时同时失去此加值」，但 `RuleCalculateArmorClass` 目前只按 `MaxDexBonusFromArmor` 截断敏捷加值，**未**连带剔除 `Dodge` 描述符的加值。寓守于攻的 AC 加值也走 `Dodge`，故同样不受此规则影响。修这条会改变既有闪避/盾牌专攻行为，需单独评估。
-- **战斗姿态（防御式战斗/全防御）**：按 **CHM「战斗机动」章节原文**做成**预设 buff 条目**（`CombatPresets`），不是档案状态——`防御式战斗` = AC **+2 闪避**（`Dodge`）/ 攻击 **−4**（`Penalty`）；`全防御` = AC **+4 闪避**，**无攻击减值**（CHM 只写 AC，且明确「无法同时进行防御式攻击、借机攻击，也无法从『寓守于攻』获益」）。姿态之间/姿态与专长的互斥靠 `ModifierEntry.Stance`（`CombatStance?` 标签）识别：`CombatCalculator` 见启用的 `TotalDefense` 条目即**完全跳过** `CombatExpertise`（CHM 明文），而 `DefensiveFighting` **不**压制寓守于攻。⚠️ 这套基准**不是**桌面版 CRB 的 +1/−1 与 +3/−3——本 CHM（KPoP/Kingdom 口径）已重平衡，**数值只能取自 CHM 原文**：`rpage_0003.htm`（GBK，需 `iconv`）。该页的战斗机动表也**不含防具检定减值**，别再照抄桌面版的 −2/−4。游戏 DLL 的 `FightingDefensively*Property` 基准同样是 **−4 攻击 / +2 AC**（与 CHM 一致，只是额外按 `Mobility技能≥3` 再 +1 AC），可作交叉验证但非来源。
+- **闪避/Dodge 的已知缺口**：「闪避」专长的备注写了「失去 AC 的敏捷加值时同时失去此加值」，但 `RuleCalculateArmorClass` 目前只按 `MaxDexBonusFromArmor` 截断敏捷加值，**未**连带剔除 `Dodge` 描述符的加值。修这条会改变既有闪避/盾牌专攻行为，需单独评估。
+- **战斗姿态（防御式战斗/全防御）**：按 **CHM「战斗机动」章节原文**做成**预设 buff 条目**（`CombatPresets`），不是档案状态——`防御式战斗` = AC **+2 闪避**（`Dodge`）/ 攻击 **−4**（`Penalty`）；`全防御` = AC **+4 闪避**，**无攻击减值**（CHM 只写 AC，且明确「无法同时进行防御式攻击、借机攻击，也无法从『寓守于攻』获益」）。`ModifierEntry.Stance`（`CombatStance?` 标签）标记条目是否为姿态，仅用于预设识别；`CombatCalculator` 不再有姿态互斥特判（相关专长规则已移除）。⚠️ 这套基准**不是**桌面版 CRB 的 +1/−1 与 +3/−3——本 CHM（KPoP/Kingdom 口径）已重平衡，**数值只能取自 CHM 原文**：`rpage_0003.htm`（GBK，需 `iconv`）。该页的战斗机动表也**不含防具检定减值**，别再照抄桌面版的 −2/−4。游戏 DLL 的 `FightingDefensively*Property` 基准同样是 **−4 攻击 / +2 AC**（与 CHM 一致，只是额外按 `Mobility技能≥3` 再 +1 AC），可作交叉验证但非来源。
   - ⚠️ **`CombatPresets.All` 的条目是全局共享的可变实例**：应用预设必须走 `CombatPreset.CreateEntries()`（深拷贝，含 `Stance`/`WeaponId` 等全部字段），**不要**在 `ApplyPreset` 里手写字段拷贝——曾漏拷 `Stance` 导致互斥失效。测试也不得直接改动 `preset.Entries`。
-- **白鹤流派（UC 流浪者）与先决条件**：流派专长（白鹤拳/白鹤亮翅/白鹤弹腿）**一律不校验先决条件**，交使用者判断——档案没有职业/等级字段，而 CHM 的先决多为「BAB+N **或** 武僧 N 级」，本就无法判定。收录策略：白鹤拳按上文拆两行（`CraneStyle` 规则行 + 普通 `Dodge/ArmorClass +1` 行），白鹤亮翅取 `Dodge/ArmorClass +4`，CHM 的限定条件（仅对近战、需空手、近战失手 ≤4 点即失去等）写进 `notes`。**白鹤弹腿不入表**：它没有任何静态加值（借机攻击的反应动作），按「不能映射则不收录」惯例跳过。⚠️ 一个专长可对应**多行** `feat_buffs`，故混排 `kind` 与普通行是安全的（现数据表仅供记录/校验，UI 不再消费）。
+- **白鹤流派（UC 流浪者）与先决条件**：流派专长（白鹤拳/白鹤亮翅/白鹤弹腿）**一律不校验先决条件**，交使用者判断——档案没有职业/等级字段，而 CHM 的先决多为「BAB+N **或** 武僧 N 级」，本就无法判定。
+  `白鹤拳` 的规则补偿（防御式战斗减值 −4 → −2）已随规则代码移除；现在只能用普通修饰条目表达静态加值（如白鹤亮翅 = `Dodge/ArmorClass +4`），限定条件写进条目备注。
+  **白鹤弹腿不建模**：它没有任何静态加值（借机攻击的反应动作），按「不能映射则不收录」惯例跳过。
 - 英文搜索用 `ToLower().Contains(...)`（无索引可利用）；若改 DuckDB `ILIKE` 需裸 SQL 与转义。
 - 低价值增强未做：`MonsterTextView` 表格可视化不虚拟化；`ObservableCollection` 已在筛选处改用 `HashSet` 去重。

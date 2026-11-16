@@ -54,28 +54,14 @@ public sealed class BonusEntryViewModel : ReactiveObject
     /// <summary>数值的 decimal 适配器（Arc NumberField 绑定，模型仍为 int?）。</summary>
     public NumberFieldAdapter ValueInput { get; }
 
-    /// <summary>条目类型（普通 / 猛力攻击 / 寓守于攻）。</summary>
+    /// <summary>
+    /// 条目类型。保留该字段只为读回旧档（旧档的 <c>kind</c> 字符串仍要能反序列化）；
+    /// 「猛力攻击/寓守于攻/白鹤拳/双武器格斗」四个规则已移除，所有条目一律按普通条目参与叠加。
+    /// </summary>
     public ModifierKind Kind { get; }
 
     /// <summary>战斗机动标记；非空表示本条是姿态条目（防御式战斗/全防御）。</summary>
     public CombatStance? Stance { get; }
-
-    /// <summary>是否为「猛力攻击」特殊条目（编辑器改为只读提示）。</summary>
-    public bool IsPowerAttack => Kind == ModifierKind.PowerAttack;
-
-    /// <summary>是否为「数值由计算层展开」的特殊条目（猛力攻击/寓守于攻/白鹤拳），编辑器改为只读。</summary>
-    public bool IsRuleComputed => Kind is ModifierKind.PowerAttack or ModifierKind.CombatExpertise
-        or ModifierKind.CraneStyle or ModifierKind.TwoWeaponFighting;
-
-    /// <summary>特殊条目的规则说明（普通条目为空）。</summary>
-    public string RuleHint => Kind switch
-    {
-        ModifierKind.PowerAttack => "猛力攻击：按 BAB 与握法自动计算（近战攻击 −(1+BAB/4)、伤害 +2×(1+BAB/4)；副手减半 / 双手 ×1.5），描述符与数值锁定为「无类型 / 0」",
-        ModifierKind.CombatExpertise => "寓守于攻：近战攻击与战技 −(1+BAB/4) 换 AC +1×(1+BAB/4) 闪避，数值由 BAB 自动计算",
-        ModifierKind.CraneStyle => "白鹤拳：启用防御式战斗时，其攻击减值由 −4 放宽为 −2（无防御式战斗条目时不生效）",
-        ModifierKind.TwoWeaponFighting => "双武器格斗：双持（存在副手武器）时主手 −4 / 副手 −8，副手非轻型武器再 −2",
-        _ => string.Empty,
-    };
 
     /// <summary>武器归属（仅作用于该武器）；只读，由武器卡快捷按钮设置。</summary>
     public Guid? WeaponId { get; }

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Pathfinder1eHelper.Models.Combat;
 
@@ -14,8 +15,10 @@ namespace Pathfinder1eHelper.Services;
 /// </remarks>
 public sealed class CharacterAutoSaver(ICharacterRepository repository)
 {
-    private readonly ICharacterRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-    private readonly object _gate = new();
+    private readonly ICharacterRepository _repository =
+        repository ?? throw new ArgumentNullException(nameof(repository));
+
+    private readonly Lock _gate = new();
 
     private CharacterProfile? _pending;
     private bool _saving;
@@ -62,31 +65,38 @@ public sealed class CharacterAutoSaver(ICharacterRepository repository)
         }
     }
 
-    private async Task SaveLoopAsync()
+    private Task SaveLoopAsync()
     {
-        while (true)
+        try
         {
-            CharacterProfile? profile;
-            lock (_gate)
+            while (true)
             {
-                profile = _pending;
-                _pending = null;
-                if (profile is null)
+                CharacterProfile? profile;
+                lock (_gate)
                 {
-                    _saving = false;
-                    return;
+                    profile = _pending;
+                    _pending = null;
+                    if (profile is null)
+                    {
+                        _saving = false;
+                        return Task.CompletedTask;
+                    }
+                }
+
+                try
+                {
+                    _repository.Save(profile);
+                    Error = null;
+                }
+                catch (Exception ex)
+                {
+                    Error = ex.Message;
                 }
             }
-
-            try
-            {
-                _repository.Save(profile);
-                Error = null;
-            }
-            catch (Exception ex)
-            {
-                Error = ex.Message;
-            }
+        }
+        catch (Exception exception)
+        {
+            return Task.FromException(exception);
         }
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -37,30 +38,6 @@ public static class PipeTableParser
         var paragraph = new List<string>();
         var table = new List<IReadOnlyList<string>>();
 
-        void FlushTable()
-        {
-            if (table.Count > 0)
-            {
-                blocks.Add(new MonsterBlock(MonsterBlockKind.Table, [], table.ToArray()));
-                table.Clear();
-            }
-        }
-
-        void FlushParagraph()
-        {
-            while (paragraph.Count > 0 && paragraph[^1].Length == 0)
-            {
-                paragraph.RemoveAt(paragraph.Count - 1);
-            }
-
-            if (paragraph.Count > 0)
-            {
-                blocks.Add(new MonsterBlock(MonsterBlockKind.Paragraph, paragraph.ToArray(), []));
-            }
-
-            paragraph.Clear();
-        }
-
         foreach (var raw in lines)
         {
             var line = raw.Trim();
@@ -83,11 +60,33 @@ public static class PipeTableParser
         FlushTable();
         FlushParagraph();
         return blocks;
+
+        void FlushTable()
+        {
+            if (table.Count <= 0) return;
+            blocks.Add(new MonsterBlock(MonsterBlockKind.Table, [], table.ToArray()));
+            table.Clear();
+        }
+
+        void FlushParagraph()
+        {
+            while (paragraph.Count > 0 && paragraph[^1].Length == 0)
+            {
+                paragraph.RemoveAt(paragraph.Count - 1);
+            }
+
+            if (paragraph.Count > 0)
+            {
+                blocks.Add(new MonsterBlock(MonsterBlockKind.Paragraph, paragraph.ToArray(), []));
+            }
+
+            paragraph.Clear();
+        }
     }
 
     /// <summary>是否为一行 GFM 管道表（以 <c>|</c> 开头结尾）。</summary>
     public static bool IsTableRow(string line) =>
-        line.Length >= 2 && line[0] == '|' && line[^1] == '|';
+        line is ['|', _, ..] && line[^1] == '|';
 
     private static IReadOnlyList<string> SplitRow(string line)
     {
@@ -97,19 +96,19 @@ public static class PipeTableParser
         for (var i = 0; i < inner.Length; i++)
         {
             var c = inner[i];
-            if (c == '\\' && i + 1 < inner.Length && inner[i + 1] == '|')
+            switch (c)
             {
-                sb.Append('|');
-                i++;
-            }
-            else if (c == '|')
-            {
-                cells.Add(sb.ToString().Trim());
-                sb.Clear();
-            }
-            else
-            {
-                sb.Append(c);
+                case '\\' when i + 1 < inner.Length && inner[i + 1] == '|':
+                    sb.Append('|');
+                    i++;
+                    break;
+                case '|':
+                    cells.Add(sb.ToString().Trim());
+                    sb.Clear();
+                    break;
+                default:
+                    sb.Append(c);
+                    break;
             }
         }
 
@@ -119,19 +118,6 @@ public static class PipeTableParser
 
     private static bool IsSeparatorRow(IReadOnlyList<string> cells)
     {
-        if (cells.Count == 0)
-        {
-            return false;
-        }
-
-        foreach (var cell in cells)
-        {
-            if (!SeparatorCell.IsMatch(cell))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return cells.Count != 0 && cells.All(cell => SeparatorCell.IsMatch(cell));
     }
 }

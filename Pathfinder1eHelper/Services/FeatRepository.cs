@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FreeSql;
@@ -18,8 +17,10 @@ public sealed class FeatRepository(IFreeSql fsql) : IFeatRepository
             .WhereIf(
                 !string.IsNullOrWhiteSpace(term),
                 f => f.NameZh.Contains(term!)
-                    || (f.NameEn != null && f.NameEn.ToLower().Contains(lowerTerm!))
-                    || (f.Prerequisites != null && f.Prerequisites.ToLower().Contains(lowerTerm!)))
+                     || (f.NameEn != null &&
+                         f.NameEn.Contains(lowerTerm!, System.StringComparison.CurrentCultureIgnoreCase))
+                     || (f.Prerequisites != null &&
+                         f.Prerequisites.Contains(lowerTerm!, System.StringComparison.CurrentCultureIgnoreCase)))
             .WhereIf(!string.IsNullOrEmpty(q.Source), f => f.Source == q.Source)
             .WhereIf(!string.IsNullOrEmpty(q.FirstLetter), f => f.FirstLetter == q.FirstLetter)
             .WhereIf(!string.IsNullOrEmpty(q.Type), f => f.FeatType == q.Type);
@@ -49,20 +50,4 @@ public sealed class FeatRepository(IFreeSql fsql) : IFeatRepository
             .Distinct()
             .OrderBy(f => f.FeatType)
             .ToListAsync(f => f.FeatType, ct);
-
-    public async Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default)
-    {
-        var lowerEnglish = string.IsNullOrWhiteSpace(nameEn) ? null : nameEn.Trim().ToLowerInvariant();
-        var chinese = string.IsNullOrWhiteSpace(nameZh) ? null : nameZh.Trim();
-        if (lowerEnglish is null && chinese is null)
-        {
-            return [];
-        }
-
-        return await fsql.Select<FeatBuff>()
-            .Where(b => (b.NameEn != null && b.NameEn.ToLower() == lowerEnglish)
-                || (b.NameZh != null && b.NameZh == chinese))
-            .OrderBy(b => b.SortOrder)
-            .ToListAsync(ct);
-    }
 }

@@ -73,32 +73,6 @@ public class SpellDatabaseSmokeTests
     }
 
     [Fact]
-    public async Task Spell_buff_table_exposes_structured_effects()
-    {
-        TestDatabase.SkipIfUnavailable();
-        var fsql = FreeSqlFactory.CreateReadOnly(TestDatabase.Path);
-        try
-        {
-            var repo = new SpellRepository(fsql);
-
-            var bless = await repo.GetBuffsForSpellAsync("Bless", "祝福术");
-            Assert.NotEmpty(bless);
-            Assert.Contains(bless, b => b.BonusType == "Morale" && b.Target == "Attack");
-
-            // 大小写不敏感 + 中文别名均可命中。
-            var barkskin = await repo.GetBuffsForSpellAsync("barkskin", null);
-            var naturalArmor = Assert.Single(barkskin);
-            Assert.Equal("NaturalArmorEnhancement", naturalArmor.BonusType);
-            Assert.Null(naturalArmor.EnhancementSubject);
-            Assert.Equal(3, naturalArmor.ScaleStep);
-        }
-        finally
-        {
-            fsql.Dispose();
-        }
-    }
-
-    [Fact]
     public async Task Source_and_first_letter_filters_narrow_results()
     {
         TestDatabase.SkipIfUnavailable();

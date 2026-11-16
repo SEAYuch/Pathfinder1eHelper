@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Pathfinder1eHelper.Infrastructure;
@@ -11,7 +12,7 @@ namespace Pathfinder1eHelper.Infrastructure;
 /// </summary>
 public static class AppLog
 {
-    private static readonly object Gate = new();
+    private static readonly Lock Gate = new();
 
     private static readonly string LogDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

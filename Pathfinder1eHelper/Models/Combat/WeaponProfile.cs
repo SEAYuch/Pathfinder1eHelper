@@ -18,10 +18,10 @@ public sealed class WeaponProfile
     /// <summary>持握方式；决定伤害属性倍率（主手 1 / 双手 1.5 / 副手 0.5）。</summary>
     public WeaponHand Hand { get; set; } = WeaponHand.Primary;
 
-    /// <summary>是否视为副手（伤害倍率 ×0.5；命中减值见 <see cref="Services.Rules.RuleCalculateTwoWeaponFighting"/>）。</summary>
+    /// <summary>是否视为副手（决定伤害属性倍率 ×0.5）。</summary>
     public bool IsSecondary { get; set; }
 
-    /// <summary>武器分类（轻型/中型/重型）；「双武器战斗」据此判断副手是否为轻型。</summary>
+    /// <summary>武器分类（轻型/中型/重型）；纯数据字段，不参与计算。</summary>
     public WeaponCategory Category { get; set; } = WeaponCategory.Medium;
 
     /// <summary>

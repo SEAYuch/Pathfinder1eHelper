@@ -7,7 +7,7 @@ namespace Pathfinder1eHelper.Services;
 
 /// <summary>
 /// Search/filter orchestration over <see cref="ISpellRepository"/>. Keeps view models thin by
-/// centralising query normalisation (trimming, sensible paging defaults).
+/// centralizing query normalization (trimming, sensible paging defaults).
 /// </summary>
 public interface ISpellService
 {

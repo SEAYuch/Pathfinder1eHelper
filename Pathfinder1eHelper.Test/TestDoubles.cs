@@ -50,10 +50,6 @@ public sealed class FakeSpellRepository : ISpellRepository
 
     public Task<Spell?> GetByIdAsync(int id, CancellationToken ct = default) =>
         Task.FromResult(Data.FirstOrDefault(s => s.Id == id));
-
-    // 战斗页不再消费 spell_buffs；仓储层保留该成员供冒烟测试校验数据，替身返回空。
-    public Task<IReadOnlyList<SpellBuff>> GetBuffsForSpellAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<SpellBuff>>([]);
 }
 
 /// <summary>In-memory <see cref="ISpellService"/> for view-model tests.</summary>
@@ -111,10 +107,6 @@ public sealed class FakeFeatRepository : IFeatRepository
 
     public Task<IReadOnlyList<string>> GetTypesAsync(CancellationToken ct = default) =>
         Task.FromResult(TypeList);
-
-    // 战斗页不再消费 feat_buffs；仓储层保留该成员供冒烟测试校验数据，替身返回空。
-    public Task<IReadOnlyList<FeatBuff>> GetBuffsForFeatAsync(string? nameEn, string? nameZh, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<FeatBuff>>([]);
 }
 
 /// <summary>In-memory <see cref="IFeatService"/> for view-model tests.</summary>

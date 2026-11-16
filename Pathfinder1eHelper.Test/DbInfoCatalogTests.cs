@@ -17,7 +17,7 @@ public class DbInfoCatalogTests
 {
     private static string CreateEmptyDatabase()
     {
-        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"p1-nostamp-{Guid.NewGuid():N}.duckdb");
+        var path = Path.Combine(Path.GetTempPath(), $"p1-nostamp-{Guid.NewGuid():N}.duckdb");
         var fsql = FreeSqlFactory.CreateReadOnly(path);
         fsql.Dispose();
         return path;
@@ -43,8 +43,8 @@ public class DbInfoCatalogTests
         }
         finally
         {
-            System.IO.File.Delete(path);
-            System.IO.File.Delete(path + ".wal");
+            File.Delete(path);
+            File.Delete(path + ".wal");
         }
     }
 
@@ -86,8 +86,8 @@ public class DbInfoCatalogTests
         }
         finally
         {
-            System.IO.File.Delete(path);
-            System.IO.File.Delete(path + ".wal");
+            File.Delete(path);
+            File.Delete(path + ".wal");
         }
     }
 
@@ -119,8 +119,8 @@ public class DbInfoCatalogTests
         }
         finally
         {
-            System.IO.File.Delete(path);
-            System.IO.File.Delete(path + ".wal");
+            File.Delete(path);
+            File.Delete(path + ".wal");
         }
     }
 }

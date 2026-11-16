@@ -10,26 +10,15 @@ namespace Pathfinder1eHelper.ViewModels.Combat;
 /// 未设置时显示 <c>fallback</c>（与 <c>ToModel</c> 里的默认值一致），避免空档案显示成 0。
 /// </para>
 /// </summary>
-public sealed class NumberFieldAdapter : ReactiveObject
+public sealed class NumberFieldAdapter(Func<int?> getValue, Action<int?> setValue, int fallback) : ReactiveObject
 {
-    private readonly Func<int?> _getValue;
-    private readonly Action<int?> _setValue;
-    private readonly int _fallback;
-
-    public NumberFieldAdapter(Func<int?> getValue, Action<int?> setValue, int fallback)
-    {
-        _getValue = getValue;
-        _setValue = setValue;
-        _fallback = fallback;
-    }
-
     public decimal Value
     {
-        get => _getValue() ?? _fallback;
+        get => getValue() ?? fallback;
         set
         {
             var rounded = (int)decimal.Round(value, 0, MidpointRounding.AwayFromZero);
-            _setValue(rounded);
+            setValue(rounded);
 
             // 源属性可能被限幅或归一，把控件里的临时输入拉回真实值。
             this.RaisePropertyChanged(nameof(Value));

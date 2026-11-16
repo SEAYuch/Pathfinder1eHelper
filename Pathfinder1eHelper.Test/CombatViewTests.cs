@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml.Templates;
 using Avalonia.VisualTree;
@@ -215,8 +216,8 @@ public class CombatViewTests
     {
         var selector = new TKCode.Arc.Combobox
         {
-            ItemsSource = Pathfinder1eHelper.ViewModels.Combat.CombatOptions.Abilities,
-            SelectedItem = Pathfinder1eHelper.ViewModels.Combat.CombatOptions.Abilities[0],
+            ItemsSource = CombatOptions.Abilities,
+            SelectedItem = CombatOptions.Abilities[0],
         };
 
         selector.Clear();
@@ -262,6 +263,28 @@ public class CombatViewTests
         Assert.NotEmpty(checkBoxes);
         Assert.All(checkBoxes, checkBox =>
             Assert.False(string.IsNullOrWhiteSpace(Avalonia.Automation.AutomationProperties.GetName(checkBox))));
+    }
+
+    [Fact]
+    public void Concentration_result_is_plain_text_aligned_to_the_field_row()
+    {
+        // headless 宿主不求值编译绑定（`AvaloniaUseCompiledBindingsByDefault`），
+        // 所以这里只锁定结构：结果仍是 TextBlock，外面套 44px（Arc 字段框 Medium 高度）
+        // 的底对齐容器——绑定写错会在编译期失败，不需要运行时断言。
+        var view = new CombatView();
+        var result = Assert.Single(
+            view.GetLogicalDescendants().OfType<TextBlock>(),
+            text => Avalonia.Automation.AutomationProperties.GetName(text) == "专注检定结果");
+        Assert.Equal(VerticalAlignment.Center, result.VerticalAlignment);
+
+        var frame = Assert.IsType<Border>(result.Parent);
+        Assert.Equal(44, frame.Height);
+        Assert.Equal(VerticalAlignment.Bottom, frame.VerticalAlignment);
+
+        // 不再用输入控件承载派生值。
+        Assert.DoesNotContain(
+            view.GetLogicalDescendants().OfType<TKCode.Arc.Input>(),
+            input => Avalonia.Automation.AutomationProperties.GetName(input) == "专注检定结果");
     }
 
     [Fact]

@@ -6,7 +6,7 @@ using Pathfinder1eHelper.Models;
 namespace Pathfinder1eHelper.Services;
 
 /// <summary>
-/// Default <see cref="IFeatService"/>. Normalises queries (trims the term, clamps the page size)
+/// Default <see cref="IFeatService"/>. Normalizes queries (trims the term, clamps the page size)
 /// before delegating to the repository.
 /// </summary>
 public sealed class FeatService(IFeatRepository repository) : IFeatService
@@ -27,13 +27,7 @@ public sealed class FeatService(IFeatRepository repository) : IFeatService
         repository.GetTypesAsync(ct);
 
     internal static FeatQuery Normalize(FeatQuery query) =>
-        query with
-        {
-            Term = QueryNormalization.Optional(query.Term),
-            Source = QueryNormalization.Optional(query.Source),
-            FirstLetter = QueryNormalization.Optional(query.FirstLetter),
-            Type = QueryNormalization.Optional(query.Type),
-            Skip = QueryNormalization.Skip(query.Skip),
-            Take = QueryNormalization.Take(query.Take, DefaultPageSize),
-        };
+        new(Term: QueryNormalization.Optional(query.Term), Source: QueryNormalization.Optional(query.Source),
+            FirstLetter: QueryNormalization.Optional(query.FirstLetter), Type: QueryNormalization.Optional(query.Type),
+            Skip: QueryNormalization.Skip(query.Skip), Take: QueryNormalization.Take(query.Take, DefaultPageSize));
 }

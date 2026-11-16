@@ -63,7 +63,7 @@ public static class DbInfoCatalog
         string? notes,
         CancellationToken ct = default)
     {
-        await writable.Ado.ExecuteNonQueryAsync(CreateTableSql, ct).ConfigureAwait(false);
+        await writable.Ado.ExecuteNonQueryAsync(CreateTableSql, ct, ct).ConfigureAwait(false);
 
         var existing = await writable.Select<DbInfo>()
             .Where(a => a.Id == SingletonId)
@@ -87,7 +87,7 @@ public static class DbInfoCatalog
             Notes = notes ?? existing?.Notes,
         };
 
-        // fsql.Transaction 只提供同步重载，内部已含 Begin/Commit/Dispose 异常处理；
+        // fSql.Transaction 只提供同步重载，内部已含 Begin/Commit/Dispose 异常处理；
         // 这里在事务外 await 计数查询，事务内只做同步 IO，避免在事务中混用两种模型。
         writable.Transaction(() =>
         {
@@ -132,16 +132,14 @@ public static class DbInfoCatalog
     /// </remarks>
     private static async Task<string> CollectRowCountsAsync(IFreeSql writable, CancellationToken ct)
     {
-        var parts = new List<string>(8)
+        var parts = new List<string>(6)
         {
-            await CountAsync<Spell>("spells", writable, fsql => fsql.Select<Spell>(), ct).ConfigureAwait(false),
-            await CountAsync<SpellLevel>("spell_levels", writable, fsql => fsql.Select<SpellLevel>(), ct).ConfigureAwait(false),
-            await CountAsync<SpellBuff>("spell_buffs", writable, fsql => fsql.Select<SpellBuff>(), ct).ConfigureAwait(false),
-            await CountAsync<Feat>("feats", writable, fsql => fsql.Select<Feat>(), ct).ConfigureAwait(false),
-            await CountAsync<FeatBuff>("feat_buffs", writable, fsql => fsql.Select<FeatBuff>(), ct).ConfigureAwait(false),
-            await CountAsync<Monster>("monsters", writable, fsql => fsql.Select<Monster>(), ct).ConfigureAwait(false),
-            await CountAsync<MonsterGroup>("monster_groups", writable, fsql => fsql.Select<MonsterGroup>(), ct).ConfigureAwait(false),
-            await CountAsync<MonsterGroupMember>("monster_group_members", writable, fsql => fsql.Select<MonsterGroupMember>(), ct).ConfigureAwait(false),
+            await CountAsync<Spell>("spells", writable, fSql => fSql.Select<Spell>(), ct).ConfigureAwait(false),
+            await CountAsync<SpellLevel>("spell_levels", writable, fSql => fSql.Select<SpellLevel>(), ct).ConfigureAwait(false),
+            await CountAsync<Feat>("feats", writable, fSql => fSql.Select<Feat>(), ct).ConfigureAwait(false),
+            await CountAsync<Monster>("monsters", writable, fSql => fSql.Select<Monster>(), ct).ConfigureAwait(false),
+            await CountAsync<MonsterGroup>("monster_groups", writable, fSql => fSql.Select<MonsterGroup>(), ct).ConfigureAwait(false),
+            await CountAsync<MonsterGroupMember>("monster_group_members", writable, fSql => fSql.Select<MonsterGroupMember>(), ct).ConfigureAwait(false),
         };
 
         return string.Join("; ", parts);

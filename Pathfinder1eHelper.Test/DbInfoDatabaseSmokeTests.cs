@@ -74,9 +74,9 @@ public class DbInfoDatabaseSmokeTests
     }
 
     /// <summary>解析 <c>"spells=3373; feats=1639"</c> 形式的快照。</summary>
-    private static System.Collections.Generic.Dictionary<string, long> ParseRowCounts(string raw)
+    private static Dictionary<string, long> ParseRowCounts(string raw)
     {
-        var result = new System.Collections.Generic.Dictionary<string, long>(StringComparer.Ordinal);
+        var result = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var pair in raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var separator = pair.IndexOf('=');

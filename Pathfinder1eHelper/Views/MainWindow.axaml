@@ -21,7 +21,7 @@
         <arc:Sidebar x:Name="Navigation"
                      Grid.Column="0"
                      Label="应用导航"
-                     Header="开拓者 1e"
+                     Header="Pathfinder 1e"
                      ItemsSource="{Binding SidebarItems}"
                      SelectedKey="{Binding SelectedNavKey, Mode=TwoWay}"
                      ExpandedWidth="240"

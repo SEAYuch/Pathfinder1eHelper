@@ -46,7 +46,7 @@ internal static class RuleMath
 
     /// <summary>正值时不计入措手不及 AC（闪避/敏捷加值）；对应 DLL <c>FilterAllowedForFlatFooted</c>。</summary>
     public static bool ExcludesFromFlatFooted(Modifier modifier) =>
-        modifier.Value > 0 && modifier.Descriptor is ModifierDescriptor.Dodge or ModifierDescriptor.DexterityBonus;
+        modifier is { Value: > 0, Descriptor: ModifierDescriptor.Dodge or ModifierDescriptor.DexterityBonus };
 
     /// <summary>按接触/措手不及维度重新合计（负值不会被排除）。</summary>
     public static StatResult Derive(StatResult source, bool touch, bool flatFooted)

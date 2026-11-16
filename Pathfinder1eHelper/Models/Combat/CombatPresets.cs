@@ -97,7 +97,7 @@ public static class CombatPresets
                 Stat = CombatStat.ArmorClass,
                 Value = 4,
                 Stance = CombatStance.TotalDefense,
-                Notes = "CHM：标准动作、1 轮内 AC +4 闪避；无法同时进行防御式攻击、借机攻击，也无法从「寓守于攻」获益",
+                Notes = "CHM：标准动作、1 轮内 AC +4 闪避；无法同时进行防御式攻击与借机攻击",
             },
         ]),
         new("勇气激励", [

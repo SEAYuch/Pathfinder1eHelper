@@ -1,4 +1,3 @@
-using System;
 using System.Globalization;
 using System.Reflection;
 
@@ -37,7 +36,8 @@ public static class AppInfo
     public static string DisplayVersion => "v" + Version;
 
     /// <summary>参考库 <c>db_info</c> 的建表结构版本：表/列契约变更时 +1，与应用版本解耦。</summary>
-    public const int ReferenceSchemaVersion = 1;
+    /// <remarks>v2：移除已退役的 <c>spell_buffs</c> / <c>feat_buffs</c> 两张表。</remarks>
+    public const int ReferenceSchemaVersion = 2;
 
     /// <summary>参考库元数据的产品名，同样写入 <c>db_info.product</c>。</summary>
     public static string ReferenceProduct => ProductName;

@@ -7,7 +7,7 @@ using Splat;
 
 namespace Pathfinder1eHelper;
 
-public partial class App : Application
+public class App : Application
 {
     public override void Initialize()
     {
@@ -20,8 +20,8 @@ public partial class App : Application
         // and set it as the Splat/ReactiveUI locator, so the shell + its view model resolve from DI.
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var window = (MainWindow)Locator.Current.GetService(typeof(MainWindow))!;
-            window.DataContext = Locator.Current.GetService(typeof(MainWindowViewModel));
+            var window = Locator.Current.GetService<MainWindow>()!;
+            window.DataContext = Locator.Current.GetService<MainWindowViewModel>();
             desktop.MainWindow = window;
         }
 

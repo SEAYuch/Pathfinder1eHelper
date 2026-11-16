@@ -3,6 +3,7 @@ using Pathfinder1eHelper.ViewModels;
 using Pathfinder1eHelper.ViewModels.Pages;
 using Pathfinder1eHelper.Views;
 using Pathfinder1eHelper.Views.Pages;
+using ViewLocator = Pathfinder1eHelper.Views.ViewLocator;
 
 namespace Pathfinder1eHelper.Test;
 
@@ -10,7 +11,7 @@ namespace Pathfinder1eHelper.Test;
 [Collection(AvaloniaUiCollection.Name)]
 public class ViewLocatorTests
 {
-    private readonly Pathfinder1eHelper.Views.ViewLocator _locator = new();
+    private readonly Views.ViewLocator _locator = new();
 
     [Fact]
     public void Resolves_views_for_registered_page_view_models()
@@ -22,9 +23,9 @@ public class ViewLocatorTests
         Assert.IsType<SpellsView>(_locator.ResolveView(spells));
         Assert.IsType<FeatsView>(_locator.ResolveView(feats));
         Assert.IsType<CombatView>(_locator.ResolveView(combat));
-        Assert.IsType<SpellsView>(_locator.ResolveView<SpellsViewModel>());
-        Assert.IsType<FeatsView>(_locator.ResolveView<FeatsViewModel>());
-        Assert.IsType<CombatView>(_locator.ResolveView<CombatViewModel>());
+        Assert.IsType<SpellsView>(ViewLocator.ResolveView<SpellsViewModel>());
+        Assert.IsType<FeatsView>(ViewLocator.ResolveView<FeatsViewModel>());
+        Assert.IsType<CombatView>(ViewLocator.ResolveView<CombatViewModel>());
     }
 
     [Fact]
@@ -32,6 +33,6 @@ public class ViewLocatorTests
     {
         Assert.Null(_locator.ResolveView(new object()));
         Assert.Null(_locator.ResolveView((object?)null));
-        Assert.Null(_locator.ResolveView<MainWindowViewModel>()); // shell 不进映射
+        Assert.Null(ViewLocator.ResolveView<MainWindowViewModel>()); // shell 不进映射
     }
 }
