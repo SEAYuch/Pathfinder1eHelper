@@ -209,12 +209,12 @@ OS 指令前缀 `vpk [linux] pack ...`（少了会报 `the target rid must be Wi
 
 ## 版本与参考库元数据（db_info）
 
-- **单一版本源**：`Directory.Build.props` 的 `<Version>`（当前 `0.2.0`）。SDK 由它派生
-  `AssemblyVersion`/`FileVersion`（`0.2.0.0`）与 `InformationalVersion`（`0.2.0`，会被 SourceLink
+- **单一版本源**：`Directory.Build.props` 的 `<Version>`（当前 `0.2.1`）。SDK 由它派生
+  `AssemblyVersion`/`FileVersion`（`0.2.1.0`）与 `InformationalVersion`（`0.2.1`，会被 SourceLink
   追加 `+<commit>` 后缀）。**改版本号只改这一处**，勿在 csproj 另写 `<Version>`。
   `<Product>` 同在此处，`AppInfo.ProductName` 从程序集 `Product` 属性读取，与 exe「属性 → 详细信息」同源。
 - **运行期读取**：`AppInfo.Version`（三段 SemVer，剥掉 `+meta`/`-pre` 后缀）、`AppInfo.DisplayVersion`
-  （`v0.2.0`）。打包工具（Velopack/WiX/后续 MSIX）读 `FileVersion`，UI 与 DB 读 `InformationalVersion`，
+  （`v0.2.1`）。打包工具（Velopack/WiX/后续 MSIX）读 `FileVersion`，UI 与 DB 读 `InformationalVersion`，
   `AppInfoTests` 钉死三者一致。
 - **参考库盖章**：参考库有单行表 `db_info`（实体 `Models/DbInfo`，DDL 与写入在 `Services/DbInfoCatalog`），
   记录 `app_version` / `schema_version`（`AppInfo.ReferenceSchemaVersion`，表/列契约变更时 +1）/
