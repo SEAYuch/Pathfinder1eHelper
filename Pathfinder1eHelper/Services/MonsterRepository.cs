@@ -17,9 +17,7 @@ public sealed class MonsterRepository(IFreeSql fSql) : IMonsterRepository
         return fSql.Select<Monster>()
             .WhereIf(
                 !string.IsNullOrWhiteSpace(term),
-                m => m.NameZh.Contains(term!) || (m.NameEn != null &&
-                                                  m.NameEn.Contains(lowerTerm!,
-                                                      System.StringComparison.CurrentCultureIgnoreCase)))
+                m => m.NameZh.Contains(term!) || (m.NameEn != null && m.NameEn.ToLower().Contains(lowerTerm!)))
             .WhereIf(!string.IsNullOrEmpty(q.FirstLetter), m => m.FirstLetter == q.FirstLetter)
             .WhereIf(!string.IsNullOrEmpty(q.CreatureType), m => m.CreatureType == q.CreatureType);
     }

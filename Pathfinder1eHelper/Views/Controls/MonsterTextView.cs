@@ -57,7 +57,7 @@ public sealed class MonsterTextView : UserControl
     }
 
     private static Control BuildParagraph(IReadOnlyList<string> lines) =>
-        new TextBlock
+        new SelectableTextBlock
         {
             Text = string.Join("\n", lines),
             TextWrapping = TextWrapping.Wrap,
@@ -91,7 +91,7 @@ public sealed class MonsterTextView : UserControl
                     BorderBrush = brush,
                     BorderThickness = new Thickness(1),
                     Padding = new Thickness(6, 3),
-                    Child = new TextBlock
+                    Child = new SelectableTextBlock
                     {
                         Text = c < rows[r].Count ? rows[r][c] : "",
                         TextWrapping = TextWrapping.Wrap,

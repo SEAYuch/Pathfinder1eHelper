@@ -97,10 +97,10 @@
                             <ContentControl.ContentTemplate>
                                 <DataTemplate x:DataType="models:Spell">
                                     <StackPanel Spacing="{arc:ArcDesignTokenResource Space2}">
-                                        <TextBlock Text="{Binding NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
-                                                   TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
-                                                   TextWrapping="Wrap" />
+                                        <SelectableTextBlock Text="{Binding NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
+                                                             TextWrapping="Wrap" />
+                                        <SelectableTextBlock Text="{Binding NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
+                                                             TextWrapping="Wrap" />
 
                                         <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}"
                                                 Margin="{DynamicResource ArcSpace1Thickness}" />
@@ -109,79 +109,79 @@
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding School, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="学派" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding School}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding School}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Level, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="环位" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Level}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Level}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding CastingTime, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="施法时间" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding CastingTime}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding CastingTime}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Components, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="成分" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Components}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Components}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Range, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="距离" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Range}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Range}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Effect, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="效果" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Effect}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Effect}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Area, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="范围" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Area}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Area}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Targets, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="目标" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Targets}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Targets}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Duration, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="持续时间" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Duration}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Duration}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding SavingThrow, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="豁免" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding SavingThrow}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding SavingThrow}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding SpellResistance, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="法术抗力" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding SpellResistance}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding SpellResistance}" TextWrapping="Wrap" />
                                         </Grid>
 
                                         <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}"
                                                 Margin="{DynamicResource ArcSpace1Thickness}"
                                                 IsVisible="{Binding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                                   LineHeight="{arc:ArcDesignTokenResource TypeLG}"
-                                                   IsVisible="{Binding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                                             LineHeight="{arc:ArcDesignTokenResource TypeLG}"
+                                                             IsVisible="{Binding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}" Margin="{DynamicResource ArcSpace1Thickness}"
                                               IsVisible="{Binding Extra, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="附加" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Extra}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Extra}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding SpellType, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="法术类型" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding SpellType}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding SpellType}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="72,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}">
                                             <TextBlock Grid.Column="0" Text="出处" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding SourceDisplay}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding SourceDisplay}" TextWrapping="Wrap" />
                                         </Grid>
                                     </StackPanel>
                                 </DataTemplate>

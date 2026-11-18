@@ -19,8 +19,7 @@ public sealed class SpellRepository(IFreeSql fSql) : ISpellRepository
         var sel = fSql.Select<Spell>()
             .WhereIf(
                 !string.IsNullOrWhiteSpace(term),
-                s => s.NameZh.Contains(term!) ||
-                     s.NameEn.Contains(lowerTerm!, StringComparison.CurrentCultureIgnoreCase))
+                s => s.NameZh.Contains(term!) || (s.NameEn != null && s.NameEn.ToLower().Contains(lowerTerm!)))
             .WhereIf(!string.IsNullOrEmpty(q.Source), s => s.Source == q.Source)
             .WhereIf(!string.IsNullOrEmpty(q.FirstLetter), s => s.FirstLetter == q.FirstLetter);
 

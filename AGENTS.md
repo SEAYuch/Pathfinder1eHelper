@@ -330,4 +330,10 @@ CREATE INDEX idx_feats_name_zh ON feats(name_zh);
   `白鹤拳` 的规则补偿（防御式战斗减值 −4 → −2）已随规则代码移除；现在只能用普通修饰条目表达静态加值（如白鹤亮翅 = `Dodge/ArmorClass +4`），限定条件写进条目备注。
   **白鹤弹腿不建模**：它没有任何静态加值（借机攻击的反应动作），按「不能映射则不收录」惯例跳过。
 - 英文搜索用 `ToLower().Contains(...)`（无索引可利用）；若改 DuckDB `ILIKE` 需裸 SQL 与转义。
+  - ⚠️ **不要**把英文搜索写成 `Contains(term, StringComparison.CurrentCultureIgnoreCase)`：
+    FreeSql 3.5.311 的 DuckDB provider **忽略**这个重载，直接翻译成大小写敏感的
+    `LIKE '%term%'`（DuckDB 的 `LIKE` 区分大小写），英文搜索会静默返回空集。
+    验证方式：`fsql.Select<Spell>().Where(...).ToSql()` 看是否生成 `lower(a."name_en")`。
+    实体字段侧 `.ToLower()` 才会被翻译。曾因这一处改动让三页英文搜索全空
+    （`SpellDatabaseSmokeTests`/`FeatDatabaseSmokeTests`/`MonsterDatabaseSmokeTests` 五条冒烟失败）。
 - 低价值增强未做：`MonsterTextView` 表格可视化不虚拟化；`ObservableCollection` 已在筛选处改用 `HashSet` 去重。

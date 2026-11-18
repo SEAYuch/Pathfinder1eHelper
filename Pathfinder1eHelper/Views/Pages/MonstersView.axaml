@@ -88,10 +88,10 @@
                                             IsVisible="{Binding SelectedMonster, Converter={x:Static ObjectConverters.IsNull}}" />
                             <StackPanel Spacing="{arc:ArcDesignTokenResource Space2}"
                                         IsVisible="{Binding SelectedMonster, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <TextBlock Text="{Binding SelectedMonster.NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
-                                       TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding SelectedMonster.NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
-                                       TextWrapping="Wrap" />
+                            <SelectableTextBlock Text="{Binding SelectedMonster.NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
+                                                 TextWrapping="Wrap" />
+                            <SelectableTextBlock Text="{Binding SelectedMonster.NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
+                                                 TextWrapping="Wrap" />
 
                             <!-- 相关绪论链接 -->
                             <StackPanel Spacing="{arc:ArcDesignTokenResource Space1}"
@@ -116,50 +116,50 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="CR" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.Cr}" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.Cr}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="体型" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.Size}" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.Size}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="类型" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.CreatureType}" TextWrapping="Wrap" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.CreatureType}" TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="亚种" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.Subtypes}" TextWrapping="Wrap" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.Subtypes}" TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="阵营" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.Alignment}" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.Alignment}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="属性" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock>
+                                <SelectableTextBlock>
                                     <Run Text="{Binding SelectedMonster.Strength}" /><Run Text=" / " />
                                     <Run Text="{Binding SelectedMonster.Dexterity}" /><Run Text=" / " />
                                     <Run Text="{Binding SelectedMonster.Constitution}" /><Run Text=" / " />
                                     <Run Text="{Binding SelectedMonster.Intelligence}" /><Run Text=" / " />
                                     <Run Text="{Binding SelectedMonster.Wisdom}" /><Run Text=" / " />
                                     <Run Text="{Binding SelectedMonster.Charisma}" />
-                                </TextBlock>
+                                </SelectableTextBlock>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="环境" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.Environment}" TextWrapping="Wrap" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.Environment}" TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="组织" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.Organization}" TextWrapping="Wrap" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.Organization}" TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="{arc:ArcDesignTokenResource Space2}">
                                 <TextBlock Text="宝物" FontWeight="SemiBold" Width="72" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />
-                                <TextBlock Text="{Binding SelectedMonster.Treasure}" TextWrapping="Wrap" />
+                                <SelectableTextBlock Text="{Binding SelectedMonster.Treasure}" TextWrapping="Wrap" />
                             </StackPanel>
 
-                            <TextBlock Text="{Binding SelectedMonster.Description}" TextWrapping="Wrap"
-                                       LineHeight="{arc:ArcDesignTokenResource TypeLG}" Margin="{DynamicResource ArcSpace1Thickness}" />
+                            <SelectableTextBlock Text="{Binding SelectedMonster.Description}" TextWrapping="Wrap"
+                                                 LineHeight="{arc:ArcDesignTokenResource TypeLG}" Margin="{DynamicResource ArcSpace1Thickness}" />
                             <controls:MonsterTextView Text="{Binding SelectedMonster.StatBlock}" />
                             <controls:MonsterTextView Text="{Binding SelectedMonster.SpecialAbilities}" />
                             </StackPanel>
@@ -171,10 +171,10 @@
                         <StackPanel Spacing="{arc:ArcDesignTokenResource Space2}">
                             <arc:Button Content="← 返回怪物" Variant="Secondary" Command="{Binding CloseGroupCommand}"
                                     HorizontalAlignment="Left" />
-                            <TextBlock Text="{Binding SelectedGroup.NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
-                                       TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding SelectedGroup.NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
-                                       TextWrapping="Wrap" />
+                            <SelectableTextBlock Text="{Binding SelectedGroup.NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
+                                                 TextWrapping="Wrap" />
+                            <SelectableTextBlock Text="{Binding SelectedGroup.NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
+                                                 TextWrapping="Wrap" />
                             <controls:MonsterTextView Text="{Binding SelectedGroup.Content}" />
                             <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}" Margin="{DynamicResource ArcSpace1Thickness}" />
                             <TextBlock Text="包含怪物" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" />

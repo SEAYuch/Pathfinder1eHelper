@@ -17,10 +17,8 @@ public sealed class FeatRepository(IFreeSql fsql) : IFeatRepository
             .WhereIf(
                 !string.IsNullOrWhiteSpace(term),
                 f => f.NameZh.Contains(term!)
-                     || (f.NameEn != null &&
-                         f.NameEn.Contains(lowerTerm!, System.StringComparison.CurrentCultureIgnoreCase))
-                     || (f.Prerequisites != null &&
-                         f.Prerequisites.Contains(lowerTerm!, System.StringComparison.CurrentCultureIgnoreCase)))
+                     || (f.NameEn != null && f.NameEn.ToLower().Contains(lowerTerm!))
+                     || (f.Prerequisites != null && f.Prerequisites.ToLower().Contains(lowerTerm!)))
             .WhereIf(!string.IsNullOrEmpty(q.Source), f => f.Source == q.Source)
             .WhereIf(!string.IsNullOrEmpty(q.FirstLetter), f => f.FirstLetter == q.FirstLetter)
             .WhereIf(!string.IsNullOrEmpty(q.Type), f => f.FeatType == q.Type);

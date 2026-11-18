@@ -94,10 +94,10 @@
                             <ContentControl.ContentTemplate>
                                 <DataTemplate x:DataType="models:Feat">
                                     <StackPanel Spacing="{arc:ArcDesignTokenResource Space2}">
-                                        <TextBlock Text="{Binding NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
-                                                   TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
-                                                   TextWrapping="Wrap" />
+                                        <SelectableTextBlock Text="{Binding NameZh}" FontSize="{arc:ArcDesignTokenResource Type2XL}" Foreground="{arc:ArcDesignTokenResource Foreground}" FontWeight="Bold"
+                                                             TextWrapping="Wrap" />
+                                        <SelectableTextBlock Text="{Binding NameEn}" FontSize="{arc:ArcDesignTokenResource TypeSM}" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
+                                                             TextWrapping="Wrap" />
 
                                         <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}"
                                                 Margin="{DynamicResource ArcSpace1Thickness}" />
@@ -105,21 +105,21 @@
                                         <!-- 字段行：两列 Grid（标签定宽 + 值占满剩余宽度）以支持长文本换行 -->
                                         <Grid ColumnDefinitions="88,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}">
                                             <TextBlock Grid.Column="0" Text="类型" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding FeatType}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding FeatType}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="88,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}">
                                             <TextBlock Grid.Column="0" Text="战士奖励" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding FighterBonusDisplay}" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding FighterBonusDisplay}" />
                                         </Grid>
                                         <Grid ColumnDefinitions="88,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Prerequisites, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="先决条件" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Prerequisites}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Prerequisites}" TextWrapping="Wrap" />
                                         </Grid>
                                         <Grid ColumnDefinitions="88,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}"
                                               IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock Grid.Column="0" Text="简述" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Summary}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Summary}" TextWrapping="Wrap" />
                                         </Grid>
 
                                         <Border Height="1" Background="{arc:ArcDesignTokenResource BorderSubtle}"
@@ -127,17 +127,17 @@
                                                 IsVisible="{Binding Benefit, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                         <TextBlock Text="专长效果" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}"
                                                    IsVisible="{Binding Benefit, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                        <TextBlock Text="{Binding Benefit}" TextWrapping="Wrap"
-                                                   LineHeight="{arc:ArcDesignTokenResource TypeLG}"
-                                                   IsVisible="{Binding Benefit, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <SelectableTextBlock Text="{Binding Benefit}" TextWrapping="Wrap"
+                                                             LineHeight="{arc:ArcDesignTokenResource TypeLG}"
+                                                             IsVisible="{Binding Benefit, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                                        <TextBlock Text="{Binding Flavor}" TextWrapping="Wrap"
-                                                   Foreground="{arc:ArcDesignTokenResource TextSecondary}" Margin="{DynamicResource ArcSpace1Thickness}"
-                                                   IsVisible="{Binding Flavor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <SelectableTextBlock Text="{Binding Flavor}" TextWrapping="Wrap"
+                                                             Foreground="{arc:ArcDesignTokenResource TextSecondary}" Margin="{DynamicResource ArcSpace1Thickness}"
+                                                             IsVisible="{Binding Flavor, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
                                         <Grid ColumnDefinitions="88,*" ColumnSpacing="{arc:ArcDesignTokenResource Space2}" Margin="{DynamicResource ArcSpace1Thickness}">
                                             <TextBlock Grid.Column="0" Text="出处" FontWeight="SemiBold" Foreground="{arc:ArcDesignTokenResource TextSecondary}" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Source}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Source}" TextWrapping="Wrap" />
                                         </Grid>
                                     </StackPanel>
                                 </DataTemplate>
